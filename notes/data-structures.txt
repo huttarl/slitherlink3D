@@ -1,0 +1,12 @@
+Data structure
+
+The data structure for representing the slitherlink graph in memory has to meet the following requirements.
+
+1. Suitable for 3D graphical display of faces (of various colors?), edges (in various states), vertices (probably) and clues (numbers in faces). This part may be accomplished by a separate-but-connected data structure that's derived from the abstract graph.
+Three.js will use a mesh that may consist of triangular faces instead of the actual polygons, for example. However, the graphics mesh must be updatable to reflect changes
+in state of the current attempted solution.
+
+2. Represent faces, edges, and vertices of the graph, the puzzle, the attempted solution so far, and the actual solution, in a way that we can get from one to another quickly.
+The graph, puzzle, and solution do not need to change, but of course the state of the current attempt does.
+
+Since we need to get from vertex <--> edge <--> face easily, and we don't have millions of V/E/Fs, we should probably use a fairly full-featured game logic data structure. E.g. 
