@@ -5,8 +5,9 @@
     Operations needed:
     - Import geometry from source into THREE.js structures (LineSegments, mesh, Dots?)
     - Import geometry from source into program data structures (possibly a halfedge DS?)
-    - Display edges
     - Display faces, including numbers
+    x Display edges
+      x Don't display them twice.
     - Display vertices (as billboard circles? glowing stars?)
     - Pick an edge with mouse
     - Pick a face
@@ -79,12 +80,22 @@ function importData(data) {
     var geometry = new THREE.Geometry();
     
     // TODO: This will add each edge twice. Remove one of them.
+    var edgesAddedToMesh = {};
+
     for (var f=0; f < data.faces.length; f++) {
         var face = data.faces[f];
         for (var v=0; v < face.length; v++) {
             var nv = (v+1 >= face.length) ? 0 : v+1;
             var vx = data.vertices[face[v]];
             geometry.vertices.push(new THREE.Vector3(vx[0], vx[1], vx[2]));
+            // Check: is the reversed edge already added? If so don't add it again.
+            if ([face[nv], face[v]] in edgesAddedToMesh) {
+                // console.log("Edge already added", face[v], face[nv]);
+                continue;
+            }
+            // Add this edge.
+            edgesAddedToMesh[[face[v], face[nv]]] = true;
+
             // was: new (Function.prototype.bind.apply(THREE.Vector3, data.vertices[face[v]-1])));
             var vx = data.vertices[face[nv]];
             geometry.vertices.push(new THREE.Vector3(vx[0], vx[1], vx[2]));
