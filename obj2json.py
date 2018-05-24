@@ -1,5 +1,7 @@
 # obj2json: Convert OBJ export from polyHedronisme to Slitherlink3D JSON data
 
+# The following is for printing to stderr.
+from __future__ import print_function
 import sys, json
 
 faces = []
@@ -84,10 +86,10 @@ def main():
                              (len(faces), len(vertices), num_edges))
         output()
     except ParseError as e:
-        print("Parse error: %s" % e.args)
+        print("Parse error: %s" % e.args, file=sys.stderr)
         sys.exit(1)
     except IOError as e:
-        print("Couldn't read file: %s" % e)
+        print("Couldn't read file: %s" % e, file=sys.stderr)
         sys.exit(1)
         
 if __name__ == "__main__":
