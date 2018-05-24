@@ -1,3 +1,7 @@
+// This was an old attempt at converting polyhedronisme C200stI to a JSON
+// format for Slitherlink 3D. I think something's wrong with the vertex coordinates
+// or face vertex indices. But the format is still a useful template.
+
 {"id": "polyhedronisme-C200stI", "name": "polyhedronisme-C200stI", "nCells": 272, "nEdges": 450, "nVertices": 180,
  "vertices": [
   [-0.564000,0.689000,0.454000],
