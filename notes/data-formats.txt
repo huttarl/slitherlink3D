@@ -1,0 +1,47 @@
+Polyhedron meshes:
+
+We export .OBJ files from polyHédronisme,e.g. http://levskaya.github.io/polyhedronisme/?recipe=stI
+
+These .OBJ files can be converted to slitherlink3D JSON format via obj2json.py
+
+This data determines the locations and connections of vertices, faces, and (indirectly) edges.
+
+
+Puzzles:
+
+For a given polyhedron mesh, various puzzles can be overlaid. A puzzle is determined by an optional clue
+for each face, a number indicating how many edges of that face are part of the loop.
+
+puzzles[p] = the pth puzzle.
+
+puzzles[p[f]] = the number of edges of the fth face that are part of the loop, in the pth puzzle.
+For some f, puzzles[p[f]] will have no number, indicating that no clue is given for that face.
+Should the "no number" be undefined? -1? false?
+Note that we cannot use "falsiness" to identify the "no clue" condition, because zero is a valid
+clue but is falsy. Probably null is the best answer. This can easily be tested with (puzzles[p[f]] === null).
+Null can also be encoded in JSON. It's longer than -1, but cleaner.
+
+Note that faces[] and puzzles[p] must have their faces in the same order.(**)
+
+
+In some JSON samples, we have puzzles lumped in as a property of the top-level object as the
+polyhedron mesh.
+That's ok for now, but it would make sense to allow them to be addressed separately.
+For example, we might have many puzzles per mesh; possibly even an indefinite number
+(generated on demand). The user might play one puzzle on a given mesh, then ask for another
+puzzle on the same mesh. In that case you don't want to have to download the polyhedron mesh
+again too, because it takes much longer (around 8x as much data).
+
+When we separate puzzles from their meshes, we have to make sure we know which mesh each puzzle
+is designed for... because of (**) above. So make sure each puzzles JSON file contains a mesh ID.
+
+In fact, how about this ... we just use the same basic file format regardless of whether
+it contains a mesh, puzzles, or both. Every file must have a mesh ID (meshID). Mesh files must have mesh
+data (several properties), and puzzle files must have a "puzzles" property. Some could have
+both.
+In practice, we'll probably use the filename to fetch the right mesh, so the mesh file JSON wouldn't
+really need to have meshID in it. E.g. to play a puzzle whose meshID is "rhombille", we'll make sure
+we have the mesh with that meshID, or request it using "data/rhombille.json" as part of the URL.
+
+I don't think there's a need to have a special format for a single puzzle as opposed to muliple ones;
+after all, you can always have an array of puzzles with just one element.
