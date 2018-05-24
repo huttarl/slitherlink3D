@@ -34,7 +34,8 @@ var autoRotating = true;
 function init() {
     // TODO: make antialias a controllable option?
     renderer = new THREE.WebGLRenderer({antialias:  true});
-    renderer.setSize( 800, 600 );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
     document.body.appendChild( renderer.domElement );
 
     scene = new THREE.Scene();
