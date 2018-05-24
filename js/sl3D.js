@@ -13,9 +13,21 @@
     - Pick an edge with mouse
     - Pick a face
     - Pick a vertex
-    - Change a vertex from one material to another; that apparently means
-      having to move it from one LineSegments to another.
-    - Display a "loading" spinner while loading
+    - Change an edge from one material to another; that apparently means
+      having to move it from one LineSegments to another. UNLESS... we can do
+      it by changing its texture coordinates. Can we do that with THREE.MeshLine?
+
+      OK, I found that for faces, Geometry has a .faceVertexUvs property
+      (https://threejs.org/docs/index.html#api/core/Geometry.faceVertexUvs),
+      which allows you
+      you to specify texture coordinates for each vertex on each face.
+      This will let us basically specify a color for each face.
+
+      The .colors property allows you to specify a color per vertex,
+      which can't be used for faces but should do the trick for LineSegments.
+      It should also work for MeshLine, but remember MeshLineMaterial.map and .useMap.
+    - Come up with a sample puzzle to test with.
+    - Display a "loading" spinner while loading?
 */
 
 var MAX_POINTS = 1000, MAX_EDGES = 1000, MAX_FACES = 1000;
