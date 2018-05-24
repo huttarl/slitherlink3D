@@ -41,7 +41,9 @@ def input_vertex(line):
     if len(s) < 4:
         raise ParseError("Malformed vertex line: '%s'" % line)
     else:
-        vertex = [float(coord) for coord in s[1:]]
+        # Trim to 3 decimal places, for compactness.
+        vertex = ["%0.3f" % float(coord)
+                  for coord in s[1:]]
         # print("Appending vertex ", vertex)
         vertices.append(vertex)
 
@@ -60,18 +62,17 @@ def input_face(line):
     # TODO maybe: Catch cases where a vertex index is out of bounds.
     
 def output():
-    # Could use indent=2 here but it's not what I want.
+    # Make output format compact, so that it loads quickly.
     print(json.dumps({
         "id": name,
         "name": name,
         "nCells": len(faces),  # "cell" == "face"
         "nEdges": int(num_edges),
         "nVertices": len(vertices),
-        # TODO: filter vertices and faces
         "vertices": vertices,
         "faces": faces,
         "puzzles": []
-        }))
+        }, separators=(',',':')))
     
 def main():
     try:
