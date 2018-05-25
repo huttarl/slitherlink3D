@@ -201,12 +201,12 @@ function animate() {
 }
 
 function render() {
-    console.log("render");
+    // console.log("render");
     renderer.render( scene, camera );
 }
 
 function changeControls() {
-    console.log("changeControls");
+    // console.log("changeControls");
     // Stop autorotating when user touches controls.
     autoRotating = false;
     render();
