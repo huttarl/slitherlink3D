@@ -66,8 +66,8 @@ def input_face(line):
 def output():
     # Make output format compact, so that it loads quickly.
     print(json.dumps({
-        "id": name,
-        "name": name,
+        "meshID": name,  # machine-friendly ID; may need to be modified.
+        "meshName": name,  # user-visible name, e.g. "Rhombille"
         "nCells": len(faces),  # "cell" == "face"
         "nEdges": int(num_edges),
         "nVertices": len(vertices),
