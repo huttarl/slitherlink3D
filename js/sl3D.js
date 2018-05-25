@@ -1,15 +1,17 @@
 /*
     Operations needed:
+    - Come up with a sample puzzle to test with.
+    x Display edges
+      x Don't display them twice.
+      - Display them wider? If so, probably use https://github.com/spite/THREE.MeshLine
+      - Display them differently: on/off/unknown
+    - Display faces, including numbers!
+    - Display vertices (as billboard circles? glowing stars?)
     x Load/parse json mesh data
     x Separate script to convert .obj to .json format
     x Camera smooth zoom after mesh loaded.
     x Import geometry from source into THREE.js structures (LineSegments, mesh, Dots?)
     - Import geometry from source into program data structures (possibly a halfedge DS?)
-    x Display edges
-      x Don't display them twice.
-      - Display them wider? If so, probably use https://github.com/spite/THREE.MeshLine
-    - Display faces, including numbers!
-    - Display vertices (as billboard circles? glowing stars?)
     - Pick an edge with mouse
     - Pick a face
     - Pick a vertex
@@ -26,7 +28,6 @@
       The .colors property allows you to specify a color per vertex,
       which can't be used for faces but should do the trick for LineSegments.
       It should also work for MeshLine, but remember MeshLineMaterial.map and .useMap.
-    - Come up with a sample puzzle to test with.
     - Display a "loading" spinner while loading?
 */
 
