@@ -35,7 +35,7 @@ var MAX_POINTS = 1000, MAX_EDGES = 1000, MAX_FACES = 1000;
 
 // Mesh to load. Points are assumed to be centered around origin.
 var dataURL = 'data/';
-var DEFAULT_DATA_FILE='phe-A200sC200tI.json';
+var DEFAULT_DATA_FILE='phe-T.json';
 
 var renderer, scene, camera, sphere;
 
