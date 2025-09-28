@@ -1,0 +1,6 @@
+A good potential source for polyhedra that are aesthetically pleasing
+and could be used for interesting slitherlink puzzles: https://en.wikipedia.org/wiki/Symmetrohedron
+They describe a generative approach that I could try.
+
+One thing we'd want to do is to make sure there are no really small cells;
+(and not too many really big ones either)?
