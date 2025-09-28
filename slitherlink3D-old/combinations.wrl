@@ -1,0 +1,380 @@
+#VRML V2.0 utf8
+WorldInfo{
+    title "combinations of polyhedra"
+    info [
+    "Copyright 1997 - Vladimir Bulatov"
+    "   bulatov@dots.physics.orst.edu",
+    ]
+}
+
+NavigationInfo { 
+#    type "EXAMINE" 
+    type "NONE" 
+    headlight FALSE 
+} 
+
+Viewpoint {
+    description "start"
+    position    0 0 8 
+    fieldOfView 0.35
+}
+
+DEF BACKGROUND Background {
+    groundAngle [ 0.9, 1.5, 1.57 ]
+    groundColor [
+    0 0.333 0,
+    0 0.4 0,
+    0 0.5 0,
+    0.62 0.67 0.60
+    ]
+    skyAngle [ 0.9, 1.5, 1.57 ]
+    skyColor [
+    0.21 0.18 0.66,
+    0.2 0.44 0.85,
+    0.51 0.81 0.95,
+    0.77 0.8 0.82
+    ]
+}
+
+DirectionalLight{
+    ambientIntensity 0.2
+    color 0.7 0.7 0.7
+    direction -1 -1 -0.5
+}
+
+DirectionalLight{
+    ambientIntensity 0.2
+    color 0.7 0.7 0.7
+    direction 1 -2 -1
+}
+
+EXTERNPROTO SimpleSlider [
+eventOut     SFFloat value_chaged
+eventIn SFFloat set_value
+field SFFloat initialValue
+exposedField MFNode thumb 
+exposedField MFNode slide
+]"slider_proto.wrl#SimpleSlider"
+
+EXTERNPROTO Roller [
+eventIn SFBool restore
+eventIn SFRotation add_rotation
+eventOut SFRotation rotation_changed
+eventIn  MFNode set_children 
+eventIn  SFBool set_active
+eventOut SFBool isActive
+eventOut SFTime isActive_time
+
+exposedField SFInt32 data
+exposedField MFNode children 
+exposedField SFRotation offset
+field SFBool automatic
+field SFFloat radius 
+]"roller_proto.wrl#Roller"
+
+
+
+EXTERNPROTO RadioButton [
+eventOut SFBool isPressed
+eventOut SFTime timePressed 
+eventIn  SFBool set_pressed
+field MFNode shapeRaised 
+field MFNode shapePressed 
+field SFString description 
+]"radio_button_proto.wrl#RadioButton"
+
+EXTERNPROTO Button [
+]"button_proto.wrl#Button"
+
+EXTERNPROTO PressButton [
+eventOut SFBool isPressed
+eventOut SFTime timePressed 
+field MFNode shapeRaised
+field MFNode shapePressed 
+field SFString description 
+]"press_button_proto.wrl#PressButton"
+
+
+
+Group {
+    children[
+    DEF SCALE0 Transform{
+	scale 0.7 0.7 0.7
+	children DEF ROLLER0 Roller{
+	    data 0
+	    children DEF POLY0 Transform {
+		children[
+#		Inline {
+#		    url "poly/u07.wrl"
+#		}
+		]
+	    }
+	}
+    }
+    DEF SCALE1 Transform{
+	scale 0.7 0.7 0.7
+	children DEF ROLLER1 Roller{
+	    data 1
+	    children DEF POLY1 Transform {
+		children[
+		]
+	    }
+	}
+    }
+    DEF SCALE2 Transform{
+	scale 0.7 0.7 0.7
+	children DEF ROLLER2 Roller{
+	    data 2
+	    children DEF POLY2 Transform {
+		children[
+		]
+	    }
+	}
+    }
+    DEF SCALE3 Transform{
+	scale 0.7 0.7 0.7
+	children DEF ROLLER3 Roller{
+	    data 3
+	    children DEF POLY3 Transform {
+		children[
+		]
+	    }
+	}
+    }
+    DEF SCALE4 Transform{
+	scale 0.7 0.7 0.7
+	children DEF ROLLER4 Roller{
+	    data 4
+	    children DEF POLY4 Transform {
+		children[
+		]
+	    }
+	}
+    }
+    DEF SCALE5 Transform{
+	scale 0.7 0.7 0.7
+	children DEF ROLLER5 Roller{
+	    data 5
+	    children DEF POLY5 Transform {
+		children[
+		]
+	    }
+	}
+    }
+    ]    
+}
+
+Switch {
+    choice[
+    DEF BUTTON_RAISED Shape{
+	geometry Button{
+	}
+	appearance Appearance {
+	    material Material {
+		diffuseColor 1 0.3 0.3
+	    }		
+	}
+    }
+    DEF BUTTON_PRESSED Transform {
+	scale 1 0.5 1
+	children Shape{
+	    geometry Button {
+	    }
+	    appearance Appearance {
+		material Material {
+		    diffuseColor 1 0.3 0.3
+		}		
+	    }
+	}
+    }
+
+
+    DEF PANEL Transform{
+	
+	children [
+	Shape {
+	    geometry Box{
+		size 0.4 0.02 0.4
+	    }
+
+	    appearance Appearance {
+		material Material {
+		    diffuseColor 0.5 0.5 0.5
+		}		
+	    }
+	}
+	
+	Transform {
+	    scale 0.1 0.1 0.1
+	    children [
+	    DEF BUTTON_CONNECT RadioButton{
+		shapeRaised USE BUTTON_RAISED
+		shapePressed USE BUTTON_PRESSED
+		description "click to connect/disconnect objects"
+	    }
+	    ]	    
+	}
+
+#	Transform {
+#	    scale 0.1 0.1 0.1
+#	    translation -0.3 0 0 
+#	    children [
+#	    DEF BUTTON_RESTORE PressButton{
+#		shapeRaised USE BUTTON_RAISED
+#		shapePressed USE BUTTON_PRESSED
+#		description "click to restore orientation"
+#	    }
+#	    ]	    
+#        }
+	]
+    }
+    ]
+}
+
+
+DEF CONTROL_PANEL Switch{
+    whichChoice 0
+    choice [
+    
+
+    DEF DESK Transform{
+	translation 0 -1 0
+	children [
+	
+	Shape {	
+	    geometry Box{
+		size 4 0.05 4
+	    }
+	    appearance Appearance {
+		material Material {
+		    diffuseColor 0.6 0.4 0.4 
+		}
+	    }
+	}
+	
+	Transform {
+	    rotation 1 0 0 0.5
+	    translation 0 0.15 1.8
+	    children USE PANEL
+	}
+	
+	Transform{
+	    translation 1.0 1 1.8
+	    scale 2 2 2
+	    children [
+	    DEF SLIDER SimpleSlider {
+
+		initialValue 0.7
+
+		thumb Shape {
+		    geometry Sphere{
+			radius 0.035
+		    }
+		    
+		    appearance	Appearance {
+			material	Material {
+			    ambientIntensity 0.25
+			    diffuseColor 1. 0.3 0.3
+			    shininess	1
+			}
+		    }
+		}
+
+		slide Shape {
+		    geometry Cylinder{
+			height 1.0101
+			radius 0.015			
+		    }
+		    appearance Appearance{
+			material Material {
+			    diffuseColor 0.5 0.5 0.5
+			}			
+		    }
+		}
+	    }
+	    ]
+	    
+	}
+	
+	]    
+    }
+    ]
+}
+
+
+DEF SCRIPT Script {
+    url ["WorldLoader.class" ]
+    
+    directOutput TRUE
+    mustEvaluate TRUE
+
+    field SFNode scale0 USE SCALE0
+    field SFNode scale1 USE SCALE1
+    field SFNode scale2 USE SCALE2
+    field SFNode scale3 USE SCALE3
+    field SFNode scale4 USE SCALE4
+    field SFNode scale5 USE SCALE5
+    field SFNode panel USE CONTROL_PANEL    
+    field SFNode background USE BACKGROUND
+    eventIn MFNode new_poly
+    eventIn SFFloat set_scale
+    eventIn SFRotation set_rotation
+    eventIn SFBool set_connection
+    eventIn SFBool set_selected_poly
+
+    eventOut SFFloat scale_changed
+}
+
+
+ROUTE SLIDER.value_chaged TO SCRIPT.set_scale
+ROUTE SCRIPT.scale_changed TO SLIDER.set_value
+
+ROUTE ROLLER0.isActive TO SCRIPT.set_selected_poly
+ROUTE ROLLER1.isActive TO SCRIPT.set_selected_poly
+ROUTE ROLLER2.isActive TO SCRIPT.set_selected_poly
+ROUTE ROLLER3.isActive TO SCRIPT.set_selected_poly
+ROUTE ROLLER4.isActive TO SCRIPT.set_selected_poly
+ROUTE ROLLER5.isActive TO SCRIPT.set_selected_poly
+
+ROUTE ROLLER0.rotation_changed TO SCRIPT.set_rotation
+ROUTE ROLLER1.rotation_changed TO SCRIPT.set_rotation
+ROUTE ROLLER2.rotation_changed TO SCRIPT.set_rotation
+ROUTE ROLLER3.rotation_changed TO SCRIPT.set_rotation
+ROUTE ROLLER4.rotation_changed TO SCRIPT.set_rotation
+ROUTE ROLLER5.rotation_changed TO SCRIPT.set_rotation
+
+ROUTE BUTTON_CONNECT.isPressed TO SCRIPT.set_connection
+
+#ROUTE BUTTON_RESTORE.isPressed TO ROLLER0.restore
+#ROUTE BUTTON_RESTORE.isPressed TO ROLLER1.restore
+#ROUTE BUTTON_RESTORE.isPressed TO ROLLER2.restore
+#ROUTE BUTTON_RESTORE.isPressed TO ROLLER3.restore
+#ROUTE BUTTON_RESTORE.isPressed TO ROLLER4.restore
+#ROUTE BUTTON_RESTORE.isPressed TO ROLLER5.restore
+
+PROTO FrameRateMeter [
+]
+{
+    DEF SCRIPT Script {
+	eventIn SFTime set_time
+	url [
+	"vrmlscript:
+	function set_time(value, time){
+	    Browser.setDescription(Browser.getCurrentFrameRate()+' fps');
+	}
+	"
+	]
+    }
+
+    DEF TIMER TimeSensor{
+	enabled TRUE
+	loop TRUE
+    }
+    
+    ROUTE TIMER.cycleTime TO SCRIPT.set_time
+}
+
+FrameRateMeter{
+}
+
+
