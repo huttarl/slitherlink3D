@@ -4,7 +4,7 @@
 from __future__ import print_function
 import sys, json
 
-faces = []
+cells = []
 vertices = []
 name = "unknown"
 num_edges = 0
@@ -50,7 +50,7 @@ def input_vertex(line):
         vertices.append(vertex)
 
 def input_face(line):
-    global faces, num_edges
+    global cells, num_edges
     # 1. Split into vertex "clusters" delimited by whitespace
     # 2. Split clusters delimited by "/" and take only the first.
     # 3. Convert to integer and subtract 1, because indices are 1-based.
@@ -59,8 +59,8 @@ def input_face(line):
     if len(vx_indices) < 3:
         raise ParseError("Invalid face line (not enough vertices): " + line)
     # print("Appending face ", vx_indices)
-    faces.append(vx_indices)
-    num_edges += len(vx_indices) / 2.0 # Because each edge belongs to 2 faces.
+    cells.append(vx_indices)
+    num_edges += len(vx_indices) / 2.0 # Because each edge belongs to 2 cells.
     # TODO maybe: Catch cases where a vertex index is out of bounds.
     
 def output():
@@ -68,11 +68,11 @@ def output():
     print(json.dumps({
         "meshID": name,  # machine-friendly ID; may need to be modified.
         "meshName": name,  # user-visible name, e.g. "Rhombille"
-        "nCells": len(faces),  # "cell" == "face"
+        "nCells": len(cells),  # "cell" == "face"
         "nEdges": int(num_edges),
         "nVertices": len(vertices),
         "vertices": vertices,
-        "faces": faces,
+        "cells": cells,
         "puzzles": []
         }, separators=(',',':')))
     
@@ -81,9 +81,9 @@ def main():
         with open(sys.argv[1], "r") as f:
             for line in f:
                 process(line.rstrip())
-        if num_edges + 2 != len(faces) + len(vertices):
+        if num_edges + 2 != len(cells) + len(vertices):
             raise ParseError("F + V != E + 2: %d + %d != %0.1f + 2" %
-                             (len(faces), len(vertices), num_edges))
+                             (len(cells), len(vertices), num_edges))
         output()
     except ParseError as e:
         print("Parse error: %s" % e.args, file=sys.stderr)
