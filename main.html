@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- 
+    Slitherlink 3D - Interactive polyhedral puzzle visualization
+    
+    Acknowledgements:
+    - Claude.ai and ChatGPT and the contributors whose knowledge they trained on -- much assistance.
+    - Kelvin Van Hoorn -- constellation cube map (https://kelvinvanhoorn.com/2024/12/07/skybox-tutorial-godot/)
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slitherlink 3D</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            overflow: hidden;
+        }
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+        }
+        #info h3 {
+            margin-top: 0;
+        }
+        .highlight {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .color-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1px solid white;
+            border-radius: 2px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="info">
+            <h3>Slitherlink 3D</h3>
+            <p><strong>Click faces:</strong> Highlight in green</p>
+            <p><strong>Click edges:</strong> Cycle colors<br>
+            Gray → Black → White → Gray</p>
+            <p>Drag to rotate • Scroll to zoom</p>
+            <div id="selection-info"></div>
+        </div>
+    </div>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="./js/main.js"></script> 
+</body>
+</html>

@@ -1,0 +1,33 @@
+- How many Slitherlink paths exist on the edges of a cube? octahedron? arbitrary convex
+polyhedron?
+    - Remember a Slitherlink path is a circuit that extends across the edges and vertices of the graph,
+        coming back to its beginning vertex, without ever intersecting itself.
+        - A Hamiltonian circuit is a circuit that visits each vertex exactly once. We don't need to visit every vertex,
+        or cross every edge. But we can't visit a vertex or edge twice. So a Hamiltonian circuit is sufficient but not
+        necessary for a Slitherlink circuit.
+        - It may be helpful to know that "Every platonic solid, considered as a graph, is Hamiltonian" [i.e. contains
+            a Hamiltonian circuit]. IDK if that's true for Archimedean or Johnson solids. But it doesn't really matter,
+            considering how we will generate our puzzles.
+        - Hamiltonian_platonic_graphs.svg shows a Hamiltonian circuit, which may be puzzleable, for each of the Platonic
+        solids. That could be very helpful for testing.
+    - How many Slitherlink paths are unique up to rotation & reflection?
+        - How many of those are "puzzleable?" That is, does there exist a set of clues that yields only one solution?
+            This is a practical question, telling us whether certain polyhedra, such as small Johnson solids and prisms,
+            are worth making puzzles on. If there's only one puzzleable path, it's not a shape we'll use much.
+
+Specific polyhedra:
+- Tetrahedron: 1 puzzleable circuit.
+    - There is 1 Hamiltonian circuit, visiting all 4 vertices. But it is not puzzleable, because all faces would have the same clue "2",
+    so you couldn't distinguish between rotations of the solution.
+    - There is 1 non-Hamiltonian circuit, visiting 3 vertices. The clues would be 3, 1, 1, 1. This is puzzleable, but trivial.
+- Cube: 2 puzzleable circuits.
+    - 4 vertices: 1 circuit (around one face). Puzzleable.
+    - 6 vertices: 2 circuits: book-shape (puzzleable), and zig-zag (not puzzleable). (Are there others?)
+    - 8 vertices: 1 circuit, I think. Not puzzleable.
+- Octahedron:
+    - 3 vertices: 1 circuit (around one face). Puzzleable.
+    - 4 vertices: 2 circuits, 1 puzzleable.
+    - 5 vertices: at least 1 circuit, puzzleable...
+        ...
+    - 6 vertices: at least 2 circuits: zig-zag, puzzleable; twisted, puzzleable. I think. May be more...
+
