@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Icosahedron Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: black;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="info">
+            Loading polyhedron...
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game variables
+        let scene, camera, renderer, polyhedron;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let sphericalCoords = { radius: 5, theta: 0, phi: Math.PI / 2 };
+        let autoRotate = true;
+        let polyhedronData = null;
+
+        // Polyhedron data structure
+        class PolyhedronData {
+            constructor() {
+                this.vertices = [];  // Array of [x, y, z] coordinates
+                this.faces = [];     // Array of vertex indices forming faces
+                this.edges = [];     // Array of [vertex1, vertex2] pairs
+                this.lines = [];     // Explicit lines from OBJ file
+            }
+
+            // Add vertex and return its index
+            addVertex(x, y, z) {
+                this.vertices.push([x, y, z]);
+                return this.vertices.length - 1;
+            }
+
+            // Add face (array of vertex indices)
+            addFace(vertexIndices) {
+                this.faces.push(vertexIndices);
+                // Generate edges from face
+                for (let i = 0; i < vertexIndices.length; i++) {
+                    const v1 = vertexIndices[i];
+                    const v2 = vertexIndices[(i + 1) % vertexIndices.length];
+                    this.addEdge(v1, v2);
+                }
+            }
+
+            // Add edge (avoiding duplicates)
+            addEdge(v1, v2) {
+                const edge = [Math.min(v1, v2), Math.max(v1, v2)];
+                const exists = this.edges.some(e => e[0] === edge[0] && e[1] === edge[1]);
+                if (!exists) {
+                    this.edges.push(edge);
+                }
+            }
+
+            // Add explicit line
+            addLine(v1, v2) {
+                this.lines.push([v1, v2]);
+            }
+
+            // Get stats
+            getStats() {
+                return {
+                    vertices: this.vertices.length,
+                    faces: this.faces.length,
+                    edges: this.edges.length,
+                    lines: this.lines.length
+                };
+            }
+        }
+
+        // Parse OBJ file content
+        function parseOBJ(objContent) {
+            const polyData = new PolyhedronData();
+            const lines = objContent.split('\n');
+
+            for (let line of lines) {
+                line = line.trim();
+                
+                // Skip empty lines and comments
+                if (!line || line.startsWith('#')) continue;
+
+                const parts = line.split(/\s+/);
+                const command = parts[0];
+
+                if (command === 'v') {
+                    // Vertex: v x y z
+                    const x = parseFloat(parts[1]);
+                    const y = parseFloat(parts[2]);
+                    const z = parseFloat(parts[3]);
+                    polyData.addVertex(x, y, z);
+                } else if (command === 'f') {
+                    // Face: f v1 v2 v3 ... (1-indexed in OBJ)
+                    const faceIndices = [];
+                    for (let i = 1; i < parts.length; i++) {
+                        // Handle format like "1//1" or just "1"
+                        const vertexRef = parts[i].split('/')[0];
+                        const vertexIndex = parseInt(vertexRef) - 1; // Convert to 0-indexed
+                        faceIndices.push(vertexIndex);
+                    }
+                    polyData.addFace(faceIndices);
+                } else if (command === 'l') {
+                    // Line: l v1 v2 (1-indexed in OBJ)
+                    const v1 = parseInt(parts[1]) - 1; // Convert to 0-indexed
+                    const v2 = parseInt(parts[2]) - 1;
+                    polyData.addLine(v1, v2);
+                }
+            }
+
+            return polyData;
+        }
+
+        // Create polyhedron from data
+        function createPolyhedronFromData(polyData) {
+            const group = new THREE.Group();
+
+            // Create geometry from vertices and faces
+            const geometry = new THREE.BufferGeometry();
+            
+            // Flatten vertices array for BufferGeometry
+            const vertices = [];
+            const indices = [];
+            
+            // Add all vertices
+            polyData.vertices.forEach(vertex => {
+                vertices.push(vertex[0], vertex[1], vertex[2]);
+            });
+
+            // Add face indices (triangulate if needed)
+            polyData.faces.forEach(face => {
+                if (face.length === 3) {
+                    // Triangle face
+                    indices.push(face[0], face[1], face[2]);
+                } else if (face.length === 4) {
+                    // Quad face - split into two triangles
+                    indices.push(face[0], face[1], face[2]);
+                    indices.push(face[0], face[2], face[3]);
+                } else {
+                    // Polygon with more than 4 vertices - fan triangulation
+                    for (let i = 1; i < face.length - 1; i++) {
+                        indices.push(face[0], face[i], face[i + 1]);
+                    }
+                }
+            });
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+
+            // Create solid mesh
+            const material = new THREE.MeshLambertMaterial({
+                color: 0x4488ff,
+                transparent: true,
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            });
+
+            const solidMesh = new THREE.Mesh(geometry, material);
+            solidMesh.castShadow = true;
+            solidMesh.receiveShadow = true;
+            group.add(solidMesh);
+
+            // Create wireframe for edges
+            const edgeGeometry = new THREE.BufferGeometry();
+            const edgeVertices = [];
+            
+            // Add edges
+            polyData.edges.forEach(edge => {
+                const v1 = polyData.vertices[edge[0]];
+                const v2 = polyData.vertices[edge[1]];
+                edgeVertices.push(v1[0], v1[1], v1[2]);
+                edgeVertices.push(v2[0], v2[1], v2[2]);
+            });
+
+            // Add explicit lines if any
+            polyData.lines.forEach(line => {
+                const v1 = polyData.vertices[line[0]];
+                const v2 = polyData.vertices[line[1]];
+                edgeVertices.push(v1[0], v1[1], v1[2]);
+                edgeVertices.push(v2[0], v2[1], v2[2]);
+            });
+
+            edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(edgeVertices, 3));
+
+            const edgeMaterial = new THREE.LineBasicMaterial({
+                color: 0x88ccff,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const edgeLines = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+            group.add(edgeLines);
+
+            return group;
+        }
+
+        // Load default tetrahedron
+        function loadDefaultPolyhedron() {
+            const tetrahedronOBJ = `#Produced by polyHédronisme http://levskaya.github.com/polyhedronisme
+group T
+#vertices
+v 0.5773502691896258 0.5773502691896258 0.5773502691896258
+v 0.5773502691896258 -0.5773502691896258 -0.5773502691896258
+v -0.5773502691896258 0.5773502691896258 -0.5773502691896258
+v -0.5773502691896258 -0.5773502691896258 0.5773502691896258
+#normal vector defs 
+vn -0.5773502691896257 -0.5773502691896257 -0.5773502691896257
+vn 0.5773502691896257 0.5773502691896257 -0.5773502691896257
+vn -0.5773502691896257 0.5773502691896257 0.5773502691896257
+vn 0.5773502691896257 -0.5773502691896257 0.5773502691896257
+#face defs 
+f 2//1 4//1 3//1 
+f 1//2 2//2 3//2 
+f 1//3 3//3 4//3 
+f 1//4 4//4 2//4`;
+
+            polyhedronData = parseOBJ(tetrahedronOBJ);
+            
+            // Remove old polyhedron if exists
+            if (polyhedron) {
+                scene.remove(polyhedron);
+            }
+
+            // Create new polyhedron
+            polyhedron = createPolyhedronFromData(polyhedronData);
+            polyhedron.position.set(0, 0, 0);
+            scene.add(polyhedron);
+
+            // Update info display
+            updateInfoDisplay();
+        }
+
+        function updateInfoDisplay() {
+            if (polyhedronData) {
+                const stats = polyhedronData.getStats();
+                const infoDiv = document.getElementById('info');
+                infoDiv.innerHTML = `
+                    Drag to orbit around the polyhedron<br>
+                    Scroll to zoom in/out<br>
+                    Vertices: ${stats.vertices} • Faces: ${stats.faces} • Edges: ${stats.edges}
+                `;
+            }
+        }
+
+        // Initialize the game
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('gameContainer').appendChild(renderer.domElement);
+
+            // Load default polyhedron
+            loadDefaultPolyhedron();
+
+            // Add lighting
+            setupLighting();
+
+            // Set initial camera position
+            updateCameraPosition();
+
+            // Add event listeners
+            addEventListeners();
+
+            // Start render loop
+            animate();
+        }
+
+        function setupLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+
+            // Directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            scene.add(directionalLight);
+
+            // Point light for extra illumination
+            const pointLight = new THREE.PointLight(0x88ccff, 0.5, 10);
+            pointLight.position.set(-3, 2, 3);
+            scene.add(pointLight);
+        }
+
+        function updateCameraPosition() {
+            // Convert spherical coordinates to cartesian
+            const x = sphericalCoords.radius * Math.sin(sphericalCoords.phi) * Math.cos(sphericalCoords.theta);
+            const y = sphericalCoords.radius * Math.cos(sphericalCoords.phi);
+            const z = sphericalCoords.radius * Math.sin(sphericalCoords.phi) * Math.sin(sphericalCoords.theta);
+            
+            camera.position.set(x, y, z);
+            camera.lookAt(0, 0, 0); // Always look at origin
+        }
+
+        function addEventListeners() {
+            const canvas = renderer.domElement;
+
+            // Mouse down
+            canvas.addEventListener('mousedown', (event) => {
+                isDragging = true;
+                autoRotate = false; // Disable autorotation when user starts interacting
+                previousMousePosition = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+                canvas.style.cursor = 'grabbing';
+            });
+
+            // Mouse move
+            canvas.addEventListener('mousemove', (event) => {
+                if (!isDragging) return;
+
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y
+                };
+
+                // Update spherical coordinates based on mouse movement
+                sphericalCoords.theta += deltaMove.x * 0.01;
+                sphericalCoords.phi -= deltaMove.y * 0.01; // Reversed Y axis
+                
+                // Constrain phi to prevent camera from going upside down
+                sphericalCoords.phi = Math.max(0.1, Math.min(Math.PI - 0.1, sphericalCoords.phi));
+
+                updateCameraPosition();
+
+                previousMousePosition = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+            });
+
+            // Mouse up
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            });
+
+            // Mouse leave
+            canvas.addEventListener('mouseleave', () => {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            });
+
+            // Mouse wheel for zooming
+            canvas.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                
+                const zoomSpeed = 0.1;
+                sphericalCoords.radius += event.deltaY * zoomSpeed * 0.01;
+                
+                // Constrain zoom
+                sphericalCoords.radius = Math.max(2, Math.min(15, sphericalCoords.radius));
+                
+                updateCameraPosition();
+            });
+
+            // Touch events for mobile
+            canvas.addEventListener('touchstart', (event) => {
+                if (event.touches.length === 1) {
+                    isDragging = true;
+                    autoRotate = false; // Disable autorotation on touch
+                    previousMousePosition = {
+                        x: event.touches[0].clientX,
+                        y: event.touches[0].clientY
+                    };
+                }
+            });
+
+            canvas.addEventListener('touchmove', (event) => {
+                event.preventDefault();
+                if (!isDragging || event.touches.length !== 1) return;
+
+                const deltaMove = {
+                    x: event.touches[0].clientX - previousMousePosition.x,
+                    y: event.touches[0].clientY - previousMousePosition.y
+                };
+
+                sphericalCoords.theta += deltaMove.x * 0.01;
+                sphericalCoords.phi -= deltaMove.y * 0.01; // Reversed Y axis
+                
+                sphericalCoords.phi = Math.max(0.1, Math.min(Math.PI - 0.1, sphericalCoords.phi));
+
+                updateCameraPosition();
+
+                previousMousePosition = {
+                    x: event.touches[0].clientX,
+                    y: event.touches[0].clientY
+                };
+            });
+
+            canvas.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Set initial cursor
+            canvas.style.cursor = 'grab';
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Optional: Add gentle rotation to the polyhedron only if not being controlled
+            if (polyhedron && autoRotate) {
+                polyhedron.rotation.y += 0.005;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
