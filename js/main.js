@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { addSkybox } from './skybox.js';
 import { createDodecahedron, createCube, createEdgeGeometry } from './geometry.js';
-import { createClueTexts, updateTextVisibility } from './textRenderer.js';
+import { createClueTexts, createVertexLabels, updateTextVisibility } from './textRenderer.js';
 import { VERTEX_RADIUS, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js';
 import { makeInteraction } from './interaction.js';
 
@@ -52,8 +52,8 @@ function main() {
     scene.add(clueTexts);
 
     // TODO
-    // const vertexLabels = createVertexLabels(grid);
-    // scene.add(vertexLabels); // TODO: Hide unless debug mode is turned on.
+    const vertexLabels = createVertexLabels(grid);
+    scene.add(vertexLabels); // TODO: Hide unless debug mode is turned on.
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);

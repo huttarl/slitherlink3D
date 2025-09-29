@@ -1,5 +1,133 @@
 import * as THREE from 'three';
 
+/** Create labels for vertices.
+ * @param {Grid} grid - The grid containing vertex data
+ * @returns {THREE.Group} Group containing all label sprites
+ * */
+export function createVertexLabels(grid) {
+    // Thanks to https://stemkoski.github.io/Three.js/Labeled-Geometry.html
+    const labelGroup = new THREE.Group();
+    for (const [vertexId, vertex] of grid.vertices) {
+        var label = makeTextSprite( " " + vertexId + " ",
+            { fontsize: 32, backgroundColor: {r:255, g:100, b:100, a:1} } );
+        label.position.copy(vertex.position).multiplyScalar(1.1);
+        labelGroup.add(label);
+    }
+    return labelGroup;
+}
+
+/**
+ * Creates a sprite with the given message and parameters.
+ * @param {string} message - The text to render onto the sprite
+ * @param {object} parameters - An object containing optional parameters for the sprite
+ * @param {string} [parameters.fontface=Arial] - The font face to use for the sprite
+ * @param {number} [parameters.fontsize=18] - The font size to use for the sprite
+ * @param {number} [parameters.borderThickness=4] - The thickness of the border around the sprite
+ * @param {object} [parameters.borderColor={r:0, g:0, b:0, a:1.0}] - The color of the border around the sprite
+ * @param {object} [parameters.backgroundColor={r:255, g:255, b:255, a:1.0}] - The background color of the sprite
+ * @returns {THREE.Sprite} The sprite created with the given message and parameters
+ */
+function makeTextSprite(message, parameters)
+{
+    // Thanks to https://stemkoski.github.io/Three.js/Labeled-Geometry.html
+    if ( parameters === undefined ) parameters = {};
+
+    var fontface = parameters.hasOwnProperty("fontface") ?
+        parameters["fontface"] : "Arial";
+
+    var fontsize = parameters.hasOwnProperty("fontsize") ?
+        parameters["fontsize"] : 18;
+
+    var borderThickness = parameters.hasOwnProperty("borderThickness") ?
+        parameters["borderThickness"] : 4;
+
+    var borderColor = parameters.hasOwnProperty("borderColor") ?
+        parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+
+    var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
+        parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+
+    // No longer supported in THREE.js:
+    // var useScreenCoordinates = parameters.hasOwnProperty("useScreenCoordinates") ?
+    //     parameters["useScreenCoordinates"] : false;
+    // var spriteAlignment = parameters.hasOwnProperty("spriteAlignment") ?
+    //     parameters["spriteAlignment"] : THREE.SpriteAlignment.topLeft;
+
+    // create canvas, resize later.
+    var canvas = document.createElement('canvas');
+    var context = canvas.getContext('2d');
+    context.font = "Bold " + fontsize + "px " + fontface;
+
+    // get size data (height depends only on font size)
+    var metrics = context.measureText( message );
+    var textWidth = metrics.width;
+
+    // calculate correct dimensions of canvas and resize
+    var imageWidth = textWidth + borderThickness * 2;
+    var imageHeight = fontsize * 1.44 + borderThickness * 2;
+    canvas.width = imageWidth;
+    canvas.height = imageHeight;
+    // new canvas, new context.
+    context = canvas.getContext('2d');
+    context.font = "Bold " + fontsize + "px " + fontface;
+
+    // background color
+    context.fillStyle   = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
+        + backgroundColor.b + "," + backgroundColor.a + ")";
+    // border color
+    context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
+        + borderColor.b + "," + borderColor.a + ")";
+
+    context.lineWidth = borderThickness;
+    roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+    // 1.4 is extra height factor for text below baseline: g,j,p,q.
+
+    // text color
+    context.fillStyle = "rgba(0, 0, 0, 1.0)";
+
+    context.fillText( message, borderThickness, fontsize + borderThickness );
+
+    // canvas contents will be used for a texture
+    var texture = new THREE.Texture(canvas)
+    texture.needsUpdate = true;
+
+    var spriteMaterial = new THREE.SpriteMaterial({
+        map: texture
+        // , useScreenCoordinates: useScreenCoordinates // no longer exists
+        // , alignment: spriteAlignment // no longer exists
+        });
+    var sprite = new THREE.Sprite( spriteMaterial );
+    // Was: sprite.scale.set(imageWidth, imageHeight, 1.0);
+    sprite.scale.set(0.15, 0.15, 1.0);
+    sprite.width = imageWidth;
+    sprite.height = imageHeight;
+    return sprite;
+}
+
+/** Draw a rounded rectangle.
+ *
+ * @param ctx - context in which to draw
+ * @param x, y - lower? left corner of rectangle
+ * @param w, h - width and height of rectangle
+ * @param r - radius of rounded corners
+ */
+function roundRect(ctx, x, y, w, h, r)
+{
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.lineTo(x+w-r, y);
+    ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    ctx.lineTo(x+w, y+h-r);
+    ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    ctx.lineTo(x+r, y+h);
+    ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    ctx.lineTo(x, y+r);
+    ctx.quadraticCurveTo(x, y, x+r, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+}
+
 /**
  * Creates text meshes that are "painted" onto polyhedron faces
  * @param {Grid} grid - The topology containing face data

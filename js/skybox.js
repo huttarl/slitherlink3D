@@ -137,6 +137,9 @@ export function createSpaceSkybox(scene) {
  * @param {THREE.Scene} scene - The scene to add the skybox to
  */
 export function createConstellationSkybox(scene) {
+    // TODO: I still don't think this is being transformed correctly.
+    //  Not sure if I'm using the wrong kind of texture, or the wrong mapping, or what.
+
     // Load the star constellation cubemap
     // const loader = new THREE.CubeTextureLoader();
     // const texture = loader.load(['star_constellation_cubemap.jpg']);
