@@ -7,6 +7,7 @@ import { VERTEX_RADIUS, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js'
 import { makeInteraction } from './interaction.js';
 
 function main() {
+    // TODO: refactor scene-building code into a scene.js
     // Scene
     const scene = new THREE.Scene();
     addSkybox(scene, 'constellation');
@@ -22,13 +23,18 @@ function main() {
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
     // Geometry and topology
-    const { geometry, topology, faceMap, faceVertexRanges } = (true) ? createCube() : createDodecahedron();
+    const { geometry, grid, faceMap, faceVertexRanges } =
+        (false) ? createCube() : createDodecahedron();
     const material = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 100, specular: 0x222222 });
     const dodecahedron = new THREE.Mesh(geometry, material);
     scene.add(dodecahedron);
 
+    // Create clue text meshes
+    const clueTexts = createClueTexts(grid);
+    scene.add(clueTexts);
+
     // Edges
-    const { edgeMeshes } = createEdgeGeometry(topology);
+    const { edgeMeshes } = createEdgeGeometry(grid);
     const edgeGroup = new THREE.Group();
     edgeMeshes.forEach(mesh => edgeGroup.add(mesh));
     scene.add(edgeGroup);
@@ -36,13 +42,17 @@ function main() {
     // Vertices
     const vertexGroup = new THREE.Group();
     const vertexMaterial = new THREE.MeshPhongMaterial({ color: 0x808080, shininess: 100 });
-    for (const [vertexId, vertex] of topology.vertices) {
+    for (const [vertexId, vertex] of grid.vertices) {
         const vgeom = new THREE.SphereGeometry(VERTEX_RADIUS, 16, 16);
         const vmesh = new THREE.Mesh(vgeom, vertexMaterial);
         vmesh.position.copy(vertex.position);
         vertexGroup.add(vmesh);
     }
     scene.add(vertexGroup);
+
+    // TODO
+    // const vertexLabels = createVertexLabels(grid);
+    // scene.add(vertexLabels); // TODO: Hide unless debug mode is turned on.
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -58,19 +68,15 @@ function main() {
     controls.maxDistance = CAMERA_MAX_ZOOM;
     controls.update();
 
-    // Create clue text meshes
-    const clueTexts = createClueTexts(topology);
-    scene.add(clueTexts);
-
     // Interaction with controls for drag detection
-    const interaction = makeInteraction({ renderer, camera, scene, dodecahedron, geometry, topology, faceMap, faceVertexRanges, edgeMeshes, controls });
+    const interaction = makeInteraction({ renderer, camera, scene, dodecahedron, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls });
 
     // Render loop
     function animate() {
         requestAnimationFrame(animate);
 
         // Update text visibility based on camera position
-        updateTextVisibility(clueTexts, camera, topology);
+        updateTextVisibility(clueTexts, camera, grid);
 
         renderer.render(scene, camera);
     }
