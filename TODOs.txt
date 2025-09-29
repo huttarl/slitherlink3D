@@ -1,6 +1,21 @@
-- integrate this repo with my existing one on GitHub, as well as the new Claude code,
-    which I think is in the latter repo
-- add public SSH key for github
+- display vertex numbers over vertices: this would really help with entering puzzles
+
+- implement loading from files of:
+    - grids
+        - Note! We already have a LOT of polyhedra defined in slitherlink3D-old/js/polyhedra.js,
+        thanks to Hart and Stemkowski.
+        Data from the website "Virtual Polyhedra: The Encyclopedia of Polyhedra" by George W. Hart
+          http://www.georgehart.com/virtual-polyhedra/vp.html
+        Converted to JSON by Lee Stemkoski. Which is probably much easier to work with.
+    - puzzles
+        - (with solutions)
+- implement feedback on puzzles
+    - detect when user has correct solution, and celebrate
+    - choose and load next puzzle (let user do so when ready)
+        - I like the idea of progressing: go thru Platonics, Archimedean solids, prisms & antiprisms,
+                Johnson solids, Catalan solids, zonohedra...
+            - more puzzles on the bigger polyhedra
+
 - print out some 2D flattened charts (not nets) of octahedron, dodecahedron, and icosahedron
     so I can play with puzzles
 
