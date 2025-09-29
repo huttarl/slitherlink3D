@@ -1,10 +1,11 @@
 /** Graph-based topology and geometry representation for polyhedron.
  * Maintains relationships between vertices, edges, and faces.
- *
- * @prop vertices - a map of vertex IDs to Vertex objects
- * @prop edges - a map of edge IDs to Edge objects
- * @prop faces - a map of face IDs to Face objects
- * @prop nextId - the next available ID for a new vertex, edge, or face
+ * 
+ * @class Grid
+ * @property {Map<number, Vertex>} vertices - Map of vertex IDs to Vertex objects
+ * @property {Map<number, Edge>} edges - Map of edge IDs to Edge objects
+ * @property {Map<number, Face>} faces - Map of face IDs to Face objects
+ * @property {number} nextId - The next available ID for a new vertex, edge, or face
  */
 export class Grid {
     constructor() {
@@ -17,7 +18,7 @@ export class Grid {
     /** Adds a vertex to the grid.
      * @see Vertex
      * @param {Three.Vector3} position - 3D coordinate of vertex
-     * @param {Object} metadata - nothing yet?
+     * @param {Object} metadata - Additional metadata for the vertex (none yet?)
      * @returns {number} - ID of new vertex
      */
     addVertex(position, metadata = {}) {
@@ -36,10 +37,10 @@ export class Grid {
      *
      * @param {number} v1Id - ID of first vertex
      * @param {number} v2Id - ID of second vertex
-     * @param {Object} metadata
-     * @param {number} metadata.userGuess - state of user guess for the edge (0=unknown, 1=filled in, 2=ruled out)
+     * @param {Object} metadata - Additional metadata for the edge
+     * @param {number} metadata.userGuess - State of user guess for the edge (0=unknown, 1=filled in, 2=ruled out)
      * @returns {number} - ID of new edge
-     * TODO: refactor this into an Edge class
+     * TODO: refactor this to use Edge object
      */
     addEdge(v1Id, v2Id, metadata = {}) {
         const id = this.nextId++;
@@ -61,11 +62,11 @@ export class Grid {
     }
 
     /** Adds a face to the grid.
-     *
-     * @param vertexIds {List?} - IDs of vertices that make up the face
-     * @param metadata {Object} - includes a puzzle clue
+     * 
+     * @param {number[]} vertexIds - IDs of vertices that make up the face
+     * @param {Object} metadata - Additional metadata for the face
      * @returns {number} - ID of new face
-     * TODO: refactor this into a Face class
+     * TODO: refactor this to use a Face class
      */
     addFace(vertexIds, metadata = {}) {
         const id = this.nextId++;
@@ -101,14 +102,20 @@ export class Grid {
         return id;
     }
 
-    // Gets all vertex objects for a given face as a list, without IDs.
+    /** Gets all vertices (objects) that form a face.
+     * @param {number} faceId - The ID of the face
+     * @returns {Vertex[]} Array of Vertex objects that form the face
+     */
     getFaceVertices(faceId) {
         const face = this.faces.get(faceId);
         // The face only stores vertex IDs, but the vertex data is stored in the Grid.
         return face ? face.vertices.map(vId => this.vertices.get(vId)) : [];
     }
 
-    // Finds all faces that share an edge with the given face
+    /** Gets all faces that share an edge with the specified face.
+     * @param {number} faceId - The ID of the face to find adjacent faces for
+     * @returns {Set<number>} Set of adjacent Face IDs
+     */
     getAdjacentFaces(faceId) {
         const face = this.faces.get(faceId);
         if (!face) return [];
@@ -119,8 +126,6 @@ export class Grid {
                 if (fId !== faceId) adjacent.add(fId);
             }
         }
-        return Array.from(adjacent);
+        return adjacent;
     }
 }
-
-

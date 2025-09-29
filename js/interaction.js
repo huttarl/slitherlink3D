@@ -1,15 +1,42 @@
+/**
+ * Handles user interaction with the 3D Slitherlink puzzle, including face highlighting
+ * and edge state toggling.
+ * @module interaction
+ */
+
 import * as THREE from 'three';
 import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_COLORS, EDGE_STATES } from './constants.js';
 
+/**
+ * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
+ * @param {Object} params - Configuration parameters
+ * @param {THREE.WebGLRenderer} params.renderer - The WebGL renderer
+ * @param {THREE.PerspectiveCamera} params.camera - The camera used for rendering
+ * @param {THREE.Scene} params.scene - The main scene containing all 3D objects
+ * @param {THREE.Mesh} params.dodecahedron - The main puzzle mesh
+ * @param {THREE.BufferGeometry} params.geometry - The geometry of the puzzle
+ * @param {Grid} params.grid - The grid data structure containing puzzle state
+ * @param {Map} params.faceMap - Mapping of face indices to face IDs
+ * @param {Map} params.faceVertexRanges - Mapping of face IDs to vertex ranges in the geometry
+ * @param {THREE.Mesh[]} params.edgeMeshes - Array of meshes representing edges
+ * @param {THREE.OrbitControls} params.controls - Camera controls for the scene
+ * @returns {{dispose: Function}} An object with a dispose method to clean up event listeners
+ */
 export function makeInteraction({ renderer, camera, scene, dodecahedron, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls }) {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let highlightedFace = null;
     let selectedEdge = null;
 
-    // Drag detection to suppress click after orbiting
+    // Track if user is dragging, to distinguish from clicks.
     let didDrag = false;
 
+    /**
+     * Updates the visual highlight state of a face
+     * @private
+     * @param {number} faceId - ID of the face to update
+     * @param {boolean} highlight - Whether to highlight the face
+     */
     function updateFaceColor(faceId, highlight) {
         const face = grid.faces.get(faceId);
         const colors = geometry.attributes.color;
@@ -22,6 +49,12 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         face.metadata.isHighlighted = highlight;
     }
 
+    /**
+     * Cycles through possible edge states (unknown, filled, ruled out)
+     * @private
+     * @param {THREE.Mesh} edgeMesh - The edge mesh to update
+     * @param {boolean} [reverse=false] - If true, cycle in reverse order
+     */
     function cycleEdgeState(edgeMesh, reverse = false) {
         const edgeId = edgeMesh.userData.edgeId;
         const edge = grid.edges.get(edgeId);
@@ -33,12 +66,15 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         console.log(`cycleEdgeState: userGuess = ${edge.metadata.userGuess}`);
         const stateName = EDGE_STATES[edge.metadata.userGuess];
         edgeMesh.material.color = EDGE_COLORS[stateName];
-        // Was: edgeMesh.material.color = EDGE_COLORS[edge.metadata.state];
-
     }
 
-    // Display info about selected edge, for debugging purposes
-    // TODO: remove this debugging stuff, or make it hideable
+    /**
+     * Displays debug information about a clicked edge
+     * @private
+     * @param {THREE.Mesh} edgeMesh - The clicked edge mesh
+     * @param {boolean} reverseDirection - Whether the edge was clicked in reverse direction
+     * TODO make this debugging stuff hideable.
+     */
     function showEdgeInfo(edgeMesh, reverseDirection) {
         const edgeId = edgeMesh.userData.edgeId;
         const edge = grid.edges.get(edgeId);
@@ -55,6 +91,12 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         `;
     }
 
+    /**
+     * Handles click events on edges
+     * @private
+     * @param {THREE.Mesh} edgeMesh - The clicked edge mesh
+     * @param {boolean} shiftKey - Whether shift was held during the click
+     */
     function handleEdgeClick(edgeMesh, shiftKey) {
         const reverseDirection = shiftKey;
         cycleEdgeState(edgeMesh, reverseDirection);
@@ -62,6 +104,11 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         selectedEdge = edgeMesh.userData.edgeId;
     }
 
+    /**
+     * Handles click events on faces
+     * @private
+     * @param {number} faceId - ID of the clicked face
+     */
     function handleFaceClick(faceId) {
         if (highlightedFace !== null && highlightedFace !== faceId) {
             updateFaceColor(highlightedFace, false);
@@ -77,7 +124,7 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
                     <strong>Selected Face:</strong> #${face.metadata.index}<br>
                     <strong>Vertices:</strong> ${face.vertices.length}<br>
-                    <strong>Adjacent Faces:</strong> ${adjacentFaces.length}
+                    <strong>Adjacent Faces:</strong> ${adjacentFaces.size}
                 </div>
             `;
         } else {
@@ -85,9 +132,13 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         }
     }
 
+    /**
+     * Handles mouse click events on the canvas
+     * @private
+     * @param {MouseEvent} event - The mouse event
+     */
     function onMouseClick(event) {
         // Suppress click if a drag occurred just before mouseup
-        // console.log('onMouseClick: didDrag = ', didDrag);
         if (didDrag) {
             didDrag = false;
             return;
@@ -95,11 +146,15 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
+        
+        // Check for edge clicks first.
         const edgeIntersects = raycaster.intersectObjects(edgeMeshes);
         if (edgeIntersects.length > 0) {
             handleEdgeClick(edgeIntersects[0].object, event.shiftKey);
             return;
         }
+        
+        // Check for face clicks if no edge was clicked.
         const faceIntersects = raycaster.intersectObject(dodecahedron);
         if (faceIntersects.length > 0) {
             const faceIndex = faceIntersects[0].faceIndex * 3;
@@ -110,6 +165,10 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         }
     }
 
+    /**
+     * Handles window resize events to update the camera aspect ratio and renderer size.
+     * @private
+     */
     function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -125,17 +184,20 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         didDrag = true;
     }
 
+    // Set up event listeners
     window.addEventListener('click', onMouseClick);
     window.addEventListener('resize', onWindowResize);
     controls.addEventListener('start', onControlsStart);
     controls.addEventListener('change', onControlsChange);
 
-    return { dispose: () => {
-        window.removeEventListener('click', onMouseClick);
-        window.removeEventListener('resize', onWindowResize);
-        controls.removeEventListener('start', onControlsStart);
-        controls.removeEventListener('change', onControlsChange);
-    }};
+    // Return cleanup function
+    return {
+        // Remove all event listeners when the interaction handler is no longer needed.
+        dispose: () => {
+            window.removeEventListener('click', onMouseClick);
+            window.removeEventListener('resize', onWindowResize);
+            controls.removeEventListener('start', onControlsStart);
+            controls.removeEventListener('change', onControlsChange);
+        }
+    };
 }
-
-

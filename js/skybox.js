@@ -1,5 +1,14 @@
+/**
+ * Provides functions for creating and managing skybox environments in the 3D scene.
+ * @module skybox
+ */
+
 import * as THREE from 'three';
 
+/**
+ * Creates an underwater-themed skybox with gradient and light effects.
+ * @param {THREE.Scene} scene - The scene to add the skybox to
+ */
 export function createUnderwaterSkybox(scene) {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -38,6 +47,10 @@ export function createUnderwaterSkybox(scene) {
     // return canvas;
 }
 
+/**
+ * Creates a space-themed skybox with stars and nebula effects.
+ * @param {THREE.Scene} scene - The scene to add the skybox to
+ */
 export function createSpaceSkybox(scene) {
     const canvas = document.createElement('canvas');
     canvas.width = 2048;
@@ -119,6 +132,10 @@ export function createSpaceSkybox(scene) {
     // return canvas;
 }
 
+/**
+ * Creates a skybox with constellation patterns.
+ * @param {THREE.Scene} scene - The scene to add the skybox to
+ */
 export function createConstellationSkybox(scene) {
     // Load the star constellation cubemap
     // const loader = new THREE.CubeTextureLoader();
@@ -161,8 +178,24 @@ export function createConstellationSkybox(scene) {
     return null;
 }
 
+/**
+ * Adds a skybox to the scene based on the specified type.
+ * @param {THREE.Scene} scene - The scene to add the skybox to
+ * @param {string} [type='space'] - The type of skybox to create ('space', 'underwater', or 'constellation')
+ * @throws {Error} If an unknown skybox type is specified
+ */
 export function addSkybox(scene, type = 'space') {
-    if (type === 'underwater') return createUnderwaterSkybox(scene);
-    if (type === 'space') return createSpaceSkybox(scene);
-    if (type === 'constellation') return createConstellationSkybox(scene);
+    switch (type) {
+        case 'space':
+            createSpaceSkybox(scene);
+            break;
+        case 'underwater':
+            createUnderwaterSkybox(scene);
+            break;
+        case 'constellation':
+            createConstellationSkybox(scene);
+            break;
+        default:
+            throw new Error(`Unknown skybox type: ${type}`);
+    }
 }
