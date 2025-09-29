@@ -139,7 +139,7 @@ export function createConstellationSkybox(scene) {
         envMap: texture,
         side: THREE.BackSide,
         depthWrite: false,
-        color: new THREE.Color("0x020204"),
+        color: new THREE.Color("0x020204"), // "unknown color" TODO fix this.
     });
 
     const skybox = new THREE.Mesh(skyGeometry, skyMaterial);

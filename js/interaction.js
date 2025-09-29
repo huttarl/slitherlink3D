@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_COLORS, EDGE_STATES } from './constants.js';
 
-export function makeInteraction({ renderer, camera, scene, dodecahedron, geometry, topology, faceMap, faceVertexRanges, edgeMeshes, controls }) {
+export function makeInteraction({ renderer, camera, scene, dodecahedron, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls }) {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let highlightedFace = null;
@@ -11,7 +11,7 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
     let didDrag = false;
 
     function updateFaceColor(faceId, highlight) {
-        const face = topology.faces.get(faceId);
+        const face = grid.faces.get(faceId);
         const colors = geometry.attributes.color;
         const range = faceVertexRanges.get(faceId);
         const color = highlight ? FACE_HIGHLIGHT_COLOR : FACE_DEFAULT_COLOR;
@@ -24,7 +24,7 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
 
     function cycleEdgeState(edgeMesh, reverse = false) {
         const edgeId = edgeMesh.userData.edgeId;
-        const edge = topology.edges.get(edgeId);
+        const edge = grid.edges.get(edgeId);
         if (reverse) {
             edge.metadata.userGuess = (edge.metadata.userGuess - 1 + EDGE_STATES.length) % EDGE_STATES.length;
         } else {
@@ -41,7 +41,7 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
     // TODO: remove this debugging stuff, or make it hideable
     function showEdgeInfo(edgeMesh, reverseDirection) {
         const edgeId = edgeMesh.userData.edgeId;
-        const edge = topology.edges.get(edgeId);
+        const edge = grid.edges.get(edgeId);
         const infoDiv = document.getElementById('selection-info');
         const edgeColor = EDGE_STATES[edge.metadata.userGuess];
         const colorBox = `<span class="color-indicator" style="background-color: ${edgeColor};"></span>`;
@@ -66,13 +66,13 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         if (highlightedFace !== null && highlightedFace !== faceId) {
             updateFaceColor(highlightedFace, false);
         }
-        const face = topology.faces.get(faceId);
+        const face = grid.faces.get(faceId);
         const newHighlight = !face.metadata.isHighlighted;
         updateFaceColor(faceId, newHighlight);
         highlightedFace = newHighlight ? faceId : null;
         const infoDiv = document.getElementById('selection-info');
         if (newHighlight) {
-            const adjacentFaces = topology.getAdjacentFaces(faceId);
+            const adjacentFaces = grid.getAdjacentFaces(faceId);
             infoDiv.innerHTML = `
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
                     <strong>Selected Face:</strong> #${face.metadata.index}<br>

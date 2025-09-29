@@ -4,7 +4,7 @@ import { EDGE_RADIUS, EDGE_COLORS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDG
 
 /** Create geometry and topology of a dodecahedron.
  *
- * @returns {{geometry: THREE.BufferGeometry, topology: Grid, faceMap: Map<any, any>, faceVertexRanges: Map<any, any>,
+ * @returns {{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>, faceVertexRanges: Map<any, any>,
  *      vertices: THREE.Vector3[]}}
  */
 export function createDodecahedron() {
@@ -111,12 +111,12 @@ function createPolyhedron(vertices, faceIndices) {
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
-    return {geometry, topology: grid, faceMap, faceVertexRanges, vertices};
+    return {geometry, grid: grid, faceMap, faceVertexRanges, vertices};
 }
 
 /** Create geometry and topology of a cube.
  *
- * @returns {{geometry: THREE.BufferGeometry, topology: Grid, faceMap: Map<any, any>, faceVertexRanges: Map<any, any>,
+ * @returns {{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>, faceVertexRanges: Map<any, any>,
  *      vertices: THREE.Vector3[]}}
  */
 export function createCube() {
@@ -145,12 +145,12 @@ export function createCube() {
     return createPolyhedron(vertices, faceIndices);
 }
 
-export function createEdgeGeometry(topology) {
+export function createEdgeGeometry(grid) {
     const edgeMeshes = [];
     const edgeMap = new Map();
-    for (const [edgeId, edge] of topology.edges) {
-        const v1 = topology.vertices.get(edge.vertices[0]);
-        const v2 = topology.vertices.get(edge.vertices[1]);
+    for (const [edgeId, edge] of grid.edges) {
+        const v1 = grid.vertices.get(edge.vertices[0]);
+        const v2 = grid.vertices.get(edge.vertices[1]);
         const direction = new THREE.Vector3().subVectors(v2.position, v1.position);
         const length = direction.length();
         const center = new THREE.Vector3().addVectors(v1.position, v2.position).multiplyScalar(0.5);
@@ -160,7 +160,7 @@ export function createEdgeGeometry(topology) {
         mesh.position.copy(center);
         mesh.lookAt(v2.position);
         mesh.rotateX(Math.PI / 2);
-        mesh.userData = { edgeId, topology };
+        mesh.userData = { edgeId, grid };
         edgeMeshes.push(mesh);
         edgeMap.set(mesh, edgeId);
     }

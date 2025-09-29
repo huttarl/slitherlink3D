@@ -24,16 +24,13 @@ function main() {
 
     // Geometry and topology
     const { geometry, grid, faceMap, faceVertexRanges } =
-        (false) ? createCube() : createDodecahedron();
+        (true) ? createCube() : createDodecahedron();
     const material = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 100, specular: 0x222222 });
     const dodecahedron = new THREE.Mesh(geometry, material);
     scene.add(dodecahedron);
 
-    // Create clue text meshes
-    const clueTexts = createClueTexts(grid);
-    scene.add(clueTexts);
-
     // Edges
+    // TODO: why not just return the Group from createEdgeGeometry()?
     const { edgeMeshes } = createEdgeGeometry(grid);
     const edgeGroup = new THREE.Group();
     edgeMeshes.forEach(mesh => edgeGroup.add(mesh));
@@ -49,6 +46,10 @@ function main() {
         vertexGroup.add(vmesh);
     }
     scene.add(vertexGroup);
+
+    // Create clue text meshes
+    const clueTexts = createClueTexts(grid);
+    scene.add(clueTexts);
 
     // TODO
     // const vertexLabels = createVertexLabels(grid);
