@@ -2,10 +2,10 @@ import * as THREE from 'three';
 
 /**
  * Creates text meshes that are "painted" onto polyhedron faces
- * @param {Grid} topology - The topology containing face data
+ * @param {Grid} grid - The topology containing face data
  * @returns {THREE.Group} Group containing all text meshes
  */
-export function createClueTexts(topology) {
+export function createClueTexts(grid) {
     const textGroup = new THREE.Group();
     
     // Create a canvas for text rendering
@@ -52,10 +52,10 @@ export function createClueTexts(topology) {
     }
     
     // Create text meshes for each face with a clue
-    for (const [faceId, face] of topology.faces) {
+    for (const [faceId, face] of grid.faces) {
         const clue = face.metadata.clue;
         if (clue >= 0) {
-            const textMesh = createTextMeshForFace(faceId, face, topology, materials[clue]);
+            const textMesh = createTextMeshForFace(faceId, face, grid, materials[clue]);
             if (textMesh) {
                 textMesh.userData = { faceId, clue };
                 textGroup.add(textMesh);
@@ -81,8 +81,8 @@ function findFaceNormal(faceVertices) {
 /**
  * Creates a text mesh positioned and oriented on a specific face
  */
-function createTextMeshForFace(faceId, face, topology, material) {
-    const faceVertices = topology.getFaceVertices(faceId);
+function createTextMeshForFace(faceId, face, grid, material) {
+    const faceVertices = grid.getFaceVertices(faceId);
     if (faceVertices.length < 3) return null;
     
     // Calculate face center and normal
@@ -151,18 +151,18 @@ function createTextMeshForFace(faceId, face, topology, material) {
  * Updates text visibility based on camera position
  * @param {THREE.Group} textGroup - Group containing text meshes
  * @param {THREE.Camera} camera - Camera for visibility calculation
- * @param {Grid} topology - Topology for face normal calculation
+ * @param {Grid} grid - Topology for face normal calculation
  */
-export function updateTextVisibility(textGroup, camera, topology) {
+export function updateTextVisibility(textGroup, camera, grid) {
     const cameraPosition = camera.position;
     
     for (const mesh of textGroup.children) {
         const faceId = mesh.userData.faceId;
-        const face = topology.faces.get(faceId);
+        const face = grid.faces.get(faceId);
         
         if (face) {
             // Calculate face normal (approximate)
-            const faceVertices = topology.getFaceVertices(faceId);
+            const faceVertices = grid.getFaceVertices(faceId);
             if (faceVertices.length >= 3) {
                 const normal = findFaceNormal(faceVertices);
 
