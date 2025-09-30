@@ -89,11 +89,13 @@ function createPolyhedron(vertices, faceIndices) {
         faceVertexRanges.set(faceId, {start: vertexIndex, count: faceVertices.length + 1});
         const startIdx = vertexIndex;
         positions.push(centerVertex.x, centerVertex.y, centerVertex.z);
-        colors.push(0.27, 0.53, 1.0);
+        // TODO: can we use face.metadata.originalColor here? or at least not hard-code the numbers?
+        colors.push(0.93, 0.93, 0.93);
         vertexIndex++;
         for (const vertex of faceVertices) {
             positions.push(vertex.position.x, vertex.position.y, vertex.position.z);
-            colors.push(0.27, 0.53, 1.0);
+            // TODO: can we use face.metadata.originalColor here?
+            colors.push(0.93, 0.93, 0.93);
             vertexIndex++;
         }
         for (let i = 0; i < faceVertices.length; i++) {
