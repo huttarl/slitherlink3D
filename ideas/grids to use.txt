@@ -1,0 +1,28 @@
+- Platonics, Archimedean solids, Johnson solids,
+- near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_solid
+    - e.g. expanded truncated icosahedron, with 3/4/5/6-gons!
+        https://levskaya.github.io/polyhedronisme/?recipe=C1000aatI
+- Catalan solids
+- zonohedra
+- prisms & antiprisms
+- Goldberg (hex-based) polyhedra, beyond dodecahedron and truncated icosahedron.
+        https://en.wikipedia.org/wiki/Goldberg_polyhedron
+    - including those with triangles or squares rather than pentagons
+        See https://en.wikipedia.org/wiki/Chamfer_(geometry)#Relation_to_Goldberg_polyhedra
+    - Class I, II, III? I don't understand this system.
+- geodesic polyhedra
+- fullerenes
+    - carbon nanotube - the ends could be 20-gons, but maybe smaller is better. 8-gon ends?
+        The animation on Wikipedia shows a nanotube with each ring having 8 hexagons.
+        What to do at the ends though, to make a closed shape? If we put 8-gons at the ends, we need
+        little obtuse triangles to close the gaps. Or we do something more aesthetic with those gaps, but
+        that would seem to change the character of a nanotube.
+    - C70 (extended & twisted halves)
+    - C26? https://en.wikipedia.org/wiki/Fullerene#Topology
+- biomimetic shapes?
+    - maybe something based on a (short) helical capsid? https://en.wikipedia.org/wiki/Capsid#Helical
+    - based on mineral crystals? https://en.wikipedia.org/wiki/Crystal_structure
+- Symmetohedra (https://en.wikipedia.org/wiki/Symmetrohedron)
+- Parallelohedra https://en.wikipedia.org/wiki/Parallelohedron
+    - truncated octahedron in particular
+- play with Polyhedronisme!

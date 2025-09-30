@@ -1,15 +1,22 @@
 - [x] display vertex numbers over vertices: this would really help with entering puzzles
+- [ ] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
+    - [ ] Is this encoded in the JSON?
+    - [ ] maybe associate a color (scheme) with each polyhedron, and category, for more atmosphere?
 - [ ] figure out data flow for grids, puzzles and solutions
     - [ ] what formats do we already have
         - [ ] as example data
             - we have Stemkowski's JSON format for many polyhedra (converted from Hart)
                 - We could use this JSON source for grids in the app, but to use it in puzzle
                 generator programs, we'd need to convert it.
+                See slitherlink3D-old/js/polyhedron_data.js. Each polyhedron entry has exactly the following properties:
+                    name, category (list?), vertex (list of float triples), edge (list of index pairs), face (list of index lists)
             - Hart has a VRML model for practically any polyhedron I would want, but I can't figure out the format.
                 It says VRML but it's binary data, whereas VRML is supposed to be text.
             - We have .obj (Wavefront) files for many polyhedra, e.g. in slitherlink3D-2018/data
             - We have corresponding JSON files for the same polyhedra, e.g. in slitherlink3D-2018/data
-                - Is this the same JSON format Stemkowski uses?
+                - Is this the same JSON format Stemkowski uses? Not sure ... there are definitely some differences
+                    between the various JSON formats in files I have lying around, e.g. properties like _comment,
+                    id, name, meshId, ...
                 - How did I convert between .obj and .json? Do I have code for that somewhere? (probably Python)
                     which direction did it go? I'm guessing .obj -> .json because polyHédronisme exports .obj
                     - Ah yes, there is a program obj2json.py in slitherlink3D-2018 (now in util). Apparently it works.
@@ -17,7 +24,6 @@
             - polyHédronisme exports as .obj (and not JSON), which is where several of my models came from.
                 - polyHédronisme can also export VRML2 (.wrl), a text format, but I haven't played with it.
                     I don't think we need another format in the mix; OBJ and JSON are sufficient.
-        - [ ] code to load from the files (in the web app and/or in other programs)
         - [ ] other programs that generate data (e.g. grids and/or puzzles)
             - polyHédronisme exports .obj
             - my obj2json.py outputs JSON
@@ -27,11 +33,14 @@
             - Python scripts that generate puzzles & solutions given a grid? What do I have? Do they "enriched" obj or
                 something separate?
         - [ ] programs that take data input (e.g. grids and/or puzzles)
+            - [ ] existing code to load from the files (in the web app and/or in other programs)
             - The web app may take JSON? Does my old code use this?
                 - [ ] If the web app does this, it will need to convert it to the Grid data structure (enriching as needed).
+                - [ ] OK, in slitherlink3D-2018/js/sl3D.js, a data file like data/phe-T.json is loaded, and in
+                    importData(), we can see how the JSON properties are used. Not sure how complete that was...
             - Python puzzle generator?
                 - [ ] need to find Python (or Java??) scripts that aren't currently in this repo and integrate them,
-                    so I can see what I have. 
+                    so I can see what I have.
     - I think for now we'll follow the model of krazydad.com, in which
         - The user can select grid styles, and select a puzzle for that grid from a list
             - They can also press a "next" button which will take them along a preset path of puzzles, of
@@ -40,6 +49,18 @@
         - But the user can't provide their own grids or puzzles
         - The web app won't generate new puzzles (for now)
         - The conclusion regarding formats & data flow is, the web app doesn't need to accept data from users at all.
+    - [ ] ** Having decided that we'll continue using JSON and OBJ, document the formats in an easy-to-find place.
+        - [ ] JSON
+            - [ ] metadata such as name, category, acknowledgements/source, comments
+            - [ ] board/grid data
+            - [ ] puzzle (and solution) data
+            - [ ] sources and sinks of this format
+        - [ ] OBJ
+            - [ ] metadata such as name, category, acknowledgements/source, comments
+            - [ ] board/grid data
+            - [ ] puzzle (and solution) data
+            - [ ] sources and sinks of this format
+
 
 
 - It would be good if we can use a URL, possibly including parameters, to specify a particular grid and puzzle.
