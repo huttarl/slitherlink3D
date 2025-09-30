@@ -1,3 +1,4 @@
+// TODO: these first two imports take a lot of time. How can we optimize? Get minified versions?
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { addSkybox } from './skybox.js';
@@ -10,7 +11,7 @@ function main() {
     // TODO: refactor scene-building code into a scene.js
     // Scene
     const scene = new THREE.Scene();
-    addSkybox(scene, 'constellation');
+    addSkybox(scene, 'underwater');
 
     // Camera
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -22,9 +23,9 @@ function main() {
     renderer.setPixelRatio(window.devicePixelRatio);
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // Geometry and topology
+    // Geometry and topology. TODO maybe: put all this data into the Grid data structure.
     const { geometry, grid, faceMap, faceVertexRanges } =
-        (true) ? createCube() : createDodecahedron();
+        (false) ? createCube() : createDodecahedron();
     const material = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 100, specular: 0x222222 });
     const dodecahedron = new THREE.Mesh(geometry, material);
     scene.add(dodecahedron);

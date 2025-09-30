@@ -64,7 +64,7 @@ function createPolyhedron(vertices, faceIndices) {
             highlightColor: FACE_HIGHLIGHT_COLOR,
             isHighlighted: false,
             index: i,
-            clue: Math.floor(Math.random() * 11) - 1 // Random value from -1 to 9
+            clue: Math.floor(Math.random() * 4) - 1 // Random value from -1 to 3
         })
     );
 

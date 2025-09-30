@@ -14,8 +14,8 @@ export const CAMERA_MAX_ZOOM = 10;
 export const DRAG_THRESHOLD_PIXELS = 5;
 
 // Face color states
-export const FACE_DEFAULT_COLOR = new THREE.Color(0x4488ff);
-export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44);
+export const FACE_DEFAULT_COLOR = new THREE.Color(0xeeeeee);
+export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44); // Used for debugging
 
 // Edge state machine configuration
 export const EDGE_COLORS = {

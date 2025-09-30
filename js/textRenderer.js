@@ -157,7 +157,7 @@ export function createClueTexts(grid) {
         
         // Set text properties
         digitContext.font = 'bold 240px Arial';
-        digitContext.fillStyle = 'white';
+        digitContext.fillStyle = 'black'; // was 'white'
         digitContext.strokeStyle = 'black';
         digitContext.lineWidth = 4;
         digitContext.textAlign = 'center';

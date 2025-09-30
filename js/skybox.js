@@ -189,16 +189,9 @@ export function createConstellationSkybox(scene) {
  */
 export function addSkybox(scene, type = 'space') {
     switch (type) {
-        case 'space':
-            createSpaceSkybox(scene);
-            break;
-        case 'underwater':
-            createUnderwaterSkybox(scene);
-            break;
-        case 'constellation':
-            createConstellationSkybox(scene);
-            break;
-        default:
-            throw new Error(`Unknown skybox type: ${type}`);
+        case 'space': createSpaceSkybox(scene); break;
+        case 'underwater': createUnderwaterSkybox(scene); break;
+        case 'constellation': createConstellationSkybox(scene); break;
+        default: throw new Error(`Unknown skybox type: ${type}`);
     }
 }
