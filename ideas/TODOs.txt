@@ -1,0 +1,70 @@
+- [x] display vertex numbers over vertices: this would really help with entering puzzles
+- [ ] figure out data flow for grids, puzzles and solutions
+    - [ ] what formats do we already have
+        - [ ] as example data
+            - we have Stemkowski's JSON format for many polyhedra (converted from Hart)
+                - We could use this JSON source for grids in the app, but to use it in puzzle
+                generator programs, we'd need to convert it.
+            - Hart has a VRML model for practically any polyhedron I would want, but I can't figure out the format.
+                It says VRML but it's binary data, whereas VRML is supposed to be text.
+            - We have .obj (Wavefront) files for many polyhedra, e.g. in slitherlink3D-2018/data
+            - We have corresponding JSON files for the same polyhedra, e.g. in slitherlink3D-2018/data
+                - Is this the same JSON format Stemkowski uses?
+                - How did I convert between .obj and .json? Do I have code for that somewhere? (probably Python)
+                    which direction did it go? I'm guessing .obj -> .json because polyHédronisme exports .obj
+                    - Ah yes, there is a program obj2json.py in slitherlink3D-2018 (now in util). Apparently it works.
+                        Its comment says "Convert OBJ export from polyHedronisme to Slitherlink3D JSON data".
+            - polyHédronisme exports as .obj (and not JSON), which is where several of my models came from.
+                - polyHédronisme can also export VRML2 (.wrl), a text format, but I haven't played with it.
+                    I don't think we need another format in the mix; OBJ and JSON are sufficient.
+        - [ ] code to load from the files (in the web app and/or in other programs)
+        - [ ] other programs that generate data (e.g. grids and/or puzzles)
+            - polyHédronisme exports .obj
+            - my obj2json.py outputs JSON
+            - Just discovered https://andrewmarsh.com/software/poly3d-web/, which is very nice.
+                It can export .obj, as well as a couple of other formats
+            - Python scripts that generate grids? what do I have? do they produce obj?
+            - Python scripts that generate puzzles & solutions given a grid? What do I have? Do they "enriched" obj or
+                something separate?
+        - [ ] programs that take data input (e.g. grids and/or puzzles)
+            - The web app may take JSON? Does my old code use this?
+                - [ ] If the web app does this, it will need to convert it to the Grid data structure (enriching as needed).
+            - Python puzzle generator?
+                - [ ] need to find Python (or Java??) scripts that aren't currently in this repo and integrate them,
+                    so I can see what I have. 
+    - I think for now we'll follow the model of krazydad.com, in which
+        - The user can select grid styles, and select a puzzle for that grid from a list
+            - They can also press a "next" button which will take them along a preset path of puzzles, of
+                equal or increasing difficulty (but unlike on krazydad.com, it can lead them to other varieties
+                 of grids)
+        - But the user can't provide their own grids or puzzles
+        - The web app won't generate new puzzles (for now)
+        - The conclusion regarding formats & data flow is, the web app doesn't need to accept data from users at all.
+
+
+- It would be good if we can use a URL, possibly including parameters, to specify a particular grid and puzzle.
+    But we don't want the web page to have to reload when switching grids or puzzles.
+
+- implement loading from files of:
+    - grids
+        - Note! We already have a LOT of polyhedra defined in slitherlink3D-old/js/polyhedra.js,
+        thanks to Hart and Stemkowski.
+        Data from the website "Virtual Polyhedra: The Encyclopedia of Polyhedra" by George W. Hart
+          http://www.georgehart.com/virtual-polyhedra/vp.html
+        Converted to JSON by Lee Stemkoski. Which is probably much easier to work with.
+    - puzzles
+        - (with solutions)
+- implement feedback on puzzles
+    - detect when user has correct solution, and celebrate
+    - choose and load next puzzle (let user do so when ready)
+        - I like the idea of progressing: go thru Platonics, Archimedean solids, prisms & antiprisms,
+                Johnson solids, Catalan solids, zonohedra...
+            - more puzzles on the bigger polyhedra
+
+- print out some 2D flattened charts (not nets) of octahedron, dodecahedron, and icosahedron
+    so I can play with puzzles
+
+- graph theory regarding slitherlink circuits: see ideas/graph-cycles.txt.
+
+- maybe enhance underwater skymap with some bubbles coming up out of the deep; and shadows of large creatures
+    swimming in the depths; and maybe a swarm of small fish passing above (shadows on the puzzle!)

@@ -90,7 +90,8 @@ function createPolyhedron(vertices, faceIndices) {
         const startIdx = vertexIndex;
         positions.push(centerVertex.x, centerVertex.y, centerVertex.z);
         // TODO: can we use face.metadata.originalColor here? or at least not hard-code the numbers?
-        colors.push(0.93, 0.93, 0.93);
+        // Make center a little brighter than the outer rim of the face?
+        colors.push(0.98, 0.98, 0.98);
         vertexIndex++;
         for (const vertex of faceVertices) {
             positions.push(vertex.position.x, vertex.position.y, vertex.position.z);
