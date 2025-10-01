@@ -27,8 +27,8 @@ function main() {
     const { geometry, grid, faceMap, faceVertexRanges } =
         (false) ? createCube() : createDodecahedron();
     const material = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 100, specular: 0x222222 });
-    const dodecahedron = new THREE.Mesh(geometry, material);
-    scene.add(dodecahedron);
+    const polyhedronMesh = new THREE.Mesh(geometry, material);
+    scene.add(polyhedronMesh);
 
     // Edges
     // TODO: why not just return the Group from createEdgeGeometry()?
@@ -71,7 +71,7 @@ function main() {
     controls.update();
 
     // Interaction with controls for drag detection
-    const interaction = makeInteraction({ renderer, camera, scene, dodecahedron, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls });
+    const interaction = makeInteraction({ renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls });
 
     // Render loop
     function animate() {

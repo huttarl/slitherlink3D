@@ -22,7 +22,7 @@ import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_C
  * @param {THREE.OrbitControls} params.controls - Camera controls for the scene
  * @returns {{dispose: Function}} An object with a dispose method to clean up event listeners
  */
-export function makeInteraction({ renderer, camera, scene, dodecahedron, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls }) {
+export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls }) {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let highlightedFace = null;
@@ -155,7 +155,7 @@ export function makeInteraction({ renderer, camera, scene, dodecahedron, geometr
         }
         
         // Check for face clicks if no edge was clicked.
-        const faceIntersects = raycaster.intersectObject(dodecahedron);
+        const faceIntersects = raycaster.intersectObject(polyhedronMesh);
         if (faceIntersects.length > 0) {
             const faceIndex = faceIntersects[0].faceIndex * 3;
             const faceId = faceMap.get(faceIndex);
