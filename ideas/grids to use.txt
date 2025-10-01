@@ -21,8 +21,13 @@
     - C26? https://en.wikipedia.org/wiki/Fullerene#Topology
 - biomimetic shapes?
     - maybe something based on a (short) helical capsid? https://en.wikipedia.org/wiki/Capsid#Helical
-    - based on mineral crystals? https://en.wikipedia.org/wiki/Crystal_structure
+    - something based on mineral crystals? https://en.wikipedia.org/wiki/Crystal_structure
+    - https://web.archive.org/web/20241209225850/https://polyhedr.com/polyhedra-in-nature-part-2.html
 - Symmetohedra (https://en.wikipedia.org/wiki/Symmetrohedron)
 - Parallelohedra https://en.wikipedia.org/wiki/Parallelohedron
     - truncated octahedron in particular
 - play with Polyhedronisme!
+- generated stochastically, by randomly generating points on the surface of a sphere, then simulating
+    repulsion & damping. Could nickname this style "Volvox". I'm pretty sure I've written this code... need to find it. Look for "wooble" code. It may have gotten to the point of simulating the eventual placement of vertices, but not of organizing into edges and faces.
+
+
