@@ -13,11 +13,11 @@ import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_C
  * @param {THREE.WebGLRenderer} params.renderer - The WebGL renderer
  * @param {THREE.PerspectiveCamera} params.camera - The camera used for rendering
  * @param {THREE.Scene} params.scene - The main scene containing all 3D objects
- * @param {THREE.Mesh} params.dodecahedron - The main puzzle mesh
+ * @param {THREE.Mesh} params.polyhedronMesh - The main puzzle mesh
  * @param {THREE.BufferGeometry} params.geometry - The geometry of the puzzle
  * @param {Grid} params.grid - The grid data structure containing puzzle state
- * @param {Map} params.faceMap - Mapping of face indices to face IDs
- * @param {Map} params.faceVertexRanges - Mapping of face IDs to vertex ranges in the geometry
+ * @param {Map} params.faceMap - Mapping of geometry index buffer vertex indices to face IDs, for picking
+ * @param {Map} params.faceVertexRanges - Mapping of face IDs to vertex ranges in the geometry index buffer, for changing color
  * @param {THREE.Mesh[]} params.edgeMeshes - Array of meshes representing edges
  * @param {THREE.OrbitControls} params.controls - Camera controls for the scene
  * @returns {{dispose: Function}} An object with a dispose method to clean up event listeners

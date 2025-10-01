@@ -1,17 +1,17 @@
 // TODO: these first two imports take a lot of time. How can we optimize? Get minified versions?
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { addSkybox } from './skybox.js';
-import { createDodecahedron, createCube, createEdgeGeometry } from './geometry.js';
-import { createClueTexts, createVertexLabels, updateTextVisibility } from './textRenderer.js';
-import { VERTEX_RADIUS, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js';
+import { updateTextVisibility } from './textRenderer.js';
+import { CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js';
 import { makeInteraction } from './interaction.js';
+import { createScene } from "./scene.js";
 
 function main() {
-    // TODO: refactor scene-building code into a scene.js
-    // Scene
-    const scene = new THREE.Scene();
-    addSkybox(scene, 'underwater');
+    // Create scene and get all necessary objects
+    const {
+        scene, polyhedronMesh, geometry, grid, faceMap,
+        faceVertexRanges, edgeMeshes, clueTexts
+    } = createScene();
 
     // Camera
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -23,46 +23,6 @@ function main() {
     renderer.setPixelRatio(window.devicePixelRatio);
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // Geometry and topology. TODO maybe: put all this data into the Grid data structure.
-    const { geometry, grid, faceMap, faceVertexRanges } =
-        (false) ? createCube() : createDodecahedron();
-    const material = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 100, specular: 0x222222 });
-    const polyhedronMesh = new THREE.Mesh(geometry, material);
-    scene.add(polyhedronMesh);
-
-    // Edges
-    // TODO: why not just return the Group from createEdgeGeometry()?
-    const { edgeMeshes } = createEdgeGeometry(grid);
-    const edgeGroup = new THREE.Group();
-    edgeMeshes.forEach(mesh => edgeGroup.add(mesh));
-    scene.add(edgeGroup);
-
-    // Vertices
-    const vertexGroup = new THREE.Group();
-    const vertexMaterial = new THREE.MeshPhongMaterial({ color: 0x808080, shininess: 100 });
-    for (const [vertexId, vertex] of grid.vertices) {
-        const vgeom = new THREE.SphereGeometry(VERTEX_RADIUS, 16, 16);
-        const vmesh = new THREE.Mesh(vgeom, vertexMaterial);
-        vmesh.position.copy(vertex.position);
-        vertexGroup.add(vmesh);
-    }
-    scene.add(vertexGroup);
-
-    // Create clue text meshes
-    const clueTexts = createClueTexts(grid);
-    scene.add(clueTexts);
-
-    // TODO
-    const vertexLabels = createVertexLabels(grid);
-    scene.add(vertexLabels); // TODO: Hide unless debug mode is turned on.
-
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 5, 5);
-    scene.add(directionalLight);
-
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0, 0);
@@ -71,7 +31,18 @@ function main() {
     controls.update();
 
     // Interaction with controls for drag detection
-    const interaction = makeInteraction({ renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls });
+    const interaction = makeInteraction({ 
+        renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges,
+        edgeMeshes, controls
+    });
+
+    // Cascade suggested this but I'm not sure it's needed:
+    // // Handle window resize
+    // window.addEventListener('resize', () => {
+    //     camera.aspect = window.innerWidth / window.innerHeight;
+    //     camera.updateProjectionMatrix();
+    //     renderer.setSize(window.innerWidth, window.innerHeight);
+    // });
 
     // Render loop
     function animate() {
