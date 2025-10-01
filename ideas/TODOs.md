@@ -1,5 +1,5 @@
 - [x] display vertex numbers over vertices: this would really help with entering puzzles
-- [ ] refactor main() to take scene building out into scene.js
+- [x] refactor main() to take scene building out into scene.js
 - [ ] change signature of getFaceVertices() to take a Face instead of a faceId, avoiding an
     unnecessary lookup
 - [ ] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."

@@ -80,7 +80,10 @@ function createPolyhedron(vertices, faceIndices) {
     const indices = [];
     let vertexIndex = 0;
 
+    /** @type {Map<number, number>} - map from geometry index buffer vertex indices, to grid face IDs; for picking. */
     const faceMap = new Map();
+    /** @type {Map<number, {start: number, count: number}>} - map from grid face IDs,
+     * to ranges of vertex indices in the geometry index buffer. For changing the color of a face. */
     const faceVertexRanges = new Map();
 
     for (const [faceId, face] of grid.faces) {
