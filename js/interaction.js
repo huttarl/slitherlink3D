@@ -31,8 +31,8 @@ export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geome
     // Track if user is dragging, to distinguish from clicks.
     let didDrag = false;
 
-    /**
-     * Updates the visual highlight state of a face
+    /** Updates the visual highlight state of a face.
+     *
      * @private
      * @param {number} faceId - ID of the face to update
      * @param {boolean} highlight - Whether to highlight the face
@@ -49,8 +49,8 @@ export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geome
         face.metadata.isHighlighted = highlight;
     }
 
-    /**
-     * Cycles through possible edge states (unknown, filled, ruled out)
+    /** Cycles through possible edge states (unknown, filled, ruled out).
+     *
      * @private
      * @param {THREE.Mesh} edgeMesh - The edge mesh to update
      * @param {boolean} [reverse=false] - If true, cycle in reverse order
@@ -68,8 +68,8 @@ export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geome
         edgeMesh.material.color = EDGE_COLORS[stateName];
     }
 
-    /**
-     * Displays debug information about a clicked edge
+    /** Displays debug information about a clicked edge.
+     *
      * @private
      * @param {THREE.Mesh} edgeMesh - The clicked edge mesh
      * @param {boolean} reverseDirection - Whether the edge was clicked in reverse direction
@@ -91,8 +91,7 @@ export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geome
         `;
     }
 
-    /**
-     * Handles click events on edges
+    /** Handles click events on edges.
      * @private
      * @param {THREE.Mesh} edgeMesh - The clicked edge mesh
      * @param {boolean} shiftKey - Whether shift was held during the click
@@ -104,8 +103,7 @@ export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geome
         selectedEdge = edgeMesh.userData.edgeId;
     }
 
-    /**
-     * Handles click events on faces
+    /** Handles click events on faces.
      * @private
      * @param {number} faceId - ID of the clicked face
      */

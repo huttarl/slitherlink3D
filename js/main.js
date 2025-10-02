@@ -31,18 +31,10 @@ function main() {
     controls.update();
 
     // Interaction with controls for drag detection
-    const interaction = makeInteraction({ 
+    const _interaction = makeInteraction({
         renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges,
         edgeMeshes, controls
     });
-
-    // Cascade suggested this but I'm not sure it's needed:
-    // // Handle window resize
-    // window.addEventListener('resize', () => {
-    //     camera.aspect = window.innerWidth / window.innerHeight;
-    //     camera.updateProjectionMatrix();
-    //     renderer.setSize(window.innerWidth, window.innerHeight);
-    // });
 
     // Render loop
     function animate() {

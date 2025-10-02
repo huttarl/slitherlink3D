@@ -194,7 +194,11 @@ export function createClueTexts(grid) {
     return textGroup;
 }
 
-// Calculate face normal vector.
+/** Calculate face normal vector.
+ *
+ * @param { Vertex[] } faceVertices
+ * @returns { THREE.Vector3 } unit normal vector.
+ */
 function findFaceNormal(faceVertices) {
     const v1 = faceVertices[0].position;
     const v2 = faceVertices[1].position;
@@ -208,6 +212,12 @@ function findFaceNormal(faceVertices) {
 
 /**
  * Creates a text mesh positioned and oriented on a specific face
+ *
+ * @param {number} faceId - ID of the face to create text for
+ * @param {Face} face - The face to create text for
+ * @param {Grid} grid - The topology containing face data
+ * @param {THREE.Material} material - The material to use for the text mesh
+ * @returns {THREE.Mesh | null} The created text mesh, or null on failure.
  */
 function createTextMeshForFace(faceId, face, grid, material) {
     const faceVertices = grid.getFaceVertices(faceId);

@@ -54,6 +54,25 @@ export function createDodecahedron() {
     return createPolyhedron(vertices, faceIndices);
 }
 
+/**
+ * Creates a 3D polyhedron geometry with associated grid topology.
+ *
+ * @param {THREE.Vector3[]} vertices - Array of vertex positions for the polyhedron
+ * @param {number[][]} faceIndices - Array of face definitions, where each face is an array of vertex indices
+ * @returns {Object} An object containing:
+ *   - geometry {THREE.BufferGeometry}: The Three.js geometry of the polyhedron
+ *   - grid {Grid}: The grid topology containing vertices, edges, and faces
+ *   - faceMap {Map<number, number>}: Maps geometry vertex indices to grid face IDs for picking
+ *   - faceVertexRanges {Map<number, {start: number, count: number}>}: Maps face IDs to vertex index ranges in the geometry
+ *
+ * @description
+ * This function creates a polyhedron by:
+ * 1. Creating a grid with the specified vertices
+ * 2. Adding faces to the grid using the provided vertex indices
+ * 3. Setting up face metadata including colors and clues
+ * 4. Creating a Three.js BufferGeometry with proper vertex positions and face indices
+ * 5. Setting up data structures for face picking and coloring
+ */
 function createPolyhedron(vertices, faceIndices) {
     const grid = new Grid();
     const vertexIds = vertices.map(v => grid.addVertex(v));
@@ -151,6 +170,12 @@ export function createCube() {
     return createPolyhedron(vertices, faceIndices);
 }
 
+/**
+ * Creates THREE.js geometry for cylinders representing edges of a given grid.
+ *
+ * @param {Grid} grid - The grid containing edge data
+ * @returns { edgeMeshes: THREE.Mesh[], edgeMap: Map<THREE.Mesh, number> }
+ */
 export function createEdgeGeometry(grid) {
     const edgeMeshes = [];
     const edgeMap = new Map();
@@ -190,7 +215,8 @@ export function findFaceMinRadius(grid, faceId) {
     return minDistance;
 }
 
-/** Find the center-ish of a polygon, by averaging its vertices.
+/**
+ * Find the center-ish of a polygon, by averaging its vertices.
  *
  * @param faceVertices an iterable of vertex objects
  * @returns {THREE.Vector3} the centroid
@@ -204,7 +230,8 @@ function findCentroid(faceVertices) {
     return centerVertex;
 }
 
-/** Find the shortest distance from a point to a line.
+/**
+ * Find the shortest distance from a point to a line.
  *
  * @param {THREE.Vector3} p - the point
  * @param {THREE.Vector3} v1 - one point on the line
