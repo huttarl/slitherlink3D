@@ -103,11 +103,11 @@ export class Grid {
     }
 
     /** Gets all vertices (objects) that form a face.
-     * @param {number} faceId - The ID of the face
+     * @param {Face} face - The face object
      * @returns {Vertex[]} Array of Vertex objects that form the face
      */
-    getFaceVertices(faceId) {
-        const face = this.faces.get(faceId);
+    getFaceVertices(face) {
+        // const face = this.faces.get(faceId); // No longer needed.
         // The face only stores vertex IDs, but the vertex data is stored in the Grid.
         return face ? face.vertices.map(vId => this.vertices.get(vId)) : [];
     }

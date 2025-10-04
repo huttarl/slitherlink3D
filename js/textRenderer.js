@@ -220,7 +220,7 @@ function findFaceNormal(faceVertices) {
  * @returns {THREE.Mesh | null} The created text mesh, or null on failure.
  */
 function createTextMeshForFace(faceId, face, grid, material) {
-    const faceVertices = grid.getFaceVertices(faceId);
+    const faceVertices = grid.getFaceVertices(face);
     if (faceVertices.length < 3) return null;
     
     // Calculate face center and normal
@@ -300,7 +300,7 @@ export function updateTextVisibility(textGroup, camera, grid) {
         
         if (face) {
             // Calculate face normal (approximate)
-            const faceVertices = grid.getFaceVertices(faceId);
+            const faceVertices = grid.getFaceVertices(face);
             if (faceVertices.length >= 3) {
                 const normal = findFaceNormal(faceVertices);
 

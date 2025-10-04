@@ -106,7 +106,7 @@ function createPolyhedron(vertices, faceIndices) {
     const faceVertexRanges = new Map();
 
     for (const [faceId, face] of grid.faces) {
-        const faceVertices = grid.getFaceVertices(faceId);
+        const faceVertices = grid.getFaceVertices(face);
         const centerVertex = findCentroid(faceVertices);
         faceVertexRanges.set(faceId, {start: vertexIndex, count: faceVertices.length + 1});
         const startIdx = vertexIndex;
@@ -128,7 +128,7 @@ function createPolyhedron(vertices, faceIndices) {
                 faceMap.set(indices.length - 3 + j, faceId);
             }
         }
-        console.log(`minRadius(${faceId}): `, findFaceMinRadius(grid, faceId));
+        console.log(`minRadius(${faceId}): `, findFaceMinRadius(grid, face));
     }
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -198,8 +198,17 @@ export function createEdgeGeometry(grid) {
     return { edgeMeshes, edgeMap };
 }
 
-export function findFaceMinRadius(grid, faceId) {
-    const vertices = grid.getFaceVertices(faceId);
+/**
+ * Finds the minimum "radius" of a face.
+ * This approximates the radius of an inscribed circle. We will use this to estimate what size text label will
+ * fit on the face. We compute it by taking the minimum distance from the centroid of the face, to each vertex.
+ *
+ * @param {Grid} grid - The grid containing topology data
+ * @param {Face} face - The face object
+ * @returns {number} The minimum radius of the face
+ */
+export function findFaceMinRadius(grid, face) {
+    const vertices = grid.getFaceVertices(face);
     const nVertices = vertices.length;
     const centerVertex = findCentroid(vertices);
     let minDistance = -1;
