@@ -1,7 +1,63 @@
 - [x] display vertex numbers over vertices: this would really help with entering puzzles
 - [x] refactor main() to take scene building out into scene.js
-- [ ] change signature of getFaceVertices() to take a Face instead of a faceId, avoiding an
+- [x] change signature of getFaceVertices() to take a Face instead of a faceId, avoiding an
     unnecessary lookup
+- [ ] terminology: how do we talk consistently about the "sides" of a face? The especially tricky distinction
+  is between how many edges a face has, vs. how many of them are actually part of the loop
+  that forms the solution. And how do we say the opposite?
+  - (We could also make a distinction between the user's marks and the actual solution.) 
+  - For example, "the number inside a
+    (face) represents how many of its sides are segments in the loop"? or
+  - "the number on a face represents how many of its edges are filled in"?
+  - or something else? Looking at https://en.wikipedia.org/wiki/Slitherlink ...
+  - "Whenever the number of lines around a cell matches the number in the cell, the other potential
+    lines must be eliminated". Here "lines around a cell" means "edges filled in" and "eliminated" means "ruled out"
+    as definitely not filled in.
+  - "... a ninety degree arc between two adjacent lines, to indicate that exactly one of the two must be filled"
+  - "every point has either exactly two lines connected to it, or no lines" - Here again, "lines" means
+    "segments of the solution loop," not edges in general.
+  - "if a point on the edge of the grid, not at a corner, has two incoming lines which are X'd out, the third must also be X'd out"
+    Here, "line" merely means "edge of a square," not "segment of the solution loop." And "X'd out" means
+    ruled out as definitely not part of the solution loop.
+  - "if one of the three remaining directions that the line can continue ... is a known blank" Here "line" is
+    part of the solution loop, and "known blank" is definitely not.
+  - Conclusion: Since "line" is unclear from the word itself, and since it's used inconsistently, let's not use it.
+    Instead, we'll used "filled in" to mean "part of the solution loop." Then "ruled out" makes a sensible opposite.
+    "X'd (out)" is fairly clear but it seems to imply the user's markings, rather than being able
+    to refer merely to the fact that a given edge is not part of the solution loop. I guess the same could be
+    said of "ruled out," to a lesser degree. "Blank" may work, though it's not as clear. 
+    
+- [ ] settle on a format for puzzles and solutions.
+    - [ ] What do we have so far?
+      - data/example.json shows a puzzle and solution for a polygon. This was an "old attempt"
+            so I'm not sure if I had ever worked with this format. It encodes
+        - "puzzles" property as an array of objects, in each of which we have 
+        - "clues" property as an array of numbers, presumably corresponding to the faces in the order
+            they were previously listed in the "cells" property; and each number gives the number of
+            edges of that face that must be "filled in" in the solved puzzle (i.e. how many of its 
+            "sides are segments in the loop"). Here -1 means that no clue should be displayed on that face.
+        - "solution" property as an array of booleans, presumably with 1's indicating edges that are
+            part of the solution loop, and 0's indicating edges that are not. But how do we know which edge
+            each boolean corresponds to? There is no previous sequence of edges to refer to.
+            I think it would be better to encode the solution as a list of vertex indices.
+      - No other data file seems to have developed puzzle or solution encoding any further.
+    - [ ] So let's settle on a variation of the above:
+      - "puzzles" property as an array of objects (each of which is a puzzle), in which
+      - "clues" property as an array of clue numbers, corresponding to the faces in the
+        same order as in the faces list. -1 means no clue shown. 
+      - "solution" property as an array of zero-based vertex indices, corresponding to the order in the
+        vertices list. We don't repeat the first vertex at the end.
+      - Validation:
+        - both lists must be non-empty
+        - the length of the "clues" list must be <= the number of faces
+        - the length of the "solution" list must be  <= the number of vertices
+        - the "solution" list must not contain any duplicates
+        - adjacent vertices in the "solution" list (including the first and last)
+          must appear adjacent in one or more faces
+    - [ ] So that gives us a JSON representation for puzzles and solutions. In regard to the grids, I guess
+      we're good with the JSON format emitted by obj2json.py, although it calls faces "cells,"
+      which is inconsistent with our usage elsewhere.
+      In one sense, "cell" is more consistent with 2D Slitherlink puzzles. I guess we'll leave it as is.
 - [ ] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
     - [ ] Is this encoded in the JSON?
     - [ ] maybe associate a color (scheme) with each polyhedron, and category, for more atmosphere?

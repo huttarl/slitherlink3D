@@ -1,3 +1,6 @@
+Ideas for types of polyhedra to use for Slitherlink puzzles.
+All of these will be convex (unless otherwise noted).
+
 - Platonics, Archimedean solids, Johnson solids,
 - near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_solid
     - e.g. expanded truncated icosahedron, with 3/4/5/6-gons!

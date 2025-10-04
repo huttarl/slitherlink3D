@@ -17,4 +17,4 @@ Three.js is used to provide the 3D display and input.
 ## Acknowledgments
 - Lee Stemkowski for Three.js code examples that <a href="http://stemkoski.github.io/Three.js/Polyhedra.html">display polyhedra</a>; including polygon data in JSON.
 - Gary Hart for <a href="http://www.georgehart.com/virtual-polyhedra/vp.html">Virtual Polyhedra: The Encyclopedia of Polyhedra</a>
-- Levskaya for the polyhedron construction toy <a href="http://levskaya.github.io/polyhedronisme/">Polyhedronisme</a>
+- Anselm Levskaya for the polyhedron construction toy <a href="http://levskaya.github.io/polyhedronisme/">Polyhedronisme</a>

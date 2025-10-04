@@ -66,10 +66,13 @@ def input_face(line):
 def output():
     # Make output format compact, so that it loads quickly.
     print(json.dumps({
-        "meshID": name,  # machine-friendly ID; may need to be modified.
+        "meshID": name,  # machine-friendly ID; TODO may need to be sanitized.
         "meshName": name,  # user-visible name, e.g. "Rhombille"
+        # At some point, add categories like "Johnson solid" and/or "zonohedron" etc.
+        # That may come after the OBJ-to-JSON conversion.
+        "categories": [],
         "nCells": len(cells),  # "cell" == "face"
-        "nEdges": int(num_edges),
+        "nEdges": int(num_edges), # Not sure why we need these counts, but they don't hurt.
         "nVertices": len(vertices),
         "vertices": vertices,
         "cells": cells,
