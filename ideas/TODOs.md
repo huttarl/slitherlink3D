@@ -1,3 +1,5 @@
+- [ ] get js web app to load T.json file and display it
+  - [ ] then load T-puzzles.json, and display the clues 
 - [x] display vertex numbers over vertices: this would really help with entering puzzles
 - [x] refactor main() to take scene building out into scene.js
 - [x] change signature of getFaceVertices() to take a Face instead of a faceId, avoiding an
@@ -62,13 +64,15 @@
     - [ ] Is this encoded in the JSON?
     - [ ] maybe associate a color (scheme) with each polyhedron, and category, for more atmosphere?
 - [ ] figure out data flow for grids, puzzles and solutions
-    - [ ] what formats do we already have
-        - [ ] as example data
+    - [x] what formats do we already have
+        - [x] as example data
             - we have Stemkowski's JSON format for many polyhedra (converted from Hart)
                 - We could use this JSON source for grids in the app, but to use it in puzzle
                 generator programs, we'd need to convert it.
                 See slitherlink3D-old/js/polyhedron_data.js. Each polyhedron entry has exactly the following properties:
                     name, category (list?), vertex (list of float triples), edge (list of index pairs), face (list of index lists)
+                - Seems like edge list is redundant, since it can be derived from face list, right? Assuming every edge
+                  is part of at least one face.
             - Hart has a VRML model for practically any polyhedron I would want, but I can't figure out the format.
                 It says VRML but it's binary data, whereas VRML is supposed to be text.
             - We have .obj (Wavefront) files for many polyhedra, e.g. in slitherlink3D-2018/data
@@ -80,8 +84,9 @@
                     which direction did it go? I'm guessing .obj -> .json because polyHédronisme exports .obj
                     - Ah yes, there is a program obj2json.py in slitherlink3D-2018 (now in util). Apparently it works.
                         Its comment says "Convert OBJ export from polyHedronisme to Slitherlink3D JSON data".
+                        But that JSON output format is not the same as Stemkowski's.
             - polyHédronisme exports as .obj (and not JSON), which is where several of my models came from.
-                - polyHédronisme can also export VRML2 (.wrl), a text format, but I haven't played with it.
+                - polyHédronisme can also export VRML2 (.wrl), a[objToSlith3D.py](../../../../IDrive-Sync/Lars/programming/SlitherlinkNGons3D/objToSlith3D.py) text format, but I haven't played with it.
                     I don't think we need another format in the mix; OBJ and JSON are sufficient.
         - [ ] other programs that generate data (e.g. grids and/or puzzles)
             - polyHédronisme exports .obj
@@ -89,8 +94,16 @@
             - Just discovered https://andrewmarsh.com/software/poly3d-web/, which is very nice.
                 It can export .obj, as well as a couple of other formats
             - Python scripts that generate grids? what do I have? do they produce obj?
-            - Python scripts that generate puzzles & solutions given a grid? What do I have? Do they "enriched" obj or
+            - Python scripts that generate puzzles & solutions given a grid? What do I have? Do they use "enriched" obj or
                 something separate?
+              - [ ] Need to find those scripts! Not sure if I have any that specifically work on 3D data, but the
+                algorithm should be very similar. It's still a 1D path on a 2D surface, not a volume as such.
+                - Maybe all I ever had for that was Krazydad's algorithms, in Python, Java or Processing.
+                    Anyway I can write my own. The question is what format to input. We'll output JSON -- not Stemkowski's,
+                    but the kind that obj2json.py already outputs. See above for encoding of puzzles and solutions.
+                - [ ] ** Check IDrive-Sync/Lars/programming/SlitherlinkNGons3D/SlitherlinkNGons3D.pde! (Processing code)
+                  Yes, this is puzzle generator code that I adapted from Krazydad. How far did I get with it in converting
+                    to 3D? Shall I adapt it more or write my own? What format does it output?
         - [ ] programs that take data input (e.g. grids and/or puzzles)
             - [ ] existing code to load from the files (in the web app and/or in other programs)
             - The web app may take JSON? Does my old code use this?
