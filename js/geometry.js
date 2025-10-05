@@ -83,7 +83,7 @@ function createPolyhedron(vertices, faceIndices) {
             highlightColor: FACE_HIGHLIGHT_COLOR,
             isHighlighted: false,
             index: i,
-            clue: Math.floor(Math.random() * 4) - 1 // Random value from -1 to 3
+            clue: -1 // No clue by default, will be set by puzzle data
         })
     );
 
@@ -175,7 +175,8 @@ export function createCube() {
  *
  * @param {string} filePath - Path to the JSON file (e.g., 'data/T.json')
  * @returns {Promise<{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>,
- *     faceVertexRanges: Map<any, any>, vertices: THREE.Vector3[]}>}
+ *     faceVertexRanges: Map<any, any>, vertices: THREE.Vector3[], gridId: string,
+ *     gridName: string, categories: string[], recipe: string|undefined}>}
  * @throws {Error} If the file cannot be loaded or contains invalid data
  */
 export async function loadPolyhedronFromJSON(filePath) {
@@ -187,6 +188,12 @@ export async function loadPolyhedronFromJSON(filePath) {
     const data = await response.json();
 
     // Validate required fields per json-format.md specification
+    if (!data.gridId || typeof data.gridId !== 'string') {
+        throw new Error('Invalid or missing gridId');
+    }
+    if (!data.gridName || typeof data.gridName !== 'string') {
+        throw new Error('Invalid or missing gridName');
+    }
     if (!data.vertices || !Array.isArray(data.vertices) || data.vertices.length < 4) {
         throw new Error('Invalid or missing vertices array (minimum 4 required)');
     }
@@ -201,7 +208,16 @@ export async function loadPolyhedronFromJSON(filePath) {
     const faceIndices = data.faces;
 
     // Call createPolyhedron to build geometry and grid topology
-    return createPolyhedron(vertices, faceIndices);
+    const polyhedron = createPolyhedron(vertices, faceIndices);
+
+    // Add metadata from JSON to the result
+    return {
+        ...polyhedron,
+        gridId: data.gridId,
+        gridName: data.gridName,
+        categories: data.categories || [],
+        recipe: data.recipe
+    };
 }
 
 /**

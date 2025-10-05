@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { addSkybox } from "./skybox.js";
 import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
+import { loadPuzzleData, applyPuzzleToGrid } from "./puzzleLoader.js";
 import { VERTEX_RADIUS } from "./constants.js";
 import { createClueTexts, createVertexLabels } from "./textRenderer.js";
 
@@ -26,9 +27,17 @@ export async function createScene() {
     const scene = new THREE.Scene();
     addSkybox(scene, 'underwater');
 
-    // Geometry and topology
-    const { geometry, grid, faceMap, faceVertexRanges } =
-        await loadPolyhedronFromJSON('data/T.json');
+    // Load geometry and puzzle data in parallel for better performance
+    const [polyhedronData, puzzleData] = await Promise.all([
+        loadPolyhedronFromJSON('data/T.json'),
+        loadPuzzleData('data/T-puzzles.json')
+    ]);
+
+    const { geometry, grid, faceMap, faceVertexRanges, gridId } = polyhedronData;
+
+    // Apply puzzle clues to grid (validates gridId match)
+    applyPuzzleToGrid(grid, puzzleData, 0, gridId);
+
     const material = new THREE.MeshPhongMaterial({ 
         vertexColors: true, 
         side: THREE.DoubleSide, 
