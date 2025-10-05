@@ -1,9 +1,7 @@
-- [ ] get js web app to load T.json file and display it
-  - [ ] then load T-puzzles.json, and display the clues 
-- [x] display vertex numbers over vertices: this would really help with entering puzzles
-- [x] refactor main() to take scene building out into scene.js
-- [x] change signature of getFaceVertices() to take a Face instead of a faceId, avoiding an
-    unnecessary lookup
+- [x] get js web app to load T.json file and display it
+  - [ ] then load T-puzzles.json, and display the clues
+- [ ] convert some existing .json files to the latest format spec, or move them out of the
+    data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
 - [ ] terminology: how do we talk consistently about the "sides" of a face? The especially tricky distinction
   is between how many edges a face has, vs. how many of them are actually part of the loop
   that forms the solution. And how do we say the opposite?
@@ -154,10 +152,17 @@
                 Johnson solids, Catalan solids, zonohedra...
             - more puzzles on the bigger polyhedra
 
-- print out some 2D flattened charts (not nets) of octahedron, dodecahedron, and icosahedron
+- [x] print out some 2D flattened charts (not nets) of octahedron, dodecahedron, and icosahedron
     so I can play with puzzles
 
 - graph theory regarding slitherlink circuits: see ideas/graph-cycles.txt.
 
 - maybe enhance underwater skymap with some bubbles coming up out of the deep; and shadows of large creatures
     swimming in the depths; and maybe a swarm of small fish passing above (shadows on the puzzle!)
+
+Old items:
+
+- [x] display vertex numbers over vertices: this would really help with entering puzzles
+- [x] refactor main() to take scene building out into scene.js
+- [x] change signature of getFaceVertices() to take a Face instead of a faceId, avoiding an
+  unnecessary lookup

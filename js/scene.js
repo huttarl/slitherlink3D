@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { addSkybox } from "./skybox.js";
-import { createCube, createDodecahedron, createEdgeGeometry } from "./geometry.js";
+import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { VERTEX_RADIUS } from "./constants.js";
 import { createClueTexts, createVertexLabels } from "./textRenderer.js";
 
@@ -22,13 +22,13 @@ import { createClueTexts, createVertexLabels } from "./textRenderer.js";
  * @property {THREE.AmbientLight} ambientLight - The scene's ambient light source
  * @property {THREE.DirectionalLight} directionalLight - The scene's main directional light
  */
-export function createScene() {
+export async function createScene() {
     const scene = new THREE.Scene();
     addSkybox(scene, 'underwater');
 
     // Geometry and topology
     const { geometry, grid, faceMap, faceVertexRanges } =
-        (false) ? createCube() : createDodecahedron();
+        await loadPolyhedronFromJSON('data/T.json');
     const material = new THREE.MeshPhongMaterial({ 
         vertexColors: true, 
         side: THREE.DoubleSide, 

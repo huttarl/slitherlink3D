@@ -6,12 +6,12 @@ import { CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js';
 import { makeInteraction } from './interaction.js';
 import { createScene } from "./scene.js";
 
-function main() {
+async function main() {
     // Create scene and get all necessary objects
     const {
         scene, polyhedronMesh, geometry, grid, faceMap,
         faceVertexRanges, edgeMeshes, clueTexts
-    } = createScene();
+    } = await createScene();
 
     // Camera
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);

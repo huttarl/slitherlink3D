@@ -171,6 +171,40 @@ export function createCube() {
 }
 
 /**
+ * Loads a polyhedron from a JSON file and creates its geometry and topology.
+ *
+ * @param {string} filePath - Path to the JSON file (e.g., 'data/T.json')
+ * @returns {Promise<{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>,
+ *     faceVertexRanges: Map<any, any>, vertices: THREE.Vector3[]}>}
+ * @throws {Error} If the file cannot be loaded or contains invalid data
+ */
+export async function loadPolyhedronFromJSON(filePath) {
+    const response = await fetch(filePath);
+    if (!response.ok) {
+        throw new Error(`Failed to load polyhedron from ${filePath}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Validate required fields per json-format.md specification
+    if (!data.vertices || !Array.isArray(data.vertices) || data.vertices.length < 4) {
+        throw new Error('Invalid or missing vertices array (minimum 4 required)');
+    }
+    if (!data.faces || !Array.isArray(data.faces) || data.faces.length < 4) {
+        throw new Error('Invalid or missing faces array (minimum 4 required)');
+    }
+
+    // Convert vertex coordinate arrays [x, y, z] to THREE.Vector3 objects
+    const vertices = data.vertices.map(([x, y, z]) => new THREE.Vector3(x, y, z));
+
+    // Use face indices directly from JSON
+    const faceIndices = data.faces;
+
+    // Call createPolyhedron to build geometry and grid topology
+    return createPolyhedron(vertices, faceIndices);
+}
+
+/**
  * Creates THREE.js geometry for cylinders representing edges of a given grid.
  *
  * @param {Grid} grid - The grid containing edge data
