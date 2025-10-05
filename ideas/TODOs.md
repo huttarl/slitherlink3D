@@ -61,6 +61,9 @@
 - [ ] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
     - [ ] Is this encoded in the JSON?
     - [ ] maybe associate a color (scheme) with each polyhedron, and category, for more atmosphere?
+- [ ] auto-zoom: after loading polyhedron data from file, zoom to an appropriate level
+    based on polyhedron size (e.g. max distance of vertices from origin)
+  - [ ] Do we need to first move vertices to be centered around the origin?
 - [ ] figure out data flow for grids, puzzles and solutions
     - [x] what formats do we already have
         - [x] as example data
@@ -157,8 +160,12 @@
 
 - graph theory regarding slitherlink circuits: see ideas/graph-cycles.txt.
 
-- maybe enhance underwater skymap with some bubbles coming up out of the deep; and shadows of large creatures
+- [ ] maybe enhance underwater skymap with some bubbles coming up out of the deep; and shadows of large creatures
     swimming in the depths; and maybe a swarm of small fish passing above (shadows on the puzzle!)
+- [ ] improve how vertices and edges interact visually, especially when edges meeting at the same vertex 
+  are different colors: How about having the edges stop short of both vertices. E.g. if an edge goes between
+  v1 and v2, then draw it from v1 + normalize(v2 - v1) * vertexBallRadius * 1.5 to v2 - normalize(v2 - v1) * vertexBallRadius * 1.5. 
+- [ ] Try some transparency on the faces? Let the user control it with a live slider or settings?
 
 Old items:
 

@@ -1,6 +1,32 @@
 Ideas for types of polyhedra to use for Slitherlink puzzles.
 All of these will be convex (unless otherwise noted).
 
+- General criteria:
+    - Aesthetically pleasing
+    - interesting variety
+    - fairly "round" faces, as opposed to very long, narrow faces, which are difficult to show clues on or
+    click on the edges of cleanly.
+    - fairly uniformly sized faces, for the same reason as above: We don't want huge
+    faces and tiny faces mixed, beyond a certain point.
+    - enough faces/vertices/edges to make an interesting puzzle.
+    - not so many f/v/e that it's overwhelming to think about.
+    - fairly "spherical" (i.e. uniform distance from the center) shapes are preferred
+    as easier to work with.
+        - but some "exotic" shapes would be fun too, for variety. E.g. Johnson solids.
+    - I don't know a technical reason why the polyhedra must be convex; the puzzle should be
+     basically geometry-agnostic (only topology matters). But any significant
+    concavity would make it hard to see or select the needed edges. Personally I don't like
+    the stellated polyhedra much. But I'm open to changing my opinion on that.
+    For example, https://en.wikipedia.org/wiki/Stellation#/media/File:First_stellation_of_icosahedron.svg
+    wouldn't be too bad. We'd have to verify that the display and picking work correctly.
+    - closed: I'm basically assuming all the shapes would be closed, but it wouldn't be
+    impossible to include some "polyhedra" that had some faces removed. It would add interest,
+    especially if we can see through the inside. We would have to make sure the opposite faces
+    are visible from behind (less culling). And the puzzle generation code would have to make
+    sure that no clues are placed on the removed faces.
+
+Specific shapes & categories:
+
 - Platonics, Archimedean solids, Johnson solids,
 - near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_solid
     - e.g. expanded truncated icosahedron, with 3/4/5/6-gons!
@@ -31,6 +57,11 @@ All of these will be convex (unless otherwise noted).
     - truncated octahedron in particular
 - play with Polyhedronisme!
 - generated stochastically, by randomly generating points on the surface of a sphere, then simulating
-    repulsion & damping. Could nickname this style "Volvox". I'm pretty sure I've written this code... need to find it. Look for "wooble" code. It may have gotten to the point of simulating the eventual placement of vertices, but not of organizing into edges and faces.
+    repulsion & damping (and/or Hart's canonicalization algorith?).
+    Could nickname this style "Volvox".
+    I'm pretty sure I've written this code... need to find it. Look for "wooble" code.
+    It may have gotten to the point of simulating the eventual placement of vertices, but not of organizing
+    into edges and faces. One way to do that would be to use Delaunay triangulation, which I think
+    I worked on ...
 
 
