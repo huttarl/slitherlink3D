@@ -70,7 +70,7 @@ export function applyPuzzleToGrid(grid, puzzleData, puzzleIndex = 0, expectedGri
     // Apply clues to faces based on their index
     // For sparse puzzles, looping through all faces would be inefficient. But I don't expect puzzles
     // to be very sparse. If this becomes an issue, we could add an array to map from face indices to face IDs.
-    for (const [faceId, face] of grid.faces) {
+    for (const [_faceId, face] of grid.faces) {
         const faceIndex = face.metadata.index;
 
         // Get clue for this face (-1 if beyond clues array)
@@ -87,5 +87,80 @@ export function applyPuzzleToGrid(grid, puzzleData, puzzleIndex = 0, expectedGri
 
         // Apply clue to face metadata
         face.metadata.clue = clue;
+    }
+}
+
+/**
+ * Applies a puzzle's solution to the grid by setting edge states.
+ *
+ * @param {Grid} grid - The grid to apply solution to
+ * @param {Object} puzzleData - Puzzle data with gridId and puzzles array
+ * @param {number} puzzleIndex - Index of puzzle to apply (default 0)
+ * @throws {Error} If validation fails or solution is invalid
+ *
+ * @description
+ * The solution array contains vertex indices from the original JSON vertices array that
+ * trace out the solution loop. Since Grid vertex IDs correspond to JSON vertex indices,
+ * we can use them directly. This function finds edges between consecutive vertices
+ * (including last→first to close the loop) and sets edge.metadata.userGuess = 1 (filled in).
+ */
+export function applySolutionToGrid(grid, puzzleData, puzzleIndex) {
+    // console.log("applySolutionToGrid", puzzleData); // debugging
+
+    // Validate puzzle index
+    if (puzzleIndex < 0 || puzzleIndex >= puzzleData.puzzles.length) {
+        throw new Error(`Invalid puzzle index: ${puzzleIndex}`);
+    }
+
+    const puzzle = puzzleData.puzzles[puzzleIndex];
+
+    // Validate solution exists
+    if (!puzzle.solution || !Array.isArray(puzzle.solution)) {
+        throw new Error('Invalid or missing solution in puzzle');
+    }
+
+    const solution = puzzle.solution;
+
+    // Validate solution length per json-format.md spec
+    if (solution.length > grid.vertices.size) {
+        throw new Error(`Solution length (${solution.length}) exceeds number of vertices (${grid.vertices.size})`);
+    }
+
+    // Validate no duplicates in solution
+    const uniqueVertices = new Set(solution);
+    if (uniqueVertices.size !== solution.length) {
+        throw new Error('Solution contains duplicate vertices');
+    }
+
+    // Validate vertex indices exist in grid (since we use JSON indices as Grid IDs)
+    for (const idx of solution) {
+        if (!Number.isInteger(idx) || !grid.vertices.has(idx)) {
+            throw new Error(`Invalid vertex index ${idx} in solution (not found in grid)`);
+        }
+    }
+
+    // For each consecutive pair of vertices in the solution (including last→first)
+    for (let i = 0; i < solution.length; i++) {
+        const v1 = solution[i];
+        const v2 = solution[(i + 1) % solution.length];
+
+        // Find the edge between v1 and v2
+        let edgeId = null;
+        for (const [eId, edge] of grid.edges) {
+            if ((edge.vertices[0] === v1 && edge.vertices[1] === v2) ||
+                (edge.vertices[0] === v2 && edge.vertices[1] === v1)) {
+                // Flag that we found it.
+                edgeId = eId;
+                // console.log("applySolutionToGrid", `Found edge ${eId} between ${v1} and ${v2}`); // debugging
+                // Set edge as filled in (userGuess = 1 means "filledIn")
+                edge.metadata.userGuess = 1;
+                break;
+            }
+        }
+
+        // Validate that adjacent vertices in solution are connected by an edge
+        if (edgeId === null) {
+            throw new Error(`No edge found between vertices ${v1} and ${v2} in solution`);
+        }
     }
 }

@@ -19,18 +19,23 @@ export class Grid {
      * @see Vertex
      * @param {Three.Vector3} position - 3D coordinate of vertex
      * @param {Object} metadata - Additional metadata for the vertex (none yet?)
+     * @param {number} id - Optional ID for the vertex (if not provided, auto-generates)
      * @returns {number} - ID of new vertex
      */
-    addVertex(position, metadata = {}) {
-        const id = this.nextId++;
+    addVertex(position, metadata = {}, id = null) {
+        const vertexId = (id !== null) ? id : this.nextId++;
+        // Update nextId to avoid future collisions if custom ID was used
+        if (id !== null && id >= this.nextId) {
+            this.nextId = id + 1;
+        }
         // TODO: Use a Vertex class
-        this.vertices.set(id, {
+        this.vertices.set(vertexId, {
             position: position.clone(),
             edges: new Set(),
             faces: new Set(),
             metadata
         });
-        return id;
+        return vertexId;
     }
 
     /** Creates and adds an edge between two vertices to the grid.
@@ -62,14 +67,19 @@ export class Grid {
     }
 
     /** Adds a face to the grid.
-     * 
+     *
      * @param {number[]} vertexIds - IDs of vertices that make up the face
      * @param {Object} metadata - Additional metadata for the face
+     * @param {number} id - Optional ID for the face (if not provided, auto-generates)
      * @returns {number} - ID of new face
      * TODO: refactor this to use a Face class
      */
-    addFace(vertexIds, metadata = {}) {
-        const id = this.nextId++;
+    addFace(vertexIds, metadata = {}, id = null) {
+        const faceId = (id !== null) ? id : this.nextId++;
+        // Update nextId to avoid future collisions if custom ID was used
+        if (id !== null && id >= this.nextId) {
+            this.nextId = id + 1;
+        }
         const edgeIds = [];
 
         for (let i = 0; i < vertexIds.length; i++) {
@@ -88,18 +98,18 @@ export class Grid {
                 edgeId = this.addEdge(v1, v2);
             }
             edgeIds.push(edgeId);
-            this.edges.get(edgeId).faces.add(id);
+            this.edges.get(edgeId).faces.add(faceId);
         }
 
-        this.faces.set(id, {
+        this.faces.set(faceId, {
             vertices: vertexIds,
             edges: edgeIds,
             metadata
         });
         for (const vId of vertexIds) {
-            this.vertices.get(vId).faces.add(id);
+            this.vertices.get(vId).faces.add(faceId);
         }
-        return id;
+        return faceId;
     }
 
     /** Gets all vertices (objects) that form a face.

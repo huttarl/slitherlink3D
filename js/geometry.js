@@ -58,12 +58,14 @@ export function createDodecahedron() {
  * Creates a 3D polyhedron geometry with associated grid topology.
  *
  * @param {THREE.Vector3[]} vertices - Array of vertex positions for the polyhedron
- * @param {number[][]} faceIndices - Array of face definitions, where each face is an array of vertex indices
+ * @param {number[][]} faces - Array of face definitions, where each face is an array of vertex indices
  * @returns {Object} An object containing:
  *   - geometry {THREE.BufferGeometry}: The Three.js geometry of the polyhedron
  *   - grid {Grid}: The grid topology containing vertices, edges, and faces
  *   - faceMap {Map<number, number>}: Maps geometry vertex indices to grid face IDs for picking
  *   - faceVertexRanges {Map<number, {start: number, count: number}>}: Maps face IDs to vertex index ranges in the geometry
+ *
+ * Note: Vertex and face IDs in the Grid correspond to their array indices in the input arrays
  *
  * @description
  * This function creates a polyhedron by:
@@ -73,18 +75,20 @@ export function createDodecahedron() {
  * 4. Creating a Three.js BufferGeometry with proper vertex positions and face indices
  * 5. Setting up data structures for face picking and coloring
  */
-function createPolyhedron(vertices, faceIndices) {
+function createPolyhedron(vertices, faces) {
     const grid = new Grid();
-    const vertexIds = vertices.map(v => grid.addVertex(v));
+    // Use vertex array indices as their IDs in the Grid
+    vertices.forEach((v, index) => grid.addVertex(v, {}, index));
 
-    const faceIds = faceIndices.map((face, i) =>
-        grid.addFace(face.map(idx => vertexIds[idx]), {
+    // Use face array indices as their IDs in the Grid
+    faces.forEach((face, i) =>
+        grid.addFace(face, {
             originalColor: FACE_DEFAULT_COLOR,
             highlightColor: FACE_HIGHLIGHT_COLOR,
             isHighlighted: false,
             index: i,
             clue: -1 // No clue by default, will be set by puzzle data
-        })
+        }, i)
     );
 
     for (const [edgeId, edge] of grid.edges) {
@@ -175,9 +179,11 @@ export function createCube() {
  *
  * @param {string} filePath - Path to the JSON file (e.g., 'data/T.json')
  * @returns {Promise<{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>,
- *     faceVertexRanges: Map<any, any>, vertices: THREE.Vector3[], gridId: string,
- *     gridName: string, categories: string[], recipe: string|undefined}>}
+ *     faceVertexRanges: Map<any, any>, vertices: THREE.Vector3[],
+ *     gridId: string, gridName: string, categories: string[], recipe: string|undefined}>}
  * @throws {Error} If the file cannot be loaded or contains invalid data
+ *
+ * Note: Grid vertex and face IDs correspond to their array indices in the JSON file
  */
 export async function loadPolyhedronFromJSON(filePath) {
     const response = await fetch(filePath);
@@ -236,7 +242,8 @@ export function createEdgeGeometry(grid) {
         const length = direction.length();
         const center = new THREE.Vector3().addVectors(v1.position, v2.position).multiplyScalar(0.5);
         const geometry = new THREE.CylinderGeometry(EDGE_RADIUS, EDGE_RADIUS, length, 8);
-        const material = new THREE.MeshPhongMaterial({ color: EDGE_COLORS.unknown, shininess: 100 });
+        const material = new THREE.MeshPhongMaterial({ color: EDGE_COLORS[EDGE_STATES[edge.metadata.userGuess]],
+            shininess: 100 });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.copy(center);
         mesh.lookAt(v2.position);

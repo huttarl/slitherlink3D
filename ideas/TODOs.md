@@ -1,5 +1,11 @@
 - [x] get js web app to load T.json file and display it
-  - [ ] then load T-puzzles.json, and display the clues
+  - [x] then load T-puzzles.json, and display the clues
+- [ ] Let's get rid of the faceIds and vertexIds that were made up in createPolyhedron,
+  and instead just use the indices from the data in the loaded file. Then we
+    won't need to search or build arrays to map from index to ID.
+- [ ] make optional id parameter to addFace and addVertex non-optional (check usage first)
+  - adapt createCube and createDodecahedron to provide IDs for vertices and faces
+- [ ] is edge finding (v1, v2) too slow? do we need to build a hashmap for it? 
 - [ ] convert some existing .json files to the latest format spec, or move them out of the
     data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
 - [ ] terminology: how do we talk consistently about the "sides" of a face? The especially tricky distinction
