@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { addSkybox } from "./skybox.js";
 import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
-import { loadPuzzleData, applyPuzzleToGrid, applySolutionToGrid } from "./puzzleLoader.js";
+import { loadPuzzleData, applyCluesToGrid, applySolutionToGrid } from "./puzzleLoader.js";
 import { VERTEX_RADIUS } from "./constants.js";
 import { createClueTexts, createVertexLabels } from "./textRenderer.js";
 
@@ -36,10 +36,10 @@ export async function createScene() {
     const { geometry, grid, faceMap, faceVertexRanges, gridId } = polyhedronData;
 
     // Apply puzzle clues to grid (validates gridId match)
-    applyPuzzleToGrid(grid, puzzleData, 0, gridId);
+    applyCluesToGrid(grid, puzzleData, 0, gridId);
 
-    // Display the solution, for now. This is only for testing.
-    applySolutionToGrid(grid, puzzleData, 0);
+    // // Display the solution, for now. This is only for testing.
+    // applySolutionToGrid(grid, puzzleData, 0);
 
     const material = new THREE.MeshPhongMaterial({ 
         vertexColors: true, 

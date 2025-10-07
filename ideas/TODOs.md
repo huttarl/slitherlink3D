@@ -1,5 +1,13 @@
+- [x] Don't display the solution automatically on load.
+- [ ] Add a "Done" button, at which point we check the user's guesses and
+    give feedback on whether they were correct.
+  - [ ] highlight wrong guesses in red
+  - [ ] tell them if they have failed to make a loop
+- [ ] Later on, add a "show solution" button, and maybe a "hint" button.
+- [ ] Eventually, we'll need a button to go on to the next puzzle, or select
+  another puzzle.
+  - [ ] somehow we'll need to implement a catalogue of available grids.
 - [ ] add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
-  - [ ] Don't display the solution automatically on load.
 - [ ] make a more interesting puzzle to play with, e.g. D.json / D-puzzles.json.
 - [ ] is edge finding (v1, v2) too slow? do we need to build a hashmap for it? 
 - [ ] convert some existing .json files to the latest format spec, or move them out of the

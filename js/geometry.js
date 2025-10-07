@@ -77,6 +77,9 @@ export function createDodecahedron() {
  */
 function createPolyhedron(vertices, faces) {
     const grid = new Grid();
+
+    normalizeVertices(vertices);
+
     // Use vertex array indices as their IDs in the Grid
     vertices.forEach((v, index) => grid.addVertex(v, {}, index));
 
@@ -318,4 +321,36 @@ function findDistancePointToLine(p, v1, v2) {
     let aMinusP = new THREE.Vector3().subVectors(a, p);
     const b = n.multiplyScalar(aMinusP.dot(n)); // This changes n, but it's ok because we won't use n again.
     return aMinusP.sub(b).length();
+}
+
+/**
+ * Normalize the vertices of a polyhedron so that they're centered about the origin,
+ * and the maximum distance from the origin is 1.
+ *
+ * @param {THREE.Vector3[]} vertices - Array of vertex positions
+ * @returns {void}
+ */
+function normalizeVertices(vertices) {
+    // Add up all the vertex vectors.
+    const totalPosition = vertices.reduce(
+        (sum, v) => sum.add(v),
+        new THREE.Vector3()
+    );
+    // Find the average position.
+    const center = totalPosition.divideScalar(vertices.length); // destructively modify totalPosition
+    console.debug("polyhedron centroid: ", center);
+    // Move each vertex so that the average is at the origin, and compute max distance from origin.
+    const maxDistance = vertices.reduce((max, v) => {
+        v.sub(center); // modify vector in-place
+        // Find max distance from origin.
+        const length = v.length();
+        return length > max ? length : max;
+    }, 0);
+    console.debug("max distance to vertex: ", maxDistance);
+    if (maxDistance > 0) {
+        // Scale all vertices so that the max distance is 1.
+        vertices.forEach(v => v.divideScalar(maxDistance));
+    } else {
+        console.error("Vertices are all lumped together! This polyhedron won't work well.");
+    }
 }

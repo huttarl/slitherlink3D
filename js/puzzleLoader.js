@@ -44,7 +44,7 @@ export async function loadPuzzleData(relPath) {
  * JSON faces array. Each face stores this index in face.metadata.index.
  * Clue values must be -1 (no clue) or 0..n where n is the number of edges on that face.
  */
-export function applyPuzzleToGrid(grid, puzzleData, puzzleIndex = 0, expectedGridId = null) {
+export function applyCluesToGrid(grid, puzzleData, puzzleIndex = 0, expectedGridId = null) {
     // Validate gridId matches
     if (expectedGridId && puzzleData.gridId !== expectedGridId) {
         throw new Error(`Grid ID mismatch: expected "${expectedGridId}", got "${puzzleData.gridId}"`);
