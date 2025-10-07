@@ -3,7 +3,7 @@ JSON polyhedron (grid) format
 A JSON object containing the following properties:
 - "gridId": string, a unique identifier for the polyhedron grid (mesh). E.g. "dodecahedron"
   - This ID will be used to ensure that puzzles are played on compatible meshes.
-- "gridName": string, a human-readable name for the mesh. E.g. "Dodecahedron"
+- "gridName": string, a human-readable name for the grid. E.g. "Dodecahedron"
 - "recipe" (optional): string, Conway's notation for the polyhedron. E.g. "aC". (This can be used
    in a link to a polyhedron construction site, e.g. https://levskaya.github.io/polyhedronisme/?recipe=aC)
 - "categories" (optional): an array of strings, human-readable names for the categories that the polyhedron
@@ -35,11 +35,12 @@ Puzzles (and their solutions) will appear in a separate JSON file, with the foll
   - a "gridId" (string), which must match the "gridId" property in the grid file.
   - "puzzles": array of objects, each of which represents a puzzle, in which we have:
     - "clues" property: an array of clue numbers, corresponding to the faces in the
-      same order as in the "faces" array. -1 means no clue shown for this face.
+      same order as in the "faces" array. -1 means no clue shown for this face. If the number
+      of clues is less than the number of faces, the remaining faces will have no clues.
     - "solution" property: an array of zero-based vertex indices, corresponding to the order in the
       vertices list, and tracing out the solution loop. We don't repeat the first vertex at the end.
 - Validation:
-  - the length of a "clues" list must be <= the number of faces in the associated mesh
+  - the length of a "clues" list must be <= the number of faces in the associated grid
   - the value of each clue must be in the range 0..n-1, where n is the number of edges that the corresponding face has
   - the length of a "solution" list must be <= the number of vertices
   - a "solution" list must not contain any duplicates
@@ -49,6 +50,6 @@ Puzzles (and their solutions) will appear in a separate JSON file, with the foll
 ```JSON
   {
     "gridId": "T",
-    "puzzles": [ { "clues": [3, 1, -1, -1], "solution": [1, 2, 3] } ]
+    "puzzles": [ { "clues": [3, 1, -1], "solution": [1, 2, 3] } ]
   }
 ```

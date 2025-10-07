@@ -1,6 +1,6 @@
 {
     "gridName": "Cube",
-    "gridID": "C",
+    "gridId": "C",
     "categories": ["Platonic solid"],
     "_comment": "The vertices are not centered at the origin, nor scaled to unit cube, so that we can test normalization.",
     "vertices": [
