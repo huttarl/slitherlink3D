@@ -22,6 +22,7 @@ import { createClueTexts, createVertexLabels } from "./textRenderer.js";
  * @property {THREE.Group} vertexGroup - Group containing all vertex sphere meshes
  * @property {THREE.AmbientLight} ambientLight - The scene's ambient light source
  * @property {THREE.DirectionalLight} directionalLight - The scene's main directional light
+ * @property {Object} puzzleData - The puzzle data loaded from JSON
  */
 export async function createScene() {
     const scene = new THREE.Scene();
@@ -38,10 +39,7 @@ export async function createScene() {
     // Apply puzzle clues to grid (validates gridId match)
     applyCluesToGrid(grid, puzzleData, 0, gridId);
 
-    // // Display the solution, for now. This is only for testing.
-    // applySolutionToGrid(grid, puzzleData, 0);
-
-    const material = new THREE.MeshPhongMaterial({ 
+    const material = new THREE.MeshPhongMaterial({
         vertexColors: true, 
         side: THREE.DoubleSide, 
         shininess: 100, 
@@ -53,7 +51,7 @@ export async function createScene() {
     // Create edge geometry and group
     const { edgeMeshes } = createEdgeGeometry(grid);
     const edgeGroup = new THREE.Group();
-    edgeGroup.add(...edgeMeshes);
+    edgeMeshes.forEach(mesh => edgeGroup.add(mesh));
     scene.add(edgeGroup);
 
     // Create vertex group
@@ -72,7 +70,7 @@ export async function createScene() {
     scene.add(clueTexts);
     
     const vertexLabels = createVertexLabels(grid);
-    scene.add(vertexLabels);
+    // scene.add(vertexLabels); // Don't add vertex labels until debug mode is on.
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -83,6 +81,6 @@ export async function createScene() {
 
     return {
         scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, clueTexts,
-        vertexLabels, vertexGroup, ambientLight, directionalLight
+        vertexLabels, vertexGroup, ambientLight, directionalLight, puzzleData
     };
 }

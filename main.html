@@ -50,17 +50,47 @@
             margin-left: 5px;
             vertical-align: middle;
         }
+        .debugging {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        .debugging input[type="checkbox"] {
+            margin-right: 6px;
+            cursor: pointer;
+        }
+
+        .debugging label {
+            cursor: pointer;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
     <div id="canvas-container">
         <div id="info">
             <h3>Slitherlink 3D</h3>
-            <p><strong>Click faces:</strong> Highlight in green</p>
-            <p><strong>Click edges:</strong> Cycle colors<br>
-            Gray → Black → White → Gray</p>
             <p>Drag to rotate • Scroll to zoom</p>
-            <div id="selection-info"></div>
+            <p><strong>Click edges</strong> to indicate guess<br>
+<!--            Gray → Black → White → Gray-->
+            </p>
+        </div>
+        <div class="debugging">
+            <label>
+                <input type="checkbox" id="debugToggle">
+                Debug Mode
+            </label>
+            <div id="debug-info" style="display: none;">
+                <p><strong>Click faces</strong> to highlight & log details</p>
+                <div id="selection-info"></div>
+            </div>
         </div>
     </div>
     <script type="importmap">

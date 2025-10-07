@@ -92,6 +92,7 @@ export function applyCluesToGrid(grid, puzzleData, puzzleIndex = 0, expectedGrid
 
 /**
  * Applies a puzzle's solution to the grid by setting edge states.
+ * Doesn't immediately affect the grid's geometry.
  *
  * @param {Grid} grid - The grid to apply solution to
  * @param {Object} puzzleData - Puzzle data with gridId and puzzles array

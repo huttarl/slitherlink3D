@@ -5,22 +5,22 @@ import { updateTextVisibility } from './textRenderer.js';
 import { CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js';
 import { makeInteraction } from './interaction.js';
 import { createScene } from "./scene.js";
+import { toggleDebugFeatures } from "./debugging.js";
 
 async function main() {
     // Create scene and get all necessary objects
     const {
         scene, polyhedronMesh, geometry, grid, faceMap,
-        faceVertexRanges, edgeMeshes, clueTexts
+        faceVertexRanges, edgeMeshes, clueTexts, vertexLabels, puzzleData
     } = await createScene();
 
     // Camera
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    // Set the camera so that perspective distortion is not too pronounced.
     const cameraDistance = 6;
+    const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, cameraDistance - 2, 1000);
+    // Set the camera so that perspective distortion is not too pronounced.
+    camera.position.y = 1;
     camera.position.z = cameraDistance;
-    camera.fov = 35;
-    camera.near = cameraDistance - 2;
-    // camera.far = cameraDistance + 10; // Don't cut out the skybox.
+    camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
 
     // Renderer
@@ -41,6 +41,11 @@ async function main() {
         renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges,
         edgeMeshes, controls
     });
+
+    // Wire up debugging toggle
+    const debugToggle = document.getElementById('debugToggle');
+    debugToggle.addEventListener('change',
+        (e) => toggleDebugFeatures(e.target.checked, grid, scene, puzzleData, vertexLabels));
 
     // Render loop
     function animate() {

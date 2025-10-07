@@ -1,4 +1,7 @@
-- [x] Don't display the solution automatically on load.
+- [ ] ~add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
+  - [x] show vertex IDs
+  - [ ] display solution
+- [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
 - [ ] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
   - [ ] highlight wrong guesses in red
@@ -7,8 +10,8 @@
 - [ ] Eventually, we'll need a button to go on to the next puzzle, or select
   another puzzle.
   - [ ] somehow we'll need to implement a catalogue of available grids.
-- [ ] add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
-- [ ] make a more interesting puzzle to play with, e.g. D.json / D-puzzles.json.
+- [ ] put in some aesthetic animation: smoothed zooming in on load, zooming out when solved,
+    smoothed autorotate after load (while zooming), stops when mouse clicked.
 - [ ] is edge finding (v1, v2) too slow? do we need to build a hashmap for it? 
 - [ ] convert some existing .json files to the latest format spec, or move them out of the
     data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
@@ -72,9 +75,6 @@
 - [ ] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
     - [ ] Is this encoded in the JSON?
     - [ ] maybe associate a color (scheme) with each polyhedron, and category, for more atmosphere?
-- [ ] auto-zoom: after loading polyhedron data from file, zoom to an appropriate level
-    based on polyhedron size (e.g. max distance of vertices from origin)
-  - [ ] Do we need to first move vertices to be centered around the origin?
 - [ ] figure out data flow for grids, puzzles and solutions
     - [x] what formats do we already have
         - [x] as example data
@@ -191,3 +191,8 @@ Old items:
   won't need to search or build arrays to map from index to ID.
 - [x] q make optional id parameter to addFace and addVertex non-optional (check usage first)
     - [x] (n/a) adapt createCube and createDodecahedron to provide IDs for vertices and faces
+- [x] auto-zoom: after loading polyhedron data from file, zoom to an appropriate level
+  based on polyhedron size (e.g. max distance of vertices from origin)
+    - [x] Do we need to first move vertices to be centered around the origin?
+- [x] make a more interesting puzzle to play with, e.g. D.json / D-puzzles.json.
+- [x] Don't display the solution automatically on load.
