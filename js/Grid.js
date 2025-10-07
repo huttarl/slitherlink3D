@@ -73,7 +73,7 @@ export class Grid {
             const v1 = vertexIds[i];
             const v2 = vertexIds[(i + 1) % vertexIds.length];
 
-            let edgeId = -1;
+            let edgeId = null;
             for (const [eId, edge] of this.edges) {
                 if ((edge.vertices[0] === v1 && edge.vertices[1] === v2) ||
                     (edge.vertices[0] === v2 && edge.vertices[1] === v1)) {
@@ -82,7 +82,7 @@ export class Grid {
                     break;
                 }
             }
-            if (edgeId < 0) {
+            if (edgeId === null) {
                 edgeId = this.addEdge(v1, v2);
                 // console.log(`Face ${id}: Created new edge ${edgeId} for vertices ${v1}-${v2}`);
             }

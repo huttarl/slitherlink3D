@@ -1,5 +1,6 @@
 - [ ] add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
   - [ ] Don't display the solution automatically on load.
+- [ ] make a more interesting puzzle to play with, e.g. D.json / D-puzzles.json.
 - [ ] is edge finding (v1, v2) too slow? do we need to build a hashmap for it? 
 - [ ] convert some existing .json files to the latest format spec, or move them out of the
     data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
