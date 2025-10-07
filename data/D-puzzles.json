@@ -1,0 +1,10 @@
+{
+  "gridId": "D",
+  "puzzles": [
+    {
+      "_comment": "Solution is a valid loop and the clues are correct. TODO: check whether the solution is unique.",
+      "clues": [-1,-1,1,-1,-1,4,-1,-1,-1,4,3,2],
+      "solution": [0,1,4,7,2,6,12,18,15,9,3]
+    }
+  ]
+}

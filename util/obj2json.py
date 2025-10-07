@@ -2,7 +2,7 @@
 
 # The following is for printing to stderr.
 from __future__ import print_function
-import sys, json
+import sys, json, re
 
 cells = []
 vertices = []
@@ -62,21 +62,26 @@ def input_face(line):
     cells.append(vx_indices)
     num_edges += len(vx_indices) / 2.0 # Because each edge belongs to 2 cells.
     # TODO maybe: Catch cases where a vertex index is out of bounds.
-    
+
+def sanitize_for_id(s):
+    """Sanitize string for use as an ID."""
+    # Allow alphanumeric ASCII characters + underscore.
+    return re.sub(r"[^0-9a-z_]", "", s.lower())
+
 def output():
     # Make output format compact, so that it loads quickly.
     print(json.dumps({
-        "meshID": name,  # machine-friendly ID; TODO may need to be sanitized.
-        "meshName": name,  # user-visible name, e.g. "Rhombille"
+        "gridId": sanitize_for_id(name),  # machine-friendly ID
+        "gridName": name,  # user-visible name, e.g. "Rhombille"
         # At some point, add categories like "Johnson solid" and/or "zonohedron" etc.
         # That may come after the OBJ-to-JSON conversion.
         "categories": [],
-        "nCells": len(cells),  # "cell" == "face"
-        "nEdges": int(num_edges), # Not sure why we need these counts, but they don't hurt.
-        "nVertices": len(vertices),
+#         "nCells": len(cells),  # "cell" == "face"
+#         "nEdges": int(num_edges), # Not sure why we need these counts, but they don't hurt.
+#         "nVertices": len(vertices),
         "vertices": vertices,
-        "cells": cells,
-        "puzzles": []
+        "faces": cells,
+#         "puzzles": []
         }, separators=(',',':')))
     
 def main():

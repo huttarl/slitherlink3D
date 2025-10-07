@@ -68,6 +68,7 @@
       we're good with the JSON format emitted by obj2json.py, although it calls faces "cells,"
       which is inconsistent with our usage elsewhere.
       In one sense, "cell" is more consistent with 2D Slitherlink puzzles. I guess we'll leave it as is.
+- Handle errors more gracefully, e.g. in loadPolyhedronFromJSON().
 - [ ] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
     - [ ] Is this encoded in the JSON?
     - [ ] maybe associate a color (scheme) with each polyhedron, and category, for more atmosphere?

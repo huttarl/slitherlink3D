@@ -29,8 +29,8 @@ export async function createScene() {
 
     // Load geometry and puzzle data in parallel for better performance
     const [polyhedronData, puzzleData] = await Promise.all([
-        loadPolyhedronFromJSON('data/T.json'),
-        loadPuzzleData('data/T-puzzles.json')
+        loadPolyhedronFromJSON('data/D.json'),
+        loadPuzzleData('data/D-puzzles.json')
     ]);
 
     const { geometry, grid, faceMap, faceVertexRanges, gridId } = polyhedronData;
