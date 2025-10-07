@@ -132,7 +132,8 @@ function createPolyhedron(vertices, faces) {
                 faceMap.set(indices.length - 3 + j, faceId);
             }
         }
-        console.log(`minRadius(${faceId}): `, findFaceMinRadius(grid, face));
+        // console.log(`minRadius(${faceId}): `, findFaceMinRadius(grid, face));
+        // TODO maybe: output a ratio of minRadius to max face radius, or polyhedron average radius, or ...?
     }
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -242,6 +243,10 @@ export function createEdgeGeometry(grid) {
         const length = direction.length();
         const center = new THREE.Vector3().addVectors(v1.position, v2.position).multiplyScalar(0.5);
         const geometry = new THREE.CylinderGeometry(EDGE_RADIUS, EDGE_RADIUS, length, 8);
+        // if (edgeId === 0) {
+        //     console.log(`Edge 0 details: vertices [${edge.vertices[0]}, ${edge.vertices[1]}], v1=`, v1.position, `v2=`, v2.position, `length=${length}`);
+        // }
+        // console.log(`createEdgeGeometry: edge ${edgeId}, userGuess=${edge.metadata.userGuess}, state=${EDGE_STATES[edge.metadata.userGuess]}, color=`, EDGE_COLORS[EDGE_STATES[edge.metadata.userGuess]]);
         const material = new THREE.MeshPhongMaterial({ color: EDGE_COLORS[EDGE_STATES[edge.metadata.userGuess]],
             shininess: 100 });
         const mesh = new THREE.Mesh(geometry, material);

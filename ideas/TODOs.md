@@ -1,10 +1,5 @@
-- [x] get js web app to load T.json file and display it
-  - [x] then load T-puzzles.json, and display the clues
-- [ ] Let's get rid of the faceIds and vertexIds that were made up in createPolyhedron,
-  and instead just use the indices from the data in the loaded file. Then we
-    won't need to search or build arrays to map from index to ID.
-- [ ] make optional id parameter to addFace and addVertex non-optional (check usage first)
-  - adapt createCube and createDodecahedron to provide IDs for vertices and faces
+- [ ] add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
+  - [ ] Don't display the solution automatically on load.
 - [ ] is edge finding (v1, v2) too slow? do we need to build a hashmap for it? 
 - [ ] convert some existing .json files to the latest format spec, or move them out of the
     data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
@@ -161,8 +156,6 @@
                 Johnson solids, Catalan solids, zonohedra...
             - more puzzles on the bigger polyhedra
 
-- [x] print out some 2D flattened charts (not nets) of octahedron, dodecahedron, and icosahedron
-    so I can play with puzzles
 
 - graph theory regarding slitherlink circuits: see ideas/graph-cycles.txt.
 
@@ -175,7 +168,16 @@
 
 Old items:
 
+- [x] print out some 2D flattened charts (not nets) of octahedron, dodecahedron, and icosahedron
+  so I can play with puzzles
 - [x] display vertex numbers over vertices: this would really help with entering puzzles
 - [x] refactor main() to take scene building out into scene.js
 - [x] change signature of getFaceVertices() to take a Face instead of a faceId, avoiding an
   unnecessary lookup
+- [x] get js web app to load T.json file and display it
+    - [x] then load T-puzzles.json, and display the clues
+- [x] Let's get rid of the faceIds and vertexIds that were made up in createPolyhedron,
+  and instead just use the indices from the data in the loaded file. Then we
+  won't need to search or build arrays to map from index to ID.
+- [x] q make optional id parameter to addFace and addVertex non-optional (check usage first)
+    - [x] (n/a) adapt createCube and createDodecahedron to provide IDs for vertices and faces

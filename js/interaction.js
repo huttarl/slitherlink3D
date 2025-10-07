@@ -63,7 +63,7 @@ export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geome
         } else {
             edge.metadata.userGuess = (edge.metadata.userGuess + 1) % EDGE_STATES.length;
         }
-        console.log(`cycleEdgeState: userGuess = ${edge.metadata.userGuess}`);
+        // console.log(`cycleEdgeState: userGuess = ${edge.metadata.userGuess}`);
         const stateName = EDGE_STATES[edge.metadata.userGuess];
         edgeMesh.material.color = EDGE_COLORS[stateName];
     }
