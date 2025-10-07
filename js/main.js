@@ -15,7 +15,13 @@ async function main() {
 
     // Camera
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 5;
+    // Set the camera so that perspective distortion is not too pronounced.
+    const cameraDistance = 6;
+    camera.position.z = cameraDistance;
+    camera.fov = 35;
+    camera.near = cameraDistance - 2;
+    // camera.far = cameraDistance + 10; // Don't cut out the skybox.
+    camera.updateProjectionMatrix();
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
