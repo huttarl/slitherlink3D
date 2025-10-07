@@ -83,16 +83,20 @@ function createPolyhedron(vertices, faces) {
     // Use vertex array indices as their IDs in the Grid
     vertices.forEach((v, index) => grid.addVertex(v, {}, index));
 
-    // Use face array indices as their IDs in the Grid
-    faces.forEach((face, i) =>
+    faces.forEach((face, i) => {
+        if (face.length < 3) {
+            throw new Error(`Face ${i}: must have at least 3 vertices, got ${face.length}`);
+        }
+
         grid.addFace(face, {
             originalColor: FACE_DEFAULT_COLOR,
             highlightColor: FACE_HIGHLIGHT_COLOR,
             isHighlighted: false,
+            // Use index of face in loaded array of faces as that face's ID in the Grid.
             index: i,
             clue: -1 // No clue by default, will be set by puzzle data
         }, i)
-    );
+    });
 
     for (const [edgeId, edge] of grid.edges) {
         // edge.metadata.state = 'gray'; // delete

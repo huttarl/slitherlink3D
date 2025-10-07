@@ -4,9 +4,9 @@ A JSON object containing the following properties:
 - "gridId": string, a unique identifier for the polyhedron grid (mesh). E.g. "dodecahedron"
   - This ID will be used to ensure that puzzles are played on compatible meshes.
 - "gridName": string, a human-readable name for the mesh. E.g. "Dodecahedron"
-- "recipe": string (optional), Conway's notation for the polyhedron. E.g. "aC". (This can be used
+- "recipe" (optional): string, Conway's notation for the polyhedron. E.g. "aC". (This can be used
    in a link to a polyhedron construction site, e.g. https://levskaya.github.io/polyhedronisme/?recipe=aC)
-- "categories": an array of strings, human-readable names for the categories that the polyhedron
+- "categories" (optional): an array of strings, human-readable names for the categories that the polyhedron
   belongs to. E.g. ["Platonic solid", "zonohedron"]
 - "vertices": array of 3-number arrays. Each sub-array is a vertex, and each number is
     a coordinate (X, Y, Z). E.g. [ [0, 0, 1], [-0.3, 0.577, 0.745], ...]
@@ -15,6 +15,7 @@ A JSON object containing the following properties:
 - Validation:
   - The arrays for "vertices" and "faces" must be non-empty. There must be at least 4
     vertices and 4 faces.
+  - Each face must have at least 3 vertices.
 - Example:
 ```JSON
   {
