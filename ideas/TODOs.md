@@ -1,6 +1,10 @@
+- [ ] In main(), try to stop passing big complicated objects or so many parameters back and forth.
+    Instead, group them under a few classes, such as part of Grid and/or maybe a new GridGeometry class.
 - [ ] ~add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
   - [x] show vertex IDs
-  - [ ] display solution
+  - [ ] *display solution (don't just set the edge states; or maybe even don't change the edge states
+    but just the color of the edge geometry!)
+- [x] produce clue textures for up to 12 faces, instead of just 9, to allow us freedom to use more different shapes.
 - [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
 - [ ] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.

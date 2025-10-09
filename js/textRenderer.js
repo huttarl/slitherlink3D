@@ -141,11 +141,12 @@ export function createClueTexts(grid) {
     canvas.width = 256;
     canvas.height = 256;
     // Unused? const context = canvas.getContext('2d');
-    
-    // Create materials for each digit (0-9)
+
+    // Create materials for numbers 0-12
+    const maxClue = 12
     const materials = {};
-    for (let i = 0; i <= 9; i++) {
-        // Create a separate canvas for each digit
+    for (let i = 0; i <= maxClue; i++) {
+        // Create a separate canvas for each number
         // TODO sometime: make canvas size, font size (and line width?) depend on minimum face size?
         const digitCanvas = document.createElement('canvas');
         digitCanvas.width = 256;
