@@ -4,8 +4,8 @@ import { EDGE_RADIUS, EDGE_COLORS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDG
 
 /** Create geometry and topology of a dodecahedron.
  *
- * @returns {{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>, faceVertexRanges: Map<any, any>,
- *      vertices: THREE.Vector3[]}}
+ * @returns {{geometry: THREE.BufferGeometry, grid: Grid,
+ *      faceMap: Map<any, any>, faceVertexRanges: Map<any, any>}}
  */
 export function createDodecahedron() {
     const phi = (1 + Math.sqrt(5)) / 2;
@@ -64,7 +64,6 @@ export function createDodecahedron() {
  *   - grid {Grid}: The grid topology containing vertices, edges, and faces
  *   - faceMap {Map<number, number>}: Maps geometry vertex indices to grid face IDs for picking
  *   - faceVertexRanges {Map<number, {start: number, count: number}>}: Maps face IDs to vertex index ranges in the geometry
- *   - vertices {THREE.Vector3[]} - Array of vertex positions for the polyhedron
  *
  * Note: Vertex and face IDs in the Grid correspond to their array indices in the input arrays
  *
@@ -149,13 +148,12 @@ function createPolyhedron(vertices, faces) {
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
-    return {geometry, grid: grid, faceMap, faceVertexRanges, vertices};
+    return {geometry, grid: grid, faceMap, faceVertexRanges};
 }
 
 /** Create geometry and topology of a cube.
  *
- * @returns {{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>, faceVertexRanges: Map<any, any>,
- *      vertices: THREE.Vector3[]}}
+ * @returns {{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>, faceVertexRanges: Map<any, any>}}
  */
 export function createCube() {
     const a = 1;
@@ -188,8 +186,8 @@ export function createCube() {
  *
  * @param {string} filePath - Path to the JSON file (e.g., 'data/T.json')
  * @returns {Promise<{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>,
- *     faceVertexRanges: Map<any, any>, vertices: THREE.Vector3[],
- *     gridId: string, gridName: string, categories: string[], recipe: string|undefined}>}
+ *     faceVertexRanges: Map<any, any>, gridId: string, gridName: string, categories: string[],
+ *     recipe: string|undefined}>}
  * @throws {Error} If the file cannot be loaded or contains invalid data
  *
  * Note: Grid vertex and face IDs correspond to their array indices in the JSON file
