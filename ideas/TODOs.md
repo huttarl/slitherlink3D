@@ -2,9 +2,10 @@
     Instead, group them under a few classes, such as part of Grid and/or maybe a new GridGeometry class.
 - [ ] ~add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
   - [x] show vertex IDs
-  - [ ] ~*display solution (don't just set the edge states; or maybe even don't change the edge states
+  - [x] display solution (don't just set the edge states; or maybe even don't change the edge states
     but just the color of the edge geometry!)
     - [ ] make sure we're not unnecessarily overwriting userGuess anywhere else.
+  - [ ] stop displaying solution when we turn off debugging mode
 - [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
 - [ ] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
@@ -16,7 +17,7 @@
   - [ ] somehow we'll need to implement a catalogue of available grids.
 - [ ] put in some aesthetic animation: smoothed zooming in on load, zooming out when solved,
     smoothed autorotate after load (while zooming), stops when mouse clicked.
-- [ ] is edge finding (v1, v2) too slow? do we need to build a hashmap for it? 
+- [ ] is edge finding (v1, v2) too slow? do we need to build a hashmap for it? see TODOs in the code.
 - [ ] convert some existing .json files to the latest format spec, or move them out of the
     data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
 - [ ] terminology: how do we talk consistently about the "sides" of a face? The especially tricky distinction
