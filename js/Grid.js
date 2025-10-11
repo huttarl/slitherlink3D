@@ -1,3 +1,7 @@
+import {Face} from "./Face.js";
+import {Vertex} from "./Vertex.js";
+import {Edge} from "./Edge.js";
+
 /** Graph-based topology and geometry representation for polyhedron.
  * Maintains relationships between vertices, edges, and faces.
  * 
@@ -5,7 +9,7 @@
  * @property {Map<number, Vertex>} vertices - Map of vertex IDs to Vertex objects
  * @property {Map<number, Edge>} edges - Map of edge IDs to Edge objects
  * @property {Map<number, Face>} faces - Map of face IDs to Face objects
- * @property {number} nextId - The next available ID for a new vertex, edge, or face
+ * @property {number} nextId - The next available ID for a new object
  */
 export class Grid {
     constructor() {
@@ -22,13 +26,8 @@ export class Grid {
      * @param {number} id - ID for the vertex
      */
     addVertex(position, metadata = {}, id) {
-        // TODO maybe: Use a Vertex class?
-        this.vertices.set(id, {
-            position: position.clone(),
-            edges: new Set(),
-            faces: new Set(),
-            metadata
-        });
+        let vertex = new Vertex(position.clone(), new Set(), new Set(), metadata);
+        this.vertices.set(id, vertex);
     }
 
     /** Creates and adds an edge between two vertices to the grid.
@@ -42,61 +41,52 @@ export class Grid {
      */
     addEdge(v1Id, v2Id, metadata = {}) {
         const id = this.nextId++;
-        let newEdge = {
-            // TODO: rename to vertexIds
-            vertices: [v1Id, v2Id],
-            // Faces will be populated in addFace, so edges must be added first.
-            // TODO: rename to faceIds
-            faces: new Set(),
-            metadata
-        };
+        let newEdge = new Edge([v1Id, v2Id],
+            // Faces will be populated in addFace, so edges must be added first without faces.
+            new Set(), metadata);
         // console.log("addEdge", `${id} ${newEdge.metadata}`);
         // Add id of this edge to grid's collection of edges.
         this.edges.set(id, newEdge);
         // Add id of this edge to each vertex's collection of edges.
-        this.vertices.get(v1Id).edges.add(id);
-        this.vertices.get(v2Id).edges.add(id);
+        this.vertices.get(v1Id).edgeIDs.add(id);
+        this.vertices.get(v2Id).edgeIDs.add(id);
         return id;
     }
 
     /** Adds a face to the grid.
      *
-     * @param {number[]} vertexIds - IDs of vertices that make up the face
+     * @param {number[]} vertexIDs - IDs of vertices that make up the face
      * @param {Object} metadata - Additional metadata for the face
      * @param {number} id - ID for the face
-     * TODO maybe: refactor this to use a Face class
      */
-    addFace(vertexIds, metadata = {}, id) {
-        const edgeIds = [];
+    addFace(vertexIDs, metadata = {}, id) {
+        const edgeIDs = [];
 
-        for (let i = 0; i < vertexIds.length; i++) {
-            const v1 = vertexIds[i];
-            const v2 = vertexIds[(i + 1) % vertexIds.length];
+        for (let i = 0; i < vertexIDs.length; i++) {
+            const v1Id = vertexIDs[i];
+            const v2Id = vertexIDs[(i + 1) % vertexIDs.length];
 
             let edgeId = null;
+            // TODO: consider a faster way to find edges given two vertex IDs
             for (const [eId, edge] of this.edges) {
-                if ((edge.vertices[0] === v1 && edge.vertices[1] === v2) ||
-                    (edge.vertices[0] === v2 && edge.vertices[1] === v1)) {
+                if ((edge.vertexIDs[0] === v1Id && edge.vertexIDs[1] === v2Id) ||
+                    (edge.vertexIDs[0] === v2Id && edge.vertexIDs[1] === v1Id)) {
                     edgeId = eId;
                     // console.log(`Face ${id}: Found existing edge ${eId} for vertices ${v1}-${v2}`);
                     break;
                 }
             }
             if (edgeId === null) {
-                edgeId = this.addEdge(v1, v2);
+                edgeId = this.addEdge(v1Id, v2Id);
                 // console.log(`Face ${id}: Created new edge ${edgeId} for vertices ${v1}-${v2}`);
             }
-            edgeIds.push(edgeId);
-            this.edges.get(edgeId).faces.add(id);
+            edgeIDs.push(edgeId);
+            this.edges.get(edgeId).faceIDs.add(id);
         }
 
-        this.faces.set(id, {
-            vertices: vertexIds,
-            edges: edgeIds,
-            metadata
-        });
-        for (const vId of vertexIds) {
-            this.vertices.get(vId).faces.add(id);
+        this.faces.set(id, new Face(vertexIDs, edgeIDs, metadata));
+        for (const vId of vertexIDs) {
+            this.vertices.get(vId).faceIDs.add(id);
         }
     }
 
@@ -107,7 +97,7 @@ export class Grid {
     getFaceVertices(face) {
         // const face = this.faces.get(faceId); // No longer needed.
         // The face only stores vertex IDs, but the vertex data is stored in the Grid.
-        return face ? face.vertices.map(vId => this.vertices.get(vId)) : [];
+        return face ? face.vertexIDs.map(vId => this.vertices.get(vId)) : [];
     }
 
     /** Gets all faces that share an edge with the specified face.
@@ -116,11 +106,11 @@ export class Grid {
      */
     getAdjacentFaces(faceId) {
         const face = this.faces.get(faceId);
-        if (!face) return [];
         const adjacent = new Set();
-        for (const edgeId of face.edges) {
+        if (!face) return adjacent; // empty set
+        for (const edgeId of face.edgeIDs) {
             const edge = this.edges.get(edgeId);
-            for (const fId of edge.faces) {
+            for (const fId of edge.faceIDs) {
                 if (fId !== faceId) adjacent.add(fId);
             }
         }

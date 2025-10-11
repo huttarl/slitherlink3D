@@ -1,15 +1,16 @@
 /** Edge in a polyhedron.
- * @prop {number[]} vertices - IDs of the two vertices that make up the edge
- * @prop {number[]} faces - IDs of faces adjacent to the edge (may be filled in later)
+ * @prop {number[]} vertexIDs - IDs of the two vertices that make up the edge
+ * @prop {Set<number>} faceIDs - IDs of faces adjacent to the edge (filled in later)
  * @prop {Object} metadata - whatever metadata we need to store
  * @prop {number} metadata.userGuess - state of user guess for the edge (0=unknown, 1=filled in, 2=ruled out)
  * @prop {number} metadata.solutionState - solution for the edge (1=filled in, 2=ruled out)
+ * @prop {THREE.Mesh} metadata.mesh - the geometry mesh used to display this edge (filled in later)
  */
-class Edge {
-    constructor(vertices, faces, metadata = {}) {
-        // TODO: rename to vertexIds and faceIds
-        this.vertices = vertices;
-        this.faces = faces;
+export class Edge {
+    constructor(vertexIDs, faceIDs, metadata = {}) {
+        this.vertexIDs = vertexIDs;
+        this.faceIDs = faceIDs;
         this.metadata = metadata;
+        this.metadata.mesh = null;
     }
 }

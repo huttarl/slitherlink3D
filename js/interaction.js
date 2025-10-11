@@ -86,7 +86,7 @@ export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geome
             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
                 <strong>Edge clicked${direction}</strong><br>
                 <strong>New state:</strong> ${edgeColor} ${colorBox}<br>
-                <strong>Connects faces:</strong> ${edge.faces.size}
+                <strong>Connects faces:</strong> ${edge.faceIDs.size}
             </div>
         `;
     }
@@ -121,7 +121,7 @@ export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geome
             infoDiv.innerHTML = `
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
                     <strong>Selected Face:</strong> #${face.metadata.index}<br>
-                    <strong>Vertices:</strong> ${face.vertices.length}<br>
+                    <strong>Vertices:</strong> ${face.vertexIDs.length}<br>
                     <strong>Adjacent Faces:</strong> ${adjacentFaces.size}
                 </div>
             `;

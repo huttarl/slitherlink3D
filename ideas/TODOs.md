@@ -2,9 +2,9 @@
     Instead, group them under a few classes, such as part of Grid and/or maybe a new GridGeometry class.
 - [ ] ~add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
   - [x] show vertex IDs
-  - [ ] *display solution (don't just set the edge states; or maybe even don't change the edge states
+  - [ ] ~*display solution (don't just set the edge states; or maybe even don't change the edge states
     but just the color of the edge geometry!)
-- [x] produce clue textures for up to 12 faces, instead of just 9, to allow us freedom to use more different shapes.
+    - [ ] make sure we're not unnecessarily overwriting userGuess anywhere else.
 - [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
 - [ ] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
@@ -200,3 +200,4 @@ Old items:
     - [x] Do we need to first move vertices to be centered around the origin?
 - [x] make a more interesting puzzle to play with, e.g. D.json / D-puzzles.json.
 - [x] Don't display the solution automatically on load.
+- [x] produce clue textures for up to 12 faces, instead of just 9, to allow us freedom to use more different shapes.

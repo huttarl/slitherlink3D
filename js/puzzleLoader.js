@@ -3,6 +3,8 @@
  * Handles loading puzzle data from JSON files and applying clues to grids.
  */
 
+import {EDGE_COLORS} from "./constants.js";
+
 /**
  * Loads puzzle data from a JSON file.
  *
@@ -79,7 +81,7 @@ export function applyCluesToGrid(grid, puzzleData, puzzleIndex = 0, expectedGrid
         // Validate clue value - must be -1 or in range 0..numEdges (inclusive)
         // Note: Slitherlink clues indicate how many edges of a face are in the solution loop
         if (clue !== -1) {
-            const numEdges = face.edges.length;
+            const numEdges = face.edgeIDs.length;
             if (!Number.isInteger(clue) || clue < 0 || clue > numEdges) {
                 throw new Error(`Invalid clue ${clue} for face ${faceIndex}: must be -1 or 0-${numEdges}`);
             }
@@ -91,21 +93,70 @@ export function applyCluesToGrid(grid, puzzleData, puzzleIndex = 0, expectedGrid
 }
 
 /**
- * Applies a puzzle's solution to the grid by setting edge states.
- * Doesn't immediately affect the grid's geometry.
+ * Show a puzzle's solution to the grid by setting edge colors.
  *
  * @param {Grid} grid - The grid to apply solution to
  * @param {Object} puzzleData - Puzzle data with gridId and puzzles array
  * @param {number} puzzleIndex - Index of puzzle to apply (default 0)
+ * @param {THREE.Mesh[]} edgeMeshes - edge mesh geometries
  * @throws {Error} If validation fails or solution is invalid
  *
  * @description
  * The solution array contains vertex indices from the original JSON vertices array that
  * trace out the solution loop. Since Grid vertex IDs correspond to JSON vertex indices,
  * we can use them directly. This function finds edges between consecutive vertices
- * (including last→first to close the loop) and sets edge.metadata.userGuess = 1 (filled in).
+ * (including last→first to close the loop) and sets the edge's geometry color to EDGE_COLORS.solution.
+ *
+ * TODO: this doesn't really belong in puzzleLoader. Think about structure...
  */
-export function applySolutionToGrid(grid, puzzleData, puzzleIndex) {
+export function highlightSolution(grid, puzzleData, puzzleIndex = 0, edgeMeshes) {
+    // console.log("highlightSolution", puzzleData); // debugging
+
+    const puzzle = puzzleData.puzzles[puzzleIndex];
+    const solutionVIds = puzzle.solution;
+
+    // For each consecutive pair of vertices in the solution (including last→first)
+    for (let i = 0; i < solutionVIds.length; i++) {
+        const v1Id = solutionVIds[i];
+        const v2Id = solutionVIds[(i + 1) % solutionVIds.length];
+
+        // Find the edge between v1 and v2
+        let foundEdge = false;
+        for (const [eId, edge] of grid.edges) {
+            if ((edge.vertexIDs[0] === v1Id && edge.vertexIDs[1] === v2Id) ||
+                (edge.vertexIDs[0] === v2Id && edge.vertexIDs[1] === v1Id)) {
+                // Flag that we found it.
+                foundEdge = true;
+                console.log("highlightSolution", `Found edge ${eId} between ${v1Id} and ${v2Id}`); // debugging
+                edge.metadata.mesh.material.color = EDGE_COLORS.solution;
+                break;
+            }
+        }
+
+        // Validate that adjacent vertices in solution are connected by an edge
+        if (!foundEdge) {
+            throw new Error(`No edge found between vertices ${v1Id} and ${v2Id} in solution`);
+        }
+    }
+}
+
+
+/**
+ * Checks a solution for obvious problems.
+ *
+ * @param {Grid} grid - The grid to apply solution to
+ * @param {Object} puzzleData - Puzzle data with gridId and puzzles array
+ * @param {number} puzzleIndex - Index of puzzle to apply (default 0)
+ * @throws {Error} If validation fails or solution is invalid
+ *  TODO: may change how we handle errors.
+ *
+ * @description
+ * The solution array contains vertex indices from the original JSON vertices array that
+ * trace out the solution loop. Since Grid vertex IDs correspond to JSON vertex indices,
+ * we can use them directly. This function finds edges between consecutive vertices
+ * (including last→first to close the loop) and ...
+ */
+export function validateSolution(grid, puzzleData, puzzleIndex) {
     // console.log("applySolutionToGrid", puzzleData); // debugging
 
     // Validate puzzle index
@@ -115,16 +166,16 @@ export function applySolutionToGrid(grid, puzzleData, puzzleIndex) {
 
     const puzzle = puzzleData.puzzles[puzzleIndex];
 
+    const solution = puzzle.solution;
+
     // Validate solution exists
-    if (!puzzle.solution || !Array.isArray(puzzle.solution)) {
+    if (!solution || !Array.isArray(solution)) {
         throw new Error('Invalid or missing solution in puzzle');
     }
 
-    const solution = puzzle.solution;
-
     // Validate solution length per json-format.md spec
-    if (solution.length > grid.vertices.size) {
-        throw new Error(`Solution length (${solution.length}) exceeds number of vertices (${grid.vertices.size})`);
+    if (solution.length < 3 || solution.length > grid.vertices.size) {
+        throw new Error(`Solution length (${solution.length}) too small or exceeds number of vertices (${grid.vertices.size})`);
     }
 
     // Validate no duplicates in solution
@@ -140,7 +191,7 @@ export function applySolutionToGrid(grid, puzzleData, puzzleIndex) {
         }
     }
 
-    // For each consecutive pair of vertices in the solution (including last→first)
+    // Check that each edge in the solution (including last→first) exists in the grid.
     for (let i = 0; i < solution.length; i++) {
         const v1 = solution[i];
         const v2 = solution[(i + 1) % solution.length];
@@ -148,18 +199,16 @@ export function applySolutionToGrid(grid, puzzleData, puzzleIndex) {
         // Find the edge between v1 and v2
         let edgeId = null;
         for (const [eId, edge] of grid.edges) {
-            if ((edge.vertices[0] === v1 && edge.vertices[1] === v2) ||
-                (edge.vertices[0] === v2 && edge.vertices[1] === v1)) {
+            if ((edge.vertexIDs[0] === v1 && edge.vertexIDs[1] === v2) ||
+                (edge.vertexIDs[0] === v2 && edge.vertexIDs[1] === v1)) {
                 // Flag that we found it.
                 edgeId = eId;
                 // console.log("applySolutionToGrid", `Found edge ${eId} between ${v1} and ${v2}`); // debugging
-                // Set edge as filled in (userGuess = 1 means "filledIn")
-                edge.metadata.userGuess = 1;
                 break;
             }
         }
 
-        // Validate that adjacent vertices in solution are connected by an edge
+        // Validate that adjacent vertices in solution are connected by an existing edge
         if (edgeId === null) {
             throw new Error(`No edge found between vertices ${v1} and ${v2} in solution`);
         }

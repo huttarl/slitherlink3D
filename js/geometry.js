@@ -64,6 +64,7 @@ export function createDodecahedron() {
  *   - grid {Grid}: The grid topology containing vertices, edges, and faces
  *   - faceMap {Map<number, number>}: Maps geometry vertex indices to grid face IDs for picking
  *   - faceVertexRanges {Map<number, {start: number, count: number}>}: Maps face IDs to vertex index ranges in the geometry
+ *   - vertices {THREE.Vector3[]} - Array of vertex positions for the polyhedron
  *
  * Note: Vertex and face IDs in the Grid correspond to their array indices in the input arrays
  *
@@ -218,11 +219,11 @@ export async function loadPolyhedronFromJSON(filePath) {
     // Convert vertex coordinate arrays [x, y, z] to THREE.Vector3 objects
     const vertices = data.vertices.map(([x, y, z]) => new THREE.Vector3(x, y, z));
 
-    // Use face indices directly from JSON
-    const faceIndices = data.faces;
+    // Use faces directly from JSON
+    const faces = data.faces;
 
     // Call createPolyhedron to build geometry and grid topology
-    const polyhedron = createPolyhedron(vertices, faceIndices);
+    const polyhedron = createPolyhedron(vertices, faces);
 
     // Add metadata from JSON to the result
     return {
@@ -244,8 +245,8 @@ export function createEdgeGeometry(grid) {
     const edgeMeshes = [];
     const edgeMap = new Map();
     for (const [edgeId, edge] of grid.edges) {
-        const v1 = grid.vertices.get(edge.vertices[0]);
-        const v2 = grid.vertices.get(edge.vertices[1]);
+        const v1 = grid.vertices.get(edge.vertexIDs[0]);
+        const v2 = grid.vertices.get(edge.vertexIDs[1]);
         const direction = new THREE.Vector3().subVectors(v2.position, v1.position);
         const length = direction.length();
         const center = new THREE.Vector3().addVectors(v1.position, v2.position).multiplyScalar(0.5);
@@ -262,7 +263,10 @@ export function createEdgeGeometry(grid) {
         mesh.rotateX(Math.PI / 2);
         mesh.userData = { edgeId, grid };
         edgeMeshes.push(mesh);
+        // Set up a mapping from the mesh to the edgeId, for picking.
         edgeMap.set(mesh, edgeId);
+        // And a link from edge to mesh, for coloring.
+        edge.metadata.mesh = mesh;
     }
     return { edgeMeshes, edgeMap };
 }

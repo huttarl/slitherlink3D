@@ -45,7 +45,7 @@ async function main() {
     // Wire up debugging toggle
     const debugToggle = document.getElementById('debugToggle');
     debugToggle.addEventListener('change',
-        (e) => toggleDebugFeatures(e.target.checked, grid, scene, puzzleData, vertexLabels));
+        (e) => toggleDebugFeatures(e.target.checked, grid, scene, puzzleData, vertexLabels, edgeMeshes));
 
     // Render loop
     function animate() {

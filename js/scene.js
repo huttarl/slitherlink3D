@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { addSkybox } from "./skybox.js";
 import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
-import { loadPuzzleData, applyCluesToGrid, applySolutionToGrid } from "./puzzleLoader.js";
+import {loadPuzzleData, applyCluesToGrid, validateSolution} from "./puzzleLoader.js";
 import { VERTEX_RADIUS } from "./constants.js";
 import { createClueTexts, createVertexLabels } from "./textRenderer.js";
 
@@ -36,8 +36,13 @@ export async function createScene() {
 
     const { geometry, grid, faceMap, faceVertexRanges, gridId } = polyhedronData;
 
+    // The index of the puzzle that we're currently playing. Should be a more global variable,
+    // and eventually will be dynamically chosen rather than hard-coded.
+    const iPuzzle = 0;
+
     // Apply puzzle clues to grid (validates gridId match)
-    applyCluesToGrid(grid, puzzleData, 0, gridId);
+    applyCluesToGrid(grid, puzzleData, iPuzzle, gridId);
+    validateSolution(grid, puzzleData, iPuzzle);
 
     const material = new THREE.MeshPhongMaterial({
         vertexColors: true, 
