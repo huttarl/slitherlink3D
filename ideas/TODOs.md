@@ -14,6 +14,8 @@
 - [ ] Later on, add a "show solution" button, and maybe a "hint" button.
 - [ ] Eventually, we'll need a button to go on to the next puzzle, or select
   another puzzle.
+  - [ ] when we do, we'll need to be careful to 'dispose()' of a THREE.js objects,
+    - and also remove bidirectional references.
   - [ ] somehow we'll need to implement a catalogue of available grids.
 - [ ] put in some aesthetic animation: smoothed zooming in on load, zooming out when solved,
     smoothed autorotate after load (while zooming), stops when mouse clicked.
