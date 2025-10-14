@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './three/three.module.min.js';
 import { Grid } from './Grid.js';
 import { EDGE_RADIUS, EDGE_COLORS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES } from './constants.js';
 

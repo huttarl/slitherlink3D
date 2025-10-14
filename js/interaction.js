@@ -4,7 +4,7 @@
  * @module interaction
  */
 
-import * as THREE from 'three';
+import * as THREE from './three/three.module.min.js';
 import { FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_COLORS, EDGE_STATES } from './constants.js';
 
 /**

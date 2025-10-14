@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <!-- 
-    Slitherlink 3D - Interactive polyhedral puzzle visualization
+    Slitherlink 3D - Interactive polyhedral puzzle visualization & solving
     
-    Acknowledgements:
-    - Claude.ai and ChatGPT and the contributors whose knowledge they trained on -- much assistance.
-    - Kelvin Van Hoorn -- constellation cube map (https://kelvinvanhoorn.com/2024/12/07/skybox-tutorial-godot/)
+    Acknowledgements: See https://github.com/huttarl/slitherlink3D/blob/master/README.md
 -->
 <head>
     <meta charset="UTF-8">
@@ -111,19 +109,11 @@
                 Debug Mode
             </label>
             <div id="debug-info" style="display: none;">
-                <p><strong>Click faces</strong> to highlight & log details</p>
+                <p><strong>Click faces</strong> to highlight and log details</p>
                 <div id="selection-info"></div>
             </div>
         </div>
     </div>
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.170.0/build/three.module.min.js",
-            "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
-        }
-    }
-    </script>
-    <script type="module" src="./js/main.js"></script> 
+    <script type="module" src="./js/main.js"></script>
 </body>
 </html>

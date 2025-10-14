@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as THREE from './three/three.module.min.js';
+import { OrbitControls } from './three/OrbitControls.js';
 
 /**
  * Manages all THREE.js scene objects and rendering components.

@@ -3,7 +3,7 @@
  * @module skybox
  */
 
-import * as THREE from 'three';
+import * as THREE from './three/three.module.min.js';
 
 /**
  * Creates an underwater-themed skybox with gradient and light effects.

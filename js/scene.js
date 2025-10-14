@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './three/three.module.min.js';
 import { addSkybox } from "./skybox.js";
 import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";

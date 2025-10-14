@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './three/three.module.min.js';
 
 /** Create labels for vertices.
  * @param {GameState} gameState - The grid containing vertex data

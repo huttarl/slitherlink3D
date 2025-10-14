@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './three/three.module.min.js';
 
 // Shared constants for Slitherlink 3D
 
