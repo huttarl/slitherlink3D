@@ -1,7 +1,7 @@
-import { updateTextVisibility } from './textRenderer.js';
-import { CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js';
-import { makeInteraction } from './interaction.js';
-import { createGameState } from "./scene.js";
+import {updateTextVisibility} from './textRenderer.js';
+import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM} from './constants.js';
+import {makeInteraction} from './interaction.js';
+import {createGameState} from "./scene.js";
 
 async function main() {
     // Create the game state with all necessary objects
@@ -9,31 +9,29 @@ async function main() {
     
     // Get references to scene manager and puzzle grid for easier access
     const sceneManager = gameState.getSceneManager();
-    const puzzleGrid = gameState.getPuzzleGrid();
 
     // Set up camera
     const cameraDistance = 6;
-    const camera = sceneManager.setupCamera(
+    sceneManager.setupCamera(
         window.innerWidth / window.innerHeight, 
         cameraDistance
     );
 
     // Set up renderer
-    const renderer = sceneManager.setupRenderer(
+    sceneManager.setupRenderer(
         document.getElementById('canvas-container'),
         window.innerWidth,
         window.innerHeight
     );
 
     // Set up controls
-    const controls = sceneManager.setupControls({
+    sceneManager.setupControls({
         minDistance: CAMERA_MIN_ZOOM,
         maxDistance: CAMERA_MAX_ZOOM
     });
 
     // Set up interaction - pass GameState directly
-    const _interaction = makeInteraction(gameState);
-    gameState.setInteraction(_interaction);
+    gameState.setInteraction(makeInteraction(gameState));
 
     // Wire up debugging toggle
     const debugToggle = document.getElementById('debugToggle');

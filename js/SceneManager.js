@@ -53,7 +53,6 @@ export class SceneManager {
         this.camera.position.z = distance;
         this.camera.lookAt(0, 0, 0);
         this.camera.updateProjectionMatrix();
-        return this.camera;
     }
 
     /**
@@ -67,7 +66,6 @@ export class SceneManager {
         this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(this.renderer.domElement);
-        return this.renderer;
     }
 
     /**
@@ -84,7 +82,6 @@ export class SceneManager {
         this.controls.minDistance = config.minDistance || 3;
         this.controls.maxDistance = config.maxDistance || 20;
         this.controls.update();
-        return this.controls;
     }
 
     /**
@@ -134,7 +131,6 @@ export class SceneManager {
         this.scene.add(this.directionalLight);
 
         console.log("setupLighting done");
-        // obsolete: return { ambientLight: this.ambientLight, directionalLight: this.directionalLight };
     }
 
     /**

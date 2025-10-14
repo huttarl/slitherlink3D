@@ -82,35 +82,3 @@ function createVertexGroup(grid, material) {
     
     return vertexGroup;
 }
-
-/**
- * Legacy function for backward compatibility.
- * Creates and configures the 3D scene using the old approach.
- * 
- * @deprecated Use createGameState() instead for better organization
- * @returns {Object} An object containing all the created scene elements and data structures
- */
-export async function createScene() {
-    // For now, create a GameState and extract the old format for compatibility
-    const gameState = await createGameState();
-    const sceneManager = gameState.getSceneManager();
-    const puzzleGrid = gameState.getPuzzleGrid();
-    
-    return {
-        scene: sceneManager.scene,
-        polyhedronMesh: sceneManager.polyhedronMesh,
-        geometry: sceneManager.geometry,
-        grid: puzzleGrid,
-        faceMap: puzzleGrid.faceMap,
-        faceVertexRanges: puzzleGrid.faceVertexRanges,
-        edgeMeshes: puzzleGrid.getAllEdgeMeshes(),
-        clueTexts: sceneManager.clueTexts,
-        vertexLabels: sceneManager.vertexLabels,
-        vertexGroup: sceneManager.vertexGroup,
-        ambientLight: sceneManager.ambientLight,
-        directionalLight: sceneManager.directionalLight,
-        puzzleData: puzzleGrid.puzzleData,
-        // Store gameState reference for future migration
-        _gameState: gameState
-    };
-}

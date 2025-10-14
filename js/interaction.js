@@ -5,7 +5,7 @@
  */
 
 import * as THREE from 'three';
-import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_COLORS, EDGE_STATES } from './constants.js';
+import { FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_COLORS, EDGE_STATES } from './constants.js';
 
 /**
  * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
