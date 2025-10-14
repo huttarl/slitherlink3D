@@ -1,15 +1,23 @@
 import * as THREE from 'three';
 
 /** Create labels for vertices.
- * @param {Grid} grid - The grid containing vertex data
+ * @param {GameState} gameState - The grid containing vertex data
  * @returns {THREE.Group} Group containing all label sprites
+ *
+ * Based on https://stemkoski.github.io/Three.js/Labeled-Geometry.html
  * */
-export function createVertexLabels(grid) {
-    // Thanks to https://stemkoski.github.io/Three.js/Labeled-Geometry.html
+export function createVertexLabels(gameState) {
+    const grid = gameState.getPuzzleGrid();
     const labelGroup = new THREE.Group();
+    const thinSpace = String.fromCharCode(0x2009);
+    // Cache the number format for performance.
+    const numberFormat = Intl.NumberFormat(gameState.numberLocale);
     for (const [vertexId, vertex] of grid.vertices) {
-        var label = makeTextSprite( " " + vertexId + " ",
-            { fontsize: 32, backgroundColor: {r:255, g:100, b:100, a:1} } );
+        const s = numberFormat.format(vertexId);
+        const label = makeTextSprite(thinSpace + s + thinSpace,
+            { fontsize: 32, backgroundColor: {r:255, g:100, b:100, a:1} });
+        // Position the label a little further from the origin than the vertex.
+        // We rely on the fact that the vertex positions are already normalized.
         label.position.copy(vertex.position).multiplyScalar(1.1);
         labelGroup.add(label);
     }
@@ -47,22 +55,16 @@ function makeTextSprite(message, parameters)
     var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
         parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
 
-    // No longer supported in THREE.js:
-    // var useScreenCoordinates = parameters.hasOwnProperty("useScreenCoordinates") ?
-    //     parameters["useScreenCoordinates"] : false;
-    // var spriteAlignment = parameters.hasOwnProperty("spriteAlignment") ?
-    //     parameters["spriteAlignment"] : THREE.SpriteAlignment.topLeft;
-
     // create canvas, resize later.
     var canvas = document.createElement('canvas');
     var context = canvas.getContext('2d');
     context.font = "Bold " + fontsize + "px " + fontface;
 
-    // get size data (height depends only on font size)
+    // Get size data (height depends only on font size).
     var metrics = context.measureText( message );
     var textWidth = metrics.width;
 
-    // calculate correct dimensions of canvas and resize
+    // Calculate needed dimensions of canvas and resize.
     var imageWidth = textWidth + borderThickness * 2;
     var imageHeight = fontsize * 1.44 + borderThickness * 2;
     canvas.width = imageWidth;
@@ -79,8 +81,11 @@ function makeTextSprite(message, parameters)
         + borderColor.b + "," + borderColor.a + ")";
 
     context.lineWidth = borderThickness;
-    roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
-    // 1.4 is extra height factor for text below baseline: g,j,p,q.
+    // Extra height factor = 1.4 for descenders. We have only digits, with no descenders.
+    // But 1.0, the bottom margin of the digits is too small.
+    const extraHeightFactor = 1.3;
+    roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness,
+        fontsize * extraHeightFactor + borderThickness, 6);
 
     // text color
     context.fillStyle = "rgba(0, 0, 0, 1.0)";
@@ -130,21 +135,25 @@ function roundRect(ctx, x, y, w, h, r)
 
 /**
  * Creates text meshes that are "painted" onto polyhedron faces
- * @param {Grid} grid - The topology containing face data
+ * @param {GameState} gameState - The topology containing face data
  * @returns {THREE.Group} Group containing all text meshes
  */
-export function createClueTexts(grid) {
+export function createClueTexts(gameState) {
+    const grid = gameState.getPuzzleGrid();
     const textGroup = new THREE.Group();
-    
+
+    // Cache the number format for performance.
+    const numberFormat = Intl.NumberFormat(gameState.numberLocale);
+
     // Create a canvas for text rendering
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
-    // Unused? const context = canvas.getContext('2d');
 
     // Create materials for numbers 0-12
     const maxClue = 12
     const materials = {};
+
     for (let i = 0; i <= maxClue; i++) {
         // Create a separate canvas for each number
         // TODO sometime: make canvas size, font size (and line width?) depend on minimum face size?
@@ -167,8 +176,9 @@ export function createClueTexts(grid) {
         // Draw text with outline
         const x = 128;
         const y = 128;
-        digitContext.strokeText(i.toString(), x, y);
-        digitContext.fillText(i.toString(), x, y);
+        const s = numberFormat.format(i);
+        digitContext.strokeText(s, x, y);
+        digitContext.fillText(s, x, y);
         
         // Create texture and material
         const texture = new THREE.CanvasTexture(digitCanvas);

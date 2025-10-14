@@ -17,6 +17,7 @@ export class GameState {
         this.isInitialized = false;
         this.currentPuzzleIndex = 0;
         this.debugMode = false;
+        this.numberLocale = 'mr'; // Try ar, fa, mr, en
     }
 
     /**

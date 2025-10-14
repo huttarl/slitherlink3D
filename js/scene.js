@@ -25,8 +25,8 @@ export async function createGameState() {
 
     // Load geometry and puzzle data in parallel for better performance
     const [polyhedronData, puzzleData] = await Promise.all([
-        loadPolyhedronFromJSON('data/cube.json'),
-        loadPuzzleData('data/cube-puzzles.json')
+        loadPolyhedronFromJSON('data/D.json'),
+        loadPuzzleData('data/D-puzzles.json')
     ]);
 
     // Create materials
@@ -54,8 +54,8 @@ export async function createGameState() {
     gameState.setupVertices(vertexGroup);
 
     // Create text elements
-    const clueTexts = createClueTexts(gameState.getPuzzleGrid());
-    const vertexLabels = createVertexLabels(gameState.getPuzzleGrid());
+    const clueTexts = createClueTexts(gameState);
+    const vertexLabels = createVertexLabels(gameState);
     gameState.setupTextElements(clueTexts, vertexLabels);
 
     // Set up lighting

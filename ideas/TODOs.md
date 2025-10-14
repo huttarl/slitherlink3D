@@ -1,4 +1,8 @@
-- [ ] there still appears to be unused code after the refactor, e.g. in main()
+- [ ] there still appears to be unused code after the refactor... especially return values
+- [ ] maybe just for fun, add an option to use other numerals for clues:
+    Persian/Urdu/Hindi/Eastern Arabic ...
+    - [x] implement number->string conversion for other locales
+    - [ ] add user-accessible settings for this
 - [ ] clicking on an edge has been messed up in that it cycles thru more states than
   just black/white/gray. Fix it. Actually, it only seems to have that problem when
   in debug mode...
