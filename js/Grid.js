@@ -122,6 +122,43 @@ export class Grid {
         }
     }
 
+    /**
+     * Sets up cross-references between grid elements and THREE.js objects
+     * @param {Map} faceMap - Mapping of geometry face index to face ID
+     * @param {Map} faceVertexRanges - Mapping of face ID to vertex ranges
+     * @param {THREE.Mesh[]} edgeMeshes - Array of edge meshes
+     */
+    setupCrossReferences(faceMap, faceVertexRanges, edgeMeshes) {
+        this.faceMap = faceMap;
+        this.faceVertexRanges = faceVertexRanges;
+
+        // Map edge IDs to their corresponding meshes
+        this.edgeMeshMap.clear();
+        edgeMeshes.forEach(mesh => {
+            const edgeId = mesh.userData.edgeId;
+            if (edgeId !== undefined) {
+                this.edgeMeshMap.set(edgeId, mesh);
+            }
+        });
+    }
+
+    /**
+     * Gets the THREE.js mesh for a specific edge
+     * @param {number} edgeId - The edge ID
+     * @returns {THREE.Mesh|null} The edge mesh or null if not found
+     */
+    getEdgeMesh(edgeId) {
+        return this.edgeMeshMap.get(edgeId) || null;
+    }
+
+    /**
+     * Gets all edge meshes
+     * @returns {THREE.Mesh[]} Array of all edge meshes
+     */
+    getAllEdgeMeshes() {
+        return Array.from(this.edgeMeshMap.values());
+    }
+
     /** Gets all vertices (objects) that form a face.
      * @param {Face} face - The face object
      * @returns {Vertex[]} Array of Vertex objects that form the face

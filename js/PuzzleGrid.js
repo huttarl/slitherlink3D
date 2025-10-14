@@ -109,9 +109,10 @@ export class PuzzleGrid extends Grid {
     }
 
     /**
-     * Validates the current puzzle's solution
+     * Validates the puzzle's solution, which was loaded from a data source
+     * (not the user's guesses).
      */
-    validateCurrentSolution() {
+    validatePuzzleSolution() {
         if (!this.puzzleData) {
             throw new Error('No puzzle data available');
         }
@@ -156,46 +157,9 @@ export class PuzzleGrid extends Grid {
     }
 
     /**
-     * Sets up cross-references between grid elements and THREE.js objects
-     * @param {Map} faceMap - Mapping of geometry face index to face ID
-     * @param {Map} faceVertexRanges - Mapping of face ID to vertex ranges
-     * @param {THREE.Mesh[]} edgeMeshes - Array of edge meshes
+     * Highlights the current puzzle's solution by coloring solution edges.
      */
-    setupCrossReferences(faceMap, faceVertexRanges, edgeMeshes) {
-        this.faceMap = faceMap;
-        this.faceVertexRanges = faceVertexRanges;
-        
-        // Map edge IDs to their corresponding meshes
-        this.edgeMeshMap.clear();
-        edgeMeshes.forEach(mesh => {
-            const edgeId = mesh.userData.edgeId;
-            if (edgeId !== undefined) {
-                this.edgeMeshMap.set(edgeId, mesh);
-            }
-        });
-    }
-
-    /**
-     * Gets the THREE.js mesh for a specific edge
-     * @param {number} edgeId - The edge ID
-     * @returns {THREE.Mesh|null} The edge mesh or null if not found
-     */
-    getEdgeMesh(edgeId) {
-        return this.edgeMeshMap.get(edgeId) || null;
-    }
-
-    /**
-     * Gets all edge meshes
-     * @returns {THREE.Mesh[]} Array of all edge meshes
-     */
-    getAllEdgeMeshes() {
-        return Array.from(this.edgeMeshMap.values());
-    }
-
-    /**
-     * Highlights the solution by coloring solution edges
-     */
-    highlightSolution() {
+    highlightPuzzleSolution() {
         if (!this.puzzleData) {
             throw new Error('No puzzle data available');
         }
@@ -218,13 +182,67 @@ export class PuzzleGrid extends Grid {
         }
     }
 
-    /**
-     * Resets all edge states to unknown
-     */
+    /** Resets all edge states to unknown */
     resetEdgeStates() {
         for (const [_edgeId, edge] of this.edges) {
             edge.metadata.userGuess = 0; // 0 = unknown
         }
     }
 
+    /** Count the number of elements in an iterable that satisfy a predicate. */
+    count(iter, pred) {
+        let n = 0;
+        for (const e of iter) if (pred(e)) n++;
+        return n;
+    }
+
+    /**
+     * Check whether the user's current guesses are a correct solution.
+     * @param {boolean} isActiveMode - whether checking in active mode or not.
+     * @param {THREE.Mesh|null} edgeMesh - mesh of edge whose state has been changed
+     * @param {Edge|null} edge - edge whose state has been changed
+     *
+     * Passive mode is less thorough, called in response to each new change of user's guesses,
+     * and local to the latest change (edgeMesh).
+     * Active mode is called when user has explicitly asked for a solution check, and is global.
+     *
+     * Possible outcomes:
+     * - highlight (in red) edges (or faces?) in violation of puzzle constraints
+     * - "ok" message (so far so good)
+     * - "solved" response (solution is complete and correct)
+     */
+    checkUserSolution(isActiveMode, edgeMesh = null, edge = null) {
+        if (!this.puzzleData) {
+            throw new Error('No puzzle data available');
+        }
+
+        const edgeId = edgeMesh?.userData.edgeId;
+        console.log(`checkUserSolution, activeMode ${isActiveMode} edgeId ${edgeId}`);
+
+        // Things to check:
+        // - loop doesn't intersect self (no vertex has > 2 edges filled in)
+        // - number of edges per face is compatible with hints
+        // To check in activeMode:
+        // - Loop is a cycle
+        // - only one loop
+        // Depends on: isActiveMode, autoFeedback
+
+        // Does loop intersect itself?
+        const vIDsToCheck = (edge ?
+            // If edge is marked as filled in, check attached vertices.
+            (edge.metadata.userGuess === 1 ? edge.vertexIDs : []) :
+            // If global, check all vertices.
+            this.vertices.keys());
+        for (const vId of vIDsToCheck) {
+            const vertex = this.vertices.get(vId);
+            const numEdgesFilled = this.count(vertex.edgeIDs,
+                (edgeId => this.edges.get(edgeId)?.metadata.userGuess === 1));
+            console.log(`checkUserSolution: vertex ${vId} has ${numEdgesFilled} edges filled in`);
+            if (numEdgesFilled > 2) {
+                console.log(`checkUserSolution: loop intersects itself at vertex ${vId}`);
+                // TODO: highlight offending edges in red only if appropriate to mode and settings.
+                edgeMesh.material.color = EDGE_COLORS.error;
+            }
+        }
+    }
 }

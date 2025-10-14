@@ -74,6 +74,9 @@ export function makeInteraction(gameState) {
         // console.log(`cycleEdgeState: userGuess = ${edge.metadata.userGuess}`);
         const stateName = EDGE_STATES[edge.metadata.userGuess];
         edgeMesh.material.color = EDGE_COLORS[stateName];
+
+        // Check whether new guess has resulted a need to give feedback.
+        puzzleGrid.checkUserSolution(false, edgeMesh, edge);
     }
 
     /** Displays debug information about a clicked edge.

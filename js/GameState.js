@@ -17,7 +17,7 @@ export class GameState {
         this.isInitialized = false;
         this.currentPuzzleIndex = 0;
         this.debugMode = false;
-        this.numberLocale = 'mr'; // Try ar, fa, mr, en
+        this.numberLocale = 'bn'; // Try ar, fa, mr, en, bn, ccp, dz, my
     }
 
     /**
@@ -100,7 +100,7 @@ export class GameState {
         
         // Apply puzzle clues and validate
         this.puzzleGrid.applyCurrentPuzzleClues();
-        this.puzzleGrid.validateCurrentSolution();
+        this.puzzleGrid.validatePuzzleSolution();
         
         // Set up scene manager with geometry
         this.sceneManager.addPolyhedronMesh(geometry, materials.polyhedron);
@@ -164,7 +164,7 @@ export class GameState {
             }
             
             // Highlight solution
-            this.puzzleGrid.highlightSolution();
+            this.puzzleGrid.highlightPuzzleSolution();
         } else {
             // Remove vertex labels from scene
             if (this.sceneManager.vertexLabels) {
