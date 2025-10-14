@@ -1,5 +1,6 @@
 - [ ] clicking on an edge has been messed up in that it cycles thru more states than
-  just black/white/gray. Fix it.
+  just black/white/gray. Fix it. Actually, it only seems to have that problem when
+  in debug mode...
 - [ ] loading THREE.js and trackball controls? takes a lot of time to load. What
   can I do to improve this?
 - [ ] ~add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.

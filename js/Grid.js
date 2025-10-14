@@ -58,9 +58,7 @@ export class Grid {
      */
     findEdgeByVertices(v1Id, v2Id) {
         const hash = this._hashVertexPair(v1Id, v2Id);
-        console.log(`Map now contains ${this.vertexPairToEdge.size} entries`);
         let result = this.vertexPairToEdge.get(hash);
-        console.log(`  Looking up ${v1Id},${v2Id} = ${hash} to get edge ${result}`);
         return result ?? null;
     }
 
@@ -83,10 +81,9 @@ export class Grid {
         
         // Add to hash map for fast lookup
         const hash = this._hashVertexPair(v1Id, v2Id);
-        console.log(`Adding map from ${v1Id},${v2Id} = ${hash} to edge ${id}`);
+        // console.log(`Adding map from ${v1Id},${v2Id} = ${hash} to edge ${id}`);
         this.vertexPairToEdge.set(hash, id);
-        console.log(`  Map now contains ${this.vertexPairToEdge.size} entries`);
-        
+
         // Add id of this edge to each vertex's collection of edges.
         this.vertices.get(v1Id).edgeIDs.add(id);
         this.vertices.get(v2Id).edgeIDs.add(id);
