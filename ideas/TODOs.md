@@ -1,15 +1,12 @@
-- [ ] use local copies of THREE.js and OrbitControls so I can keep testing w/o wifi.
-- [ ] vertex labels appear to be stretched wide for single-digit numbers.
+- [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
+  - [ ] similarly createPolyhedron().
 - [ ] there still appears to be unused code after the refactor... especially return values
-- [ ] maybe just for fun, add an option to use other numerals for clues:
-    Persian/Urdu/Hindi/Eastern Arabic ...
-    - [x] implement number->string conversion for other locales
-    - [ ] add user-accessible settings for this
 - [ ] clicking on an edge has been messed up in that it cycles thru more states than
   just black/white/gray. Fix it. Actually, it only seems to have that problem when
   in debug mode...
 - [ ] loading THREE.js and trackball controls? takes a lot of time to load. What
   can I do to improve this?
+- [ ] vertex labels appear to be stretched wide for single-digit numbers.
 - [ ] ~add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
   - [x] show vertex IDs
   - [x] display solution (don't just set the edge states; or maybe even don't change the edge states
@@ -24,12 +21,15 @@
 - [ ] Later on, add a "show solution" button, and maybe a "hint" button.
 - [ ] Eventually, we'll need a button to go on to the next puzzle, or select
   another puzzle.
-  - [ ] when we do, we'll need to be careful to 'dispose()' of a THREE.js objects,
+  - [ ] when we do, we'll need to be careful to 'dispose()' of THREE.js objects,
     - and also remove bidirectional references.
   - [ ] somehow we'll need to implement a catalogue of available grids.
 - [ ] put in some aesthetic animation: smoothed zooming in on load, zooming out when solved,
     smoothed autorotate after load (while zooming), stops when mouse clicked.
-- [ ] is edge finding (v1, v2) too slow? do we need to build a hashmap for it? see TODOs in the code.
+- [ ] maybe just for fun, add an option to use other numerals for clues:
+  Persian/Urdu/Hindi/Eastern Arabic ...
+    - [x] implement number->string conversion for other locales
+    - [ ] add user-accessible settings for this
 - [ ] convert some existing .json files to the latest format spec, or move them out of the
     data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
 - [ ] terminology: how do we talk consistently about the "sides" of a face? The especially tricky distinction
@@ -219,8 +219,8 @@ Old items:
     - [x] do that refactoring
     - [x] check whether we have files, or large code sections, that are now unused
 - [x] implement a faster way to find the edge between to vertex IDs. E.g. for
-  highlightSolution in PuzzleGrid.
-  It should be easy, by
+  highlightSolution in PuzzleGrid. It should be easy, by
   first putting the vertex IDs in increasing order (so we don't have to try both orders), then
   making a hashmap from the pair of vertex IDs to the edge ID. Combine the two IDs using
   a string `${id1},${id2}` or probably into a single integer: (id1 << 16) | id2
+- [x] use local copies of THREE.js and OrbitControls so I can keep testing w/o wifi.

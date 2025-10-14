@@ -41,12 +41,10 @@ export async function createGameState() {
     };
 
     // Set up the scene with geometry and puzzle data
-    const { geometry, faceMap, faceVertexRanges, gridId } = await gameState.setupScene(
-        polyhedronData, puzzleData, materials
-    );
+    await gameState.setupScene(polyhedronData, puzzleData, materials);
 
     // Create edge geometry and meshes
-    const { edgeMeshes } = createEdgeGeometry(gameState.getPuzzleGrid());
+    const edgeMeshes = createEdgeGeometry(gameState.getPuzzleGrid());
     gameState.setupEdges(edgeMeshes);
 
     // Create vertex group

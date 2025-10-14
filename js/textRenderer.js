@@ -61,12 +61,12 @@ function makeTextSprite(message, parameters)
     context.font = "Bold " + fontsize + "px " + fontface;
 
     // Get size data (height depends only on font size).
-    var metrics = context.measureText( message );
-    var textWidth = metrics.width;
+    const metrics = context.measureText(message);
+    const textWidth = metrics.width;
 
     // Calculate needed dimensions of canvas and resize.
-    var imageWidth = textWidth + borderThickness * 2;
-    var imageHeight = fontsize * 1.44 + borderThickness * 2;
+    const imageWidth = textWidth + borderThickness * 2;
+    const imageHeight = fontsize * 1.44 + borderThickness * 2;
     canvas.width = imageWidth;
     canvas.height = imageHeight;
     // new canvas, new context.
@@ -93,15 +93,15 @@ function makeTextSprite(message, parameters)
     context.fillText( message, borderThickness, fontsize + borderThickness );
 
     // canvas contents will be used for a texture
-    var texture = new THREE.Texture(canvas)
+    const texture = new THREE.Texture(canvas);
     texture.needsUpdate = true;
 
-    var spriteMaterial = new THREE.SpriteMaterial({
+    const spriteMaterial = new THREE.SpriteMaterial({
         map: texture
         // , useScreenCoordinates: useScreenCoordinates // no longer exists
         // , alignment: spriteAlignment // no longer exists
-        });
-    var sprite = new THREE.Sprite( spriteMaterial );
+    });
+    const sprite = new THREE.Sprite(spriteMaterial);
     // Was: sprite.scale.set(imageWidth, imageHeight, 1.0);
     sprite.scale.set(0.15, 0.15, 1.0);
     sprite.width = imageWidth;

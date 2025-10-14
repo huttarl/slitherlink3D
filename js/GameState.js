@@ -78,7 +78,6 @@ export class GameState {
      * @param {Object} polyhedronData - Geometry and grid data
      * @param {Object} puzzleData - Puzzle data
      * @param {Object} materials - Material configurations
-     * @returns {Object} Setup results for further processing
      */
     async setupScene(polyhedronData, puzzleData, materials) {
         if (!this.isInitialized) {
@@ -104,13 +103,6 @@ export class GameState {
         
         // Set up scene manager with geometry
         this.sceneManager.addPolyhedronMesh(geometry, materials.polyhedron);
-        
-        return {
-            geometry,
-            faceMap,
-            faceVertexRanges,
-            gridId
-        };
     }
 
     /**

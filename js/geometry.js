@@ -236,11 +236,10 @@ export async function loadPolyhedronFromJSON(filePath) {
  * Creates THREE.js geometry for cylinders representing edges of a given grid.
  *
  * @param {Grid} grid - The grid containing edge data
- * @returns { edgeMeshes: THREE.Mesh[], edgeMap: Map<THREE.Mesh, number> }
+ * @returns {THREE.Mesh[]} edgeMeshes - The meshes to display edge cylinders
  */
 export function createEdgeGeometry(grid) {
     const edgeMeshes = [];
-    const edgeMap = new Map();
     for (const [edgeId, edge] of grid.edges) {
         const v1 = grid.vertices.get(edge.vertexIDs[0]);
         const v2 = grid.vertices.get(edge.vertexIDs[1]);
@@ -260,12 +259,10 @@ export function createEdgeGeometry(grid) {
         mesh.rotateX(Math.PI / 2);
         mesh.userData = { edgeId, grid };
         edgeMeshes.push(mesh);
-        // Set up a mapping from the mesh to the edgeId, for picking.
-        edgeMap.set(mesh, edgeId);
         // And a link from edge to mesh, for coloring.
         edge.metadata.mesh = mesh;
     }
-    return { edgeMeshes, edgeMap };
+    return edgeMeshes;
 }
 
 /**

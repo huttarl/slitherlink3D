@@ -15,21 +15,10 @@ import { FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_COLORS, EDGE_STATES } fr
  * @returns {{dispose: Function}} An object with a dispose method to clean up event listeners
  */
 export function makeInteraction(gameState) {
-    // Extract data from either GameState or legacy parameters
-    let renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls;
-    
     const sceneManager = gameState.getSceneManager();
     const puzzleGrid = gameState.getPuzzleGrid();
 
-    renderer = sceneManager.renderer;
-    camera = sceneManager.camera;
-    polyhedronMesh = sceneManager.polyhedronMesh;
-    geometry = sceneManager.geometry;
-    grid = puzzleGrid;
-    faceMap = puzzleGrid.faceMap;
-    faceVertexRanges = puzzleGrid.faceVertexRanges;
-    edgeMeshes = puzzleGrid.getAllEdgeMeshes();
-    controls = sceneManager.controls;
+    let edgeMeshes = puzzleGrid.getAllEdgeMeshes();
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -46,9 +35,9 @@ export function makeInteraction(gameState) {
      * @param {boolean} highlight - Whether to highlight the face
      */
     function updateFaceColor(faceId, highlight) {
-        const face = grid.faces.get(faceId);
-        const colors = geometry.attributes.color;
-        const range = faceVertexRanges.get(faceId);
+        const face = puzzleGrid.faces.get(faceId);
+        const colors = sceneManager.geometry.attributes.color;
+        const range = puzzleGrid.faceVertexRanges.get(faceId);
         const color = highlight ? FACE_HIGHLIGHT_COLOR : FACE_DEFAULT_COLOR;
         for (let i = 0; i < range.count; i++) {
             colors.setXYZ(range.start + i, color.r, color.g, color.b);
@@ -65,7 +54,7 @@ export function makeInteraction(gameState) {
      */
     function cycleEdgeState(edgeMesh, reverse = false) {
         const edgeId = edgeMesh.userData.edgeId;
-        const edge = grid.edges.get(edgeId);
+        const edge = puzzleGrid.edges.get(edgeId);
         if (reverse) {
             edge.metadata.userGuess = (edge.metadata.userGuess - 1 + EDGE_STATES.length) % EDGE_STATES.length;
         } else {
@@ -88,7 +77,7 @@ export function makeInteraction(gameState) {
      */
     function showEdgeInfo(edgeMesh, reverseDirection) {
         const edgeId = edgeMesh.userData.edgeId;
-        const edge = grid.edges.get(edgeId);
+        const edge = puzzleGrid.edges.get(edgeId);
         const infoDiv = document.getElementById('selection-info');
         const edgeColor = EDGE_STATES[edge.metadata.userGuess];
         const colorBox = `<span class="color-indicator" style="background-color: ${edgeColor};"></span>`;
@@ -122,13 +111,13 @@ export function makeInteraction(gameState) {
         if (highlightedFace !== null && highlightedFace !== faceId) {
             updateFaceColor(highlightedFace, false);
         }
-        const face = grid.faces.get(faceId);
+        const face = puzzleGrid.faces.get(faceId);
         const newHighlight = !face.metadata.isHighlighted;
         updateFaceColor(faceId, newHighlight);
         highlightedFace = newHighlight ? faceId : null;
         const infoDiv = document.getElementById('selection-info');
         if (newHighlight) {
-            const adjacentFaces = grid.getAdjacentFaces(faceId);
+            const adjacentFaces = puzzleGrid.getAdjacentFaces(faceId);
             infoDiv.innerHTML = `
                 <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
                     <strong>Selected Face:</strong> #${face.metadata.index}<br>
@@ -154,7 +143,7 @@ export function makeInteraction(gameState) {
         }
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
+        raycaster.setFromCamera(mouse, sceneManager.camera);
         
         // Check for edge clicks first.
         const edgeIntersects = raycaster.intersectObjects(edgeMeshes);
@@ -164,10 +153,10 @@ export function makeInteraction(gameState) {
         }
         
         // Check for face clicks if no edge was clicked.
-        const faceIntersects = raycaster.intersectObject(polyhedronMesh);
+        const faceIntersects = raycaster.intersectObject(sceneManager.polyhedronMesh);
         if (faceIntersects.length > 0) {
             const faceIndex = faceIntersects[0].faceIndex * 3;
-            const faceId = faceMap.get(faceIndex);
+            const faceId = puzzleGrid.faceMap.get(faceIndex);
             if (faceId !== undefined) {
                 handleFaceClick(faceId);
             }
@@ -179,9 +168,9 @@ export function makeInteraction(gameState) {
      * @private
      */
     function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        sceneManager.camera.aspect = window.innerWidth / window.innerHeight;
+        sceneManager.camera.updateProjectionMatrix();
+        sceneManager.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     // Use OrbitControls events to detect dragging
@@ -196,8 +185,8 @@ export function makeInteraction(gameState) {
     // Set up event listeners
     window.addEventListener('click', onMouseClick);
     window.addEventListener('resize', onWindowResize);
-    controls.addEventListener('start', onControlsStart);
-    controls.addEventListener('change', onControlsChange);
+    sceneManager.controls.addEventListener('start', onControlsStart);
+    sceneManager.controls.addEventListener('change', onControlsChange);
 
     // Return cleanup function
     return {
@@ -205,8 +194,8 @@ export function makeInteraction(gameState) {
         dispose: () => {
             window.removeEventListener('click', onMouseClick);
             window.removeEventListener('resize', onWindowResize);
-            controls.removeEventListener('start', onControlsStart);
-            controls.removeEventListener('change', onControlsChange);
+            sceneManager.controls.removeEventListener('start', onControlsStart);
+            sceneManager.controls.removeEventListener('change', onControlsChange);
         }
     };
 }

@@ -44,7 +44,6 @@ export function createUnderwaterSkybox(scene) {
     const skyMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide, depthWrite: false });
     const skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     scene.add(skybox);
-    // return canvas;
 }
 
 /**
@@ -129,7 +128,6 @@ export function createSpaceSkybox(scene) {
     const skyMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide, depthWrite: false });
     const skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     scene.add(skybox);
-    // return canvas;
 }
 
 /**
