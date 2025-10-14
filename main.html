@@ -36,20 +36,20 @@
         #info h3 {
             margin-top: 0;
         }
-        .highlight {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2px 4px;
-            border-radius: 3px;
-        }
-        .color-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 1px solid white;
-            border-radius: 2px;
-            margin-left: 5px;
-            vertical-align: middle;
-        }
+        /*.highlight {*/
+        /*    background: rgba(255, 255, 255, 0.1);*/
+        /*    padding: 2px 4px;*/
+        /*    border-radius: 3px;*/
+        /*}*/
+        /*.color-indicator {*/
+        /*    display: inline-block;*/
+        /*    width: 12px;*/
+        /*    height: 12px;*/
+        /*    border: 1px solid white;*/
+        /*    border-radius: 2px;*/
+        /*    margin-left: 5px;*/
+        /*    vertical-align: middle;*/
+        /*}*/
         .debugging {
             position: fixed;
             top: 10px;
@@ -71,16 +71,39 @@
             cursor: pointer;
             user-select: none;
         }
+
+        /* Make links more legible against dark background. */
+        a {
+            color: #9cf; /* light blue */
+        }
+
+        a:hover, a:focus {
+            color: #cff; /* even lighter on hover/focus */
+        }
     </style>
 </head>
 <body>
     <div id="canvas-container">
         <div id="info">
             <h3>Slitherlink 3D</h3>
-            <p>Drag to rotate • Scroll to zoom</p>
-            <p><strong>Click edges</strong> to indicate guess<br>
-<!--            Gray → Black → White → Gray-->
-            </p>
+            <!-- Collapsible Instructions -->
+            <details>
+                <summary style="cursor: pointer; color: #88ccff; margin-top: 8px;">
+                    📖 How to Play
+                </summary>
+                <div style="margin-top: 8px; font-size: 14px; line-height: 1.5;">
+                    <p><strong>Goal:</strong> Draw a single loop along the edges of the polyhedron.</p>
+                    <p><strong>Instructions:</strong></p>
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                        <li>The loop must be a single continuous path, but cannot touch itself.</li>
+                        <li>Numbers show exactly how many segments of the loop must touch that face.</li>
+                        <li>Click edges to mark them as part of the loop (black), not part of the loop
+                        (white), or unknown (gray).</li>
+                        <li>Drag to rotate. Scroll to zoom.</li>
+                        <li><a target="_blank" rel="noopener noreferrer" href="https://en.wikipedia.org/wiki/Slitherlink">More info and strategy tips</a></li>
+                    </ul>
+                </div>
+            </details>
         </div>
         <div class="debugging">
             <label>

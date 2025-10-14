@@ -1,3 +1,4 @@
+- [ ] vertex labels appear to be stretched wide for single-digit numbers.
 - [ ] there still appears to be unused code after the refactor... especially return values
 - [ ] maybe just for fun, add an option to use other numerals for clues:
     Persian/Urdu/Hindi/Eastern Arabic ...

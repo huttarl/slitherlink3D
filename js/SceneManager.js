@@ -123,10 +123,10 @@ export class SceneManager {
      * Sets up lighting for the scene
      */
     setupLighting() {
-        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(this.ambientLight);
         
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
         this.directionalLight.position.set(5, 5, 5);
         this.scene.add(this.directionalLight);
 
