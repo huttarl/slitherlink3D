@@ -1,4 +1,5 @@
 import { Grid } from './Grid.js';
+import { EDGE_COLORS } from './constants.js';
 
 /**
  * Extended Grid class that includes puzzle data and cross-references to THREE.js objects.
@@ -223,11 +224,8 @@ export class PuzzleGrid extends Grid {
                     
                     const edgeMesh = this.getEdgeMesh(edgeId);
                     if (edgeMesh) {
-                        // Note: This assumes EDGE_COLORS.solution is available
-                        // The actual coloring logic should be handled by the caller
-                        // with access to the constants
-                        // TODO: make sure this gets implemented. I don't see how it could get handled by the caller.
                         console.log(`Highlighting solution edge ${edgeId} between ${v1Id} and ${v2Id}`);
+                        edgeMesh.material.color.set(EDGE_COLORS.solution);
                     }
                     break;
                 }

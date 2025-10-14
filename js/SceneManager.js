@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /**
  * Manages all THREE.js scene objects and rendering components.
@@ -78,7 +79,7 @@ export class SceneManager {
             throw new Error('Camera and renderer must be set up before controls');
         }
         
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.target.set(0, 0, 0);
         this.controls.minDistance = config.minDistance || 3;
         this.controls.maxDistance = config.maxDistance || 20;

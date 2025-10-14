@@ -9,20 +9,44 @@ import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_C
 
 /**
  * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
- * @param {Object} params - Configuration parameters
- * @param {THREE.WebGLRenderer} params.renderer - The WebGL renderer
- * @param {THREE.PerspectiveCamera} params.camera - The camera used for rendering
- * @param {THREE.Scene} params.scene - The main scene containing all 3D objects
- * @param {THREE.Mesh} params.polyhedronMesh - The main puzzle mesh
- * @param {THREE.BufferGeometry} params.geometry - The geometry of the puzzle
- * @param {Grid} params.grid - The grid data structure containing puzzle state
- * @param {Map} params.faceMap - Mapping of geometry index buffer vertex indices to face IDs, for picking
- * @param {Map} params.faceVertexRanges - Mapping of face IDs to vertex ranges in the geometry index buffer, for changing color
- * @param {THREE.Mesh[]} params.edgeMeshes - Array of meshes representing edges
- * @param {THREE.OrbitControls} params.controls - Camera controls for the scene
+ * Can accept either the new GameState architecture or legacy parameters.
+ * 
+ * @param {Object|GameState} params - Either a GameState instance or legacy configuration parameters
+ * @param {THREE.WebGLRenderer} [params.renderer] - The WebGL renderer (legacy)
+ * @param {THREE.PerspectiveCamera} [params.camera] - The camera used for rendering (legacy)
+ * @param {THREE.Scene} [params.scene] - The main scene containing all 3D objects (legacy)
+ * @param {THREE.Mesh} [params.polyhedronMesh] - The main puzzle mesh (legacy)
+ * @param {THREE.BufferGeometry} [params.geometry] - The geometry of the puzzle (legacy)
+ * @param {Grid} [params.grid] - The grid data structure containing puzzle state (legacy)
+ * @param {Map} [params.faceMap] - Mapping of geometry index buffer vertex indices to face IDs, for picking (legacy)
+ * @param {Map} [params.faceVertexRanges] - Mapping of face IDs to vertex ranges in the geometry index buffer, for changing color (legacy)
+ * @param {THREE.Mesh[]} [params.edgeMeshes] - Array of meshes representing edges (legacy)
+ * @param {THREE.OrbitControls} [params.controls] - Camera controls for the scene (legacy)
  * @returns {{dispose: Function}} An object with a dispose method to clean up event listeners
  */
-export function makeInteraction({ renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls }) {
+export function makeInteraction(params) {
+    // Extract data from either GameState or legacy parameters
+    let renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls;
+    
+    if (params && typeof params.getSceneManager === 'function') {
+        // New GameState architecture
+        const sceneManager = params.getSceneManager();
+        const puzzleGrid = params.getPuzzleGrid();
+        
+        renderer = sceneManager.renderer;
+        camera = sceneManager.camera;
+        scene = sceneManager.scene;
+        polyhedronMesh = sceneManager.polyhedronMesh;
+        geometry = sceneManager.geometry;
+        grid = puzzleGrid;
+        faceMap = puzzleGrid.faceMap;
+        faceVertexRanges = puzzleGrid.faceVertexRanges;
+        edgeMeshes = puzzleGrid.getAllEdgeMeshes();
+        controls = sceneManager.controls;
+    } else {
+        // Legacy parameter structure
+        ({ renderer, camera, scene, polyhedronMesh, geometry, grid, faceMap, faceVertexRanges, edgeMeshes, controls } = params);
+    }
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let highlightedFace = null;

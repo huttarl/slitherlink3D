@@ -33,9 +33,8 @@ export class GameState {
         // Initialize scene manager
         this.sceneManager.initializeScene();
         
-        // Set puzzle index
+        // Store puzzle index for later use (after puzzle data is loaded)
         this.currentPuzzleIndex = config.puzzleIndex || 0;
-        this.puzzleGrid.setCurrentPuzzle(this.currentPuzzleIndex);
         
         this.isInitialized = true;
         return this;
