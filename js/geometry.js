@@ -98,9 +98,8 @@ function createPolyhedron(vertices, faces) {
         }, i)
     });
 
-    for (const [edgeId, edge] of grid.edges) {
-        // edge.metadata.state = 'gray'; // delete
-        // console.log("createDod", edge.metadata);
+    for (const [_edgeId, edge] of grid.edges) {
+        // console.log("createPolyh", edge.metadata);
         edge.metadata.userGuess = 0;
     }
 

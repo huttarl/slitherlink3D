@@ -4,7 +4,6 @@ import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJ
 import { loadPuzzleData } from "./puzzleLoader.js";
 import { VERTEX_RADIUS } from "./constants.js";
 import { createClueTexts, createVertexLabels } from "./textRenderer.js";
-import { SceneManager } from "./SceneManager.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
 

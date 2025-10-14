@@ -1,5 +1,11 @@
 - [ ] In main(), try to stop passing big complicated objects or so many parameters back and forth.
     Instead, group them under a few classes, such as part of Grid and/or maybe a new GridGeometry class.
+  - [x] do that refactoring
+  - [ ] check whether we have files, or large code sections, that are now unused
+- [ ] clicking on an edge has been messed up in that it cycles thru more states than
+  just black/white/gray. Fix it.
+- [ ] loading THREE.js and trackball controls? takes a lot of time to load. What
+  can I do to improve this?
 - [ ] ~add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
   - [x] show vertex IDs
   - [x] display solution (don't just set the edge states; or maybe even don't change the edge states

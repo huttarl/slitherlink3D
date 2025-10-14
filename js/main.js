@@ -1,10 +1,9 @@
-// TODO: these first two imports take a lot of time. How can we optimize? Get minified versions?
-import * as THREE from 'three';
+// TODO: these THREE imports take a lot of time. How can we optimize? Get minified versions?
+// import * as THREE from 'three';
 import { updateTextVisibility } from './textRenderer.js';
 import { CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js';
 import { makeInteraction } from './interaction.js';
 import { createGameState } from "./scene.js";
-import { toggleDebugFeatures } from "./debugging.js";
 
 async function main() {
     // Create the game state with all necessary objects
@@ -41,7 +40,8 @@ async function main() {
     // Wire up debugging toggle
     const debugToggle = document.getElementById('debugToggle');
     debugToggle.addEventListener('change', (e) => {
-        toggleDebugFeatures(e.target.checked, gameState);
+        // old: toggleDebugFeatures(e.target.checked, gameState);
+        gameState.toggleDebugMode(e.target.checked);
     });
 
     // Render loop
