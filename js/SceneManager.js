@@ -48,7 +48,7 @@ export class SceneManager {
      * @param {number} distance - Camera distance from origin
      */
     setupCamera(aspectRatio, distance = 6) {
-        this.camera = new THREE.PerspectiveCamera(35, aspectRatio, distance - 2, 1000);
+        this.camera = new THREE.PerspectiveCamera(35, aspectRatio); // , distance - 2, 1000
         this.camera.position.y = 1;
         this.camera.position.z = distance;
         this.camera.lookAt(0, 0, 0);
@@ -126,14 +126,15 @@ export class SceneManager {
      * Sets up lighting for the scene
      */
     setupLighting() {
-        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         this.scene.add(this.ambientLight);
         
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1);
         this.directionalLight.position.set(5, 5, 5);
         this.scene.add(this.directionalLight);
-        
-        return { ambientLight: this.ambientLight, directionalLight: this.directionalLight };
+
+        console.log("setupLighting done");
+        // obsolete: return { ambientLight: this.ambientLight, directionalLight: this.directionalLight };
     }
 
     /**
