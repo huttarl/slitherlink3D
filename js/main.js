@@ -1,5 +1,3 @@
-// TODO: these THREE imports take a lot of time. How can we optimize? Get minified versions?
-// import * as THREE from 'three';
 import { updateTextVisibility } from './textRenderer.js';
 import { CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM } from './constants.js';
 import { makeInteraction } from './interaction.js';
