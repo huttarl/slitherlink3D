@@ -91,6 +91,7 @@ export class GameState {
         this.puzzleGrid.edges = grid.edges;
         this.puzzleGrid.faces = grid.faces;
         this.puzzleGrid.nextId = grid.nextId;
+        this.puzzleGrid.vertexPairToEdge = grid.vertexPairToEdge;
         
         // Set up puzzle data
         this.puzzleGrid.setPuzzleData(puzzleData, gridId);

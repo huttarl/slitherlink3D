@@ -9,6 +9,7 @@ import {Edge} from "./Edge.js";
  * @property {Map<number, Vertex>} vertices - Map of vertex IDs to Vertex objects
  * @property {Map<number, Edge>} edges - Map of edge IDs to Edge objects
  * @property {Map<number, Face>} faces - Map of face IDs to Face objects
+ * @property {Map<number, number>} vertexPairToEdge - Map from vertex pair hash to edge ID for fast lookup
  * @property {number} nextId - The next available ID for a new object
  */
 export class Grid {
@@ -16,6 +17,7 @@ export class Grid {
         this.vertices = new Map();
         this.edges = new Map();
         this.faces = new Map();
+        this.vertexPairToEdge = new Map();
         this.nextId = 0;
     }
 
@@ -30,6 +32,38 @@ export class Grid {
         this.vertices.set(id, vertex);
     }
 
+    /**
+     * Creates a hash key from two vertex IDs for fast edge lookup.
+     * Always uses the smaller ID first to ensure consistent ordering.
+     * 
+     * @param {number} v1Id - First vertex ID
+     * @param {number} v2Id - Second vertex ID
+     * @returns {number} Hash key combining both vertex IDs
+     * @private
+     */
+    _hashVertexPair(v1Id, v2Id) {
+        // Ensure consistent ordering (smaller ID first)
+        const [small, large] = v1Id < v2Id ? [v1Id, v2Id] : [v2Id, v1Id];
+        // Combine into single integer: (small << 16) | large
+        // This works for vertex IDs up to 65535 (2^16 - 1)
+        return (small << 16) | large;
+    }
+
+    /**
+     * Finds an edge given two vertex IDs using fast hash map lookup.
+     * 
+     * @param {number} v1Id - First vertex ID
+     * @param {number} v2Id - Second vertex ID
+     * @returns {number|null} Edge ID if found, null otherwise
+     */
+    findEdgeByVertices(v1Id, v2Id) {
+        const hash = this._hashVertexPair(v1Id, v2Id);
+        console.log(`Map now contains ${this.vertexPairToEdge.size} entries`);
+        let result = this.vertexPairToEdge.get(hash);
+        console.log(`  Looking up ${v1Id},${v2Id} = ${hash} to get edge ${result}`);
+        return result ?? null;
+    }
+
     /** Creates and adds an edge between two vertices to the grid.
      *
      * @param {number} v1Id - ID of first vertex
@@ -37,19 +71,26 @@ export class Grid {
      * @param {Object} metadata - Additional metadata for the edge
      * @param {number} metadata.userGuess - State of user guess for the edge (0=unknown, 1=filled in, 2=ruled out)
      * @returns {number} - ID of new edge
-     * TODO: refactor this to use Edge object
      */
     addEdge(v1Id, v2Id, metadata = {}) {
         const id = this.nextId++;
         let newEdge = new Edge([v1Id, v2Id],
             // Faces will be populated in addFace, so edges must be added first without faces.
             new Set(), metadata);
-        // console.log("addEdge", `${id} ${newEdge.metadata}`);
+        
         // Add id of this edge to grid's collection of edges.
         this.edges.set(id, newEdge);
+        
+        // Add to hash map for fast lookup
+        const hash = this._hashVertexPair(v1Id, v2Id);
+        console.log(`Adding map from ${v1Id},${v2Id} = ${hash} to edge ${id}`);
+        this.vertexPairToEdge.set(hash, id);
+        console.log(`  Map now contains ${this.vertexPairToEdge.size} entries`);
+        
         // Add id of this edge to each vertex's collection of edges.
         this.vertices.get(v1Id).edgeIDs.add(id);
         this.vertices.get(v2Id).edgeIDs.add(id);
+        
         return id;
     }
 
@@ -66,20 +107,14 @@ export class Grid {
             const v1Id = vertexIDs[i];
             const v2Id = vertexIDs[(i + 1) % vertexIDs.length];
 
-            let edgeId = null;
-            // TODO: consider a faster way to find edges given two vertex IDs
-            for (const [eId, edge] of this.edges) {
-                if ((edge.vertexIDs[0] === v1Id && edge.vertexIDs[1] === v2Id) ||
-                    (edge.vertexIDs[0] === v2Id && edge.vertexIDs[1] === v1Id)) {
-                    edgeId = eId;
-                    // console.log(`Face ${id}: Found existing edge ${eId} for vertices ${v1}-${v2}`);
-                    break;
-                }
-            }
+            // Use fast hash map lookup instead of iterating through all edges
+            let edgeId = this.findEdgeByVertices(v1Id, v2Id);
+            
             if (edgeId === null) {
                 edgeId = this.addEdge(v1Id, v2Id);
                 // console.log(`Face ${id}: Created new edge ${edgeId} for vertices ${v1}-${v2}`);
             }
+            
             edgeIDs.push(edgeId);
             this.edges.get(edgeId).faceIDs.add(id);
         }

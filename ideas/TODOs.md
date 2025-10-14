@@ -1,7 +1,3 @@
-- [ ] In main(), try to stop passing big complicated objects or so many parameters back and forth.
-    Instead, group them under a few classes, such as part of Grid and/or maybe a new GridGeometry class.
-  - [x] do that refactoring
-  - [ ] check whether we have files, or large code sections, that are now unused
 - [ ] clicking on an edge has been messed up in that it cycles thru more states than
   just black/white/gray. Fix it.
 - [ ] loading THREE.js and trackball controls? takes a lot of time to load. What
@@ -210,3 +206,13 @@ Old items:
 - [x] make a more interesting puzzle to play with, e.g. D.json / D-puzzles.json.
 - [x] Don't display the solution automatically on load.
 - [x] produce clue textures for up to 12 faces, instead of just 9, to allow us freedom to use more different shapes.
+- [x] In main(), try to stop passing big complicated objects or so many parameters back and forth.
+  Instead, group them under a few classes, such as part of Grid and/or maybe a new GridGeometry class.
+    - [x] do that refactoring
+    - [x] check whether we have files, or large code sections, that are now unused
+- [x] implement a faster way to find the edge between to vertex IDs. E.g. for
+  highlightSolution in PuzzleGrid.
+  It should be easy, by
+  first putting the vertex IDs in increasing order (so we don't have to try both orders), then
+  making a hashmap from the pair of vertex IDs to the edge ID. Combine the two IDs using
+  a string `${id1},${id2}` or probably into a single integer: (id1 << 16) | id2

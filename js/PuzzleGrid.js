@@ -148,17 +148,8 @@ export class PuzzleGrid extends Grid {
             const v2Id = solution[(i + 1) % solution.length];
             
             // Find the edge between v1Id and v2Id
-            // TODO: consider a faster way to find edges given two vertex IDs
-            let foundEdge = false;
-            for (const [_edgeId, edge] of this.edges) {
-                if ((edge.vertexIDs[0] === v1Id && edge.vertexIDs[1] === v2Id) ||
-                    (edge.vertexIDs[0] === v2Id && edge.vertexIDs[1] === v1Id)) {
-                    foundEdge = true;
-                    break;
-                }
-            }
-            
-            if (!foundEdge) {
+            const edgeId = this.findEdgeByVertices(v1Id, v2Id);
+            if (edgeId == null) {
                 throw new Error(`No edge found between vertices ${v1Id} and ${v2Id} in solution`);
             }
         }
@@ -217,18 +208,12 @@ export class PuzzleGrid extends Grid {
             const v1Id = solutionVIds[i];
             const v2Id = solutionVIds[(i + 1) % solutionVIds.length];
             
-            // Find the edge between v1 and v2
-            for (const [edgeId, edge] of this.edges) {
-                if ((edge.vertexIDs[0] === v1Id && edge.vertexIDs[1] === v2Id) ||
-                    (edge.vertexIDs[0] === v2Id && edge.vertexIDs[1] === v1Id)) {
-                    
-                    const edgeMesh = this.getEdgeMesh(edgeId);
-                    if (edgeMesh) {
-                        console.log(`Highlighting solution edge ${edgeId} between ${v1Id} and ${v2Id}`);
-                        edgeMesh.material.color.set(EDGE_COLORS.solution);
-                    }
-                    break;
-                }
+            // Find the edge between v1 and v2.
+            const edgeId = this.findEdgeByVertices(v1Id, v2Id);
+            const edgeMesh = this.getEdgeMesh(edgeId);
+            if (edgeMesh) {
+                // console.log(`Highlighting solution edge ${edgeId} between ${v1Id} and ${v2Id}`);
+                edgeMesh.material.color.set(EDGE_COLORS.solution);
             }
         }
     }
