@@ -7,7 +7,7 @@ async function main() {
     // Create the game state with all necessary objects
     const gameState = await createGameState();
     
-    // Get references to scene manager and puzzle grid for easier access
+    // Get references to scene manager for easier access
     const sceneManager = gameState.getSceneManager();
 
     // Set up camera
@@ -33,11 +33,22 @@ async function main() {
     // Set up interaction - pass GameState directly
     gameState.setInteraction(makeInteraction(gameState));
 
+    // Wire up labels toggle
+    const showIDsToggle = document.getElementById('showIDs');
+    showIDsToggle.addEventListener('change', (e) => {
+        gameState.toggleShowIDs(e.target.checked);
+    });
+    // Wire up solution display toggle
+    const showSolutionToggle = document.getElementById('showSolution');
+    showSolutionToggle.addEventListener('change', (e) => {
+        gameState.toggleShowSolution(e.target.checked);
+    });
+
+
     // Wire up debugging toggle
-    const debugToggle = document.getElementById('debugToggle');
-    debugToggle.addEventListener('change', (e) => {
-        // old: toggleDebugFeatures(e.target.checked, gameState);
-        gameState.toggleDebugMode(e.target.checked);
+    const checkSolutionButton = document.getElementById('checkSolution');
+    checkSolutionButton.addEventListener('click', () => {
+        gameState.getPuzzleGrid().checkUserSolution(true);
     });
 
     // Render loop

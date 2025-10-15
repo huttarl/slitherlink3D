@@ -1,6 +1,7 @@
 - [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
   - [ ] similarly createPolyhedron().
-- [ ] there still appears to be unused code after the refactor... especially return values
+- [ ] there still appears to be unused code after the refactor... especially return values.
+  - [~] also return*Data() in GameState
 - [ ] clicking on an edge has been messed up in that it cycles thru more states than
   just black/white/gray. Fix it. Actually, it only seems to have that problem when
   in debug mode...

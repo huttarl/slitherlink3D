@@ -78,6 +78,12 @@
         a:hover, a:focus {
             color: #cff; /* even lighter on hover/focus */
         }
+
+        button#checkSolution {
+            margin-top: 2ex;
+            color: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
@@ -102,16 +108,20 @@
                     </ul>
                 </div>
             </details>
+            <button id="checkSolution" style="margin-top: 1ex">Check solution</button>
         </div>
         <div class="debugging">
-            <label>
-                <input type="checkbox" id="debugToggle">
-                Debug Mode
-            </label>
-            <div id="debug-info" style="display: none;">
-                <p><strong>Click faces</strong> to highlight and log details</p>
-                <div id="selection-info"></div>
-            </div>
+            <details>
+                <summary style="cursor: pointer; color: #88ccff; margin-top: 8px;">
+                    Debugging
+                </summary>
+                <div style="margin-top: 8px; font-size: 14px; line-height: 1.5;">
+                    <label><input type="checkbox" id="showIDs">Show IDs</label>
+                    <label><input type="checkbox" id="showSolution">Show Solution</label>
+                    <p><strong>Click faces</strong> to highlight and log details</p>
+                    <div id="selection-info"></div>
+                </div>
+            </details>
         </div>
     </div>
     <script type="module" src="./js/main.js"></script>

@@ -16,8 +16,10 @@ export class GameState {
         // Application state
         this.isInitialized = false;
         this.currentPuzzleIndex = 0;
-        this.debugMode = false;
-        this.numberLocale = 'bn'; // Try ar, fa, mr, en, bn, ccp, dz, my
+        this.showIDsMode = false;
+        this.showSolutionMode = false;
+        // Try ar-EG, fa, mr, en, bn, ccp, dz-BT, my-MM
+        this.numberLocale = 'fa';
     }
 
     /**
@@ -143,70 +145,39 @@ export class GameState {
     }
 
     /**
-     * Toggles debug mode
-     * @param {boolean} enabled - Whether to enable debug mode
+     * Toggles mode that shows ID labels
+     * @param {boolean} enable - Whether to enable mode
      */
-    toggleDebugMode(enabled) {
-        this.debugMode = enabled;
+    toggleShowIDs(enable) {
+        this.showIDsMode = enable;
         
-        if (enabled) {
+        if (enable) {
             // Add vertex labels to scene
             if (this.sceneManager.vertexLabels) {
                 this.sceneManager.scene.add(this.sceneManager.vertexLabels);
             }
-            
-            // Highlight solution
-            this.puzzleGrid.highlightPuzzleSolution();
         } else {
             // Remove vertex labels from scene
             if (this.sceneManager.vertexLabels) {
                 this.sceneManager.scene.remove(this.sceneManager.vertexLabels);
             }
-            
-            // Reset puzzle state (TODO: implement reset functionality)
-            this.puzzleGrid.resetEdgeStates();
         }
     }
 
     /**
-     * Gets the current debug mode state
-     * @returns {boolean} Whether debug mode is enabled
+     * Toggles mode that shows solution
+     * @param {boolean} enable - Whether to enable mode
      */
-    isDebugMode() {
-        return this.debugMode;
-    }
+    toggleShowSolution(enable) {
+        this.showSolutionMode = enable;
 
-    /**
-     * Gets all data needed for interaction setup
-     * @returns {Object} Interaction setup data
-     */
-    getInteractionData() {
-        return {
-            renderer: this.sceneManager.renderer,
-            camera: this.sceneManager.camera,
-            scene: this.sceneManager.scene,
-            polyhedronMesh: this.sceneManager.polyhedronMesh,
-            geometry: this.sceneManager.geometry,
-            grid: this.puzzleGrid,
-            faceMap: this.puzzleGrid.faceMap,
-            faceVertexRanges: this.puzzleGrid.faceVertexRanges,
-            edgeMeshes: this.puzzleGrid.getAllEdgeMeshes(),
-            controls: this.sceneManager.controls
-        };
-    }
-
-    /**
-     * Gets all data needed for debugging
-     * @returns {Object} Debug data
-     */
-    getDebugData() {
-        return {
-            grid: this.puzzleGrid,
-            scene: this.sceneManager.scene,
-            puzzleData: this.puzzleGrid.puzzleData,
-            vertexLabels: this.sceneManager.vertexLabels,
-            edgeMeshes: this.puzzleGrid.getAllEdgeMeshes()
-        };
+        if (enable) {
+            // Highlight solution
+            this.puzzleGrid.highlightPuzzleSolution(); // Disable for now; control separately
+        } else {
+            // Remove solution highlight
+            this.puzzleGrid.clearEdgeHighlights();
+        }
     }
 
     /**
