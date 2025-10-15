@@ -15,7 +15,7 @@ import { GameState } from "./GameState.js";
  */
 export async function createGameState() {
     // Initialize the game state
-    const gameState = new GameState();
+    const gameState = GameState.getInstance();
     await gameState.initialize({ puzzleIndex: 0 });
 
     // Get the scene manager and initialize the scene
@@ -25,8 +25,8 @@ export async function createGameState() {
 
     // Load geometry and puzzle data in parallel for better performance
     const [polyhedronData, puzzleData] = await Promise.all([
-        loadPolyhedronFromJSON('data/D.json'),
-        loadPuzzleData('data/D-puzzles.json')
+        loadPolyhedronFromJSON('data/cube.json'),
+        loadPuzzleData('data/cube-puzzles.json')
     ]);
 
     // Create materials

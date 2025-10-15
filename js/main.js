@@ -9,26 +9,7 @@ async function main() {
     
     // Get references to scene manager for easier access
     const sceneManager = gameState.getSceneManager();
-
-    // Set up camera
-    const cameraDistance = 6;
-    sceneManager.setupCamera(
-        window.innerWidth / window.innerHeight, 
-        cameraDistance
-    );
-
-    // Set up renderer
-    sceneManager.setupRenderer(
-        document.getElementById('canvas-container'),
-        window.innerWidth,
-        window.innerHeight
-    );
-
-    // Set up controls
-    sceneManager.setupControls({
-        minDistance: CAMERA_MIN_ZOOM,
-        maxDistance: CAMERA_MAX_ZOOM
-    });
+    sceneManager.setupStuff(sceneManager);
 
     setupUI(gameState);
 

@@ -2,6 +2,7 @@
  * Module for setting up and executing UI actions
  */
 import {makeInteraction} from "./interaction.js";
+import {GameState} from "./GameState.js";
 
 /**
  * Sets up the UI event listeners for the game.
@@ -55,4 +56,9 @@ export function displayOverlay(title, message) {
 
 function hideOverlay() {
     document.getElementById('overlayMessage').classList.add('hidden');
+
+    // Stop auto-rotation if enabled.
+    const gameState = GameState.getInstance();
+    const controls = gameState.sceneManager.controls;
+    controls.autoRotate = false;
 }

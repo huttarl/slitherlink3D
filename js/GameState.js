@@ -4,11 +4,17 @@ import { PuzzleGrid } from './PuzzleGrid.js';
 /**
  * Main application state container that manages all game components.
  * Provides a single entry point for accessing scene, grid, and interaction data.
+ * Access the single instance via GameState.getInstance().
  * 
  * @class GameState
  */
 export class GameState {
     constructor() {
+        // Singleton pattern
+        if (GameState._instance) {
+            throw new Error('Use GameState.getInstance() instead of new');
+        }
+
         this.sceneManager = new SceneManager();
         this.puzzleGrid = new PuzzleGrid();
         this.interaction = null;
@@ -21,6 +27,15 @@ export class GameState {
         // Try ar-EG, fa, mr, en, bn, ccp, dz-BT, my-MM
         // Not all of them will give different numerals. :-l
         this.numberLocale = 'en';
+    }
+
+    /**
+     * Gets the singleton instance of GameState
+     * @returns {GameState}
+     */
+    static getInstance() {
+        if (!GameState._instance) GameState._instance = new GameState();
+        return GameState._instance;
     }
 
     /**

@@ -1,6 +1,7 @@
 import { Grid } from './Grid.js';
 import {EDGE_COLORS, EDGE_STATES} from './constants.js';
 import {displayOverlay} from "./ui.js";
+import {GameState} from "./GameState.js";
 
 /**
  * Extended Grid class that includes puzzle data and cross-references to THREE.js objects.
@@ -238,7 +239,7 @@ export class PuzzleGrid extends Grid {
         for (const vId of vIDsToCheck) {
             const vertex = this.vertices.get(vId);
             const { numEdgesFilled, _numEdgesRuledOut } = this.countGuesses(vertex.edgeIDs);
-            console.log(`checkUserSolution: v${vId} has ${numEdgesFilled} edges filled in`);
+            // console.log(`checkUserSolution: v${vId} has ${numEdgesFilled} edges filled in`);
             if (numEdgesFilled > 2) {
                 status = 1; // failed
                 console.log(`checkUserSolution: loop intersects itself at vertex ${vId}`);
@@ -250,7 +251,7 @@ export class PuzzleGrid extends Grid {
                     }
                 } else {
                     // Highlight all filled-in edges of the vertex in red.
-                    console.log(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
+                    // console.log(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
                     for (const edgeId of vertex.edgeIDs) {
                         const edge = this.edges.get(edgeId);
                         const edgeMesh = this.getEdgeMesh(edgeId);
@@ -360,12 +361,13 @@ export class PuzzleGrid extends Grid {
             return;
         }
 
-        // Success! Puzzle is solved!
-        status = 2;
-        console.log("checkUserSolution: Puzzle is solved!");
-        // TODO: add HTML markup to body.
-        displayOverlay("Congratulations!", "Puzzle is solved!");
-        // TODO: give appropriate feedback to the user. special effects.
+        // If we haven't failed yet, we passed!
+        if (status !== 1) {
+            // Success! Puzzle is solved!
+            console.log("checkUserSolution: Puzzle is solved!");
+            status = 2;
+            this.celebrateSolved();
+        }
     }
 
     /**
@@ -411,5 +413,19 @@ export class PuzzleGrid extends Grid {
             }
         }
         return { numEdgesFilled, numEdgesRuledOut };
+    }
+
+    /**
+     * Celebrates the user's success in solving the puzzle.
+     */
+    celebrateSolved() {
+        const gameState = GameState.getInstance();
+        const controls = gameState.sceneManager.controls;
+        controls.autoRotateSpeed = 10.0;
+        controls.autoRotate = true;
+
+        // TODO: add HTML markup to body, and name of grid, time taken, etc.
+        displayOverlay("Congratulations!", "You solved the puzzle!");
+        // TODO: give appropriate feedback to the user. special effects.
     }
 }

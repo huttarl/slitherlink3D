@@ -1,5 +1,3 @@
-- [ ] move some of the sceneManager.setup*() calls in main() into a single
-  a single sceneManager.setupStuff() function.
 - [ ] show some visual indication when puzzle is solved successfully.
   - [ ] probably too slow & complex: a surface wobble. The idea was that for every polygon vertex v_i (not
   to be confused with vertices of subtriangles of faces), you pick a random phase ph; then over say 2 seconds,
@@ -19,10 +17,6 @@
   - [~] also return*Data() in GameState
   - [ ] unused members in SceneManager
 - [ ] vertex labels appear to be stretched wide for single-digit numbers.
-- [x] display solution (don't just set the edge states; or maybe even don't change the edge states
-  but just the color of the edge geometry!)
-  - [ ] make sure we're not unnecessarily overwriting userGuess anywhere else.
-  - [ ] stop displaying solution when we turn off "display solution"
 - [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
 - [ ] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
@@ -242,3 +236,9 @@ Old items:
 - [x] clicking on an edge has been messed up in that it cycles thru more states than
   just black/white/gray. Fix it. Actually, it only seems to have that problem when
   in debug mode...
+- [x] display solution (don't just set the edge states; or maybe even don't change the edge states
+  but just the color of the edge geometry!)
+    - [x] make sure we're not unnecessarily overwriting userGuess anywhere else.
+    - [x] stop displaying solution when we turn off "display solution"
+- [x] move some of the sceneManager.setup*() calls in main() into a single
+  a single sceneManager.setupStuff() function.

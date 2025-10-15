@@ -1,5 +1,6 @@
 import * as THREE from './three/three.module.min.js';
 import { OrbitControls } from './three/OrbitControls.js';
+import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM} from "./constants.js";
 
 /**
  * Manages all THREE.js scene objects and rendering components.
@@ -39,6 +40,21 @@ export class SceneManager {
     initializeScene() {
         this.scene = new THREE.Scene();
         return this.scene;
+    }
+
+    setupStuff() {
+        // Set up camera
+        const cameraDistance = 6;
+        this.setupCamera(window.innerWidth / window.innerHeight, cameraDistance);
+
+        // Set up renderer
+        this.setupRenderer(
+            document.getElementById('canvas-container'),
+            window.innerWidth, window.innerHeight
+        );
+
+        // Set up controls
+        this.setupControls({minDistance: CAMERA_MIN_ZOOM, maxDistance: CAMERA_MAX_ZOOM});
     }
 
     /**
