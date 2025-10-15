@@ -3,7 +3,7 @@ import * as THREE from './three/three.module.min.js';
 /**
  * Creates ID labels for vertices, edges, or faces.
  * @param {GameState} gameState - contains vertex data
- * @param {Array} items - Iterable of items to label
+ * @param {Map<any, any>} items - Iterable of items to label
  * @param {function(item: any): THREE.Vector3} getLabelPosition - Function to get the position for an item
  * @param {string} [shape] - Optional shape to use for the label (default 'rect'; also 'circle' or ...)
  * @param {object} [color] - Optional color to use for the label (default {r:255, g:100, b:100, a:1})
@@ -13,7 +13,6 @@ import * as THREE from './three/three.module.min.js';
  */
 export function createIdLabels(gameState, items, getLabelPosition,
                                shape = 'rect', color= {r:255, g:100, b:100, a:1}) {
-    const grid = gameState.getPuzzleGrid();
     const labelGroup = new THREE.Group();
     const thinSpace = String.fromCharCode(0x2009);
     // Cache the number format for performance.
@@ -40,57 +39,50 @@ export function createIdLabels(gameState, items, getLabelPosition,
  * */
 export function createVertexLabels(gameState) {
     const grid = gameState.getPuzzleGrid();
-    const labelGroup = new THREE.Group();
-    const thinSpace = String.fromCharCode(0x2009);
-    // Cache the number format for performance.
-    const numberFormat = Intl.NumberFormat(gameState.numberLocale);
-    for (const [vertexId, vertex] of grid.vertices) {
-        const s = numberFormat.format(vertexId);
-        const label = makeTextSprite(thinSpace + s + thinSpace,
-            { fontsize: 32, circular: true, backgroundColor: {r:100, g:255, b:100, a:1} });
-        // Position the label a little further from the origin than the vertex.
-        // We rely on the fact that the vertex positions are already normalized.
-        label.position.copy(vertex.position).multiplyScalar(1.15);
-        labelGroup.add(label);
-    }
-    return labelGroup;
+    return createIdLabels(gameState, gameState.getPuzzleGrid().vertices, (vertex) => vertex.position,
+        'circle', {r:100, g:255, b:100, a:1});
 }
 
 /**
  *  Create labels for edges.
  * @param {GameState} gameState - contains edge data
  * @returns {THREE.Group} Group containing all label sprites
- * TODO: refactor this with createVertexLabels()
  *
  * Based on https://stemkoski.github.io/Three.js/Labeled-Geometry.html
  * */
 export function createEdgeLabels(gameState) {
     const grid = gameState.getPuzzleGrid();
-    const labelGroup = new THREE.Group();
-    const thinSpace = String.fromCharCode(0x2009);
-    // Cache the number format for performance.
-    const numberFormat = Intl.NumberFormat(gameState.numberLocale);
-
-    function getEdgeCenter(edge) {
+    const getEdgeCenter = function (edge) {
         const vertices = gameState.getPuzzleGrid().vertices;
         const v1p = vertices.get(edge.vertexIDs[0]).position;
         const v2p = vertices.get(edge.vertexIDs[1]).position;
-        // Average the two vertex positions, but instead of multiplying by 0.5,
-        // we combine that with moving it away from the origin, so we have 0.55.
-        return v1p.clone().add(v2p).multiplyScalar(0.55);
+        // Average the two vertex positions.
+        return v1p.clone().add(v2p).multiplyScalar(0.5);
     }
+    return createIdLabels(gameState, gameState.getPuzzleGrid().edges, getEdgeCenter,
+        'rect', {r: 255, g: 100, b: 100, a: 1});
+}
 
-    for (const [edgeId, edge] of grid.edges) {
-        const s = numberFormat.format(edgeId);
-        const label = makeTextSprite(thinSpace + s + thinSpace,
-            { fontsize: 32, backgroundColor: {r:255, g:100, b:100, a:1} });
-        // Position the label a little further from the origin than the edge center.
-        // We rely on the fact that the vertex positions are already normalized.
-        label.position.copy(getEdgeCenter(edge));
-        labelGroup.add(label);
-        console.log(`Adding edge label ${s} at ${label.position}`);
+/**
+ *  Create labels for faces.
+ * @param {GameState} gameState - contains face data
+ * @returns {THREE.Group} Group containing all label sprites
+ *
+ * Based on https://stemkoski.github.io/Three.js/Labeled-Geometry.html
+ * */
+export function createFaceLabels(gameState) {
+    const grid = gameState.getPuzzleGrid();
+    const getFaceCenter = function (edge) {
+        // TODO implement this!
+        // const vertices = gameState.getPuzzleGrid().vertices;
+        // const v1p = vertices.get(edge.vertexIDs[0]).position;
+        // const v2p = vertices.get(edge.vertexIDs[1]).position;
+        // // Average the two vertex positions.
+        // return v1p.clone().add(v2p).multiplyScalar(0.5);
+        return new THREE.Vector3();
     }
-    return labelGroup;
+    return createIdLabels(gameState, gameState.getPuzzleGrid().faces, getFaceCenter,
+        'diamond', {r: 255, g: 255, b: 100, a: 1});
 }
 
 /**
@@ -101,7 +93,7 @@ export function createEdgeLabels(gameState) {
  * @param {number} [parameters.fontsize=18] - The font size to use for the sprite
  * @param {number} [parameters.borderThickness=4] - The thickness of the border around the sprite
  * @param {object} [parameters.borderColor={r:0, g:0, b:0, a:1.0}] - The color of the border around the sprite
- * @param {boolean} [parameters.circular=false] - Whether the sprite should be circular
+ * @param {string} [parameters.shape='rect'] - What shape to use for the sprite
  * @param {object} [parameters.backgroundColor={r:255, g:255, b:255, a:1.0}] - The background color of the sprite
  * @returns {THREE.Sprite} The sprite created with the given message and parameters
  */
@@ -125,8 +117,8 @@ function makeTextSprite(message, parameters)
     var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
         parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
 
-    var circular = parameters.hasOwnProperty("circular") ?
-        parameters["circular"] : false;
+    var shape = parameters.hasOwnProperty("shape") ?
+        parameters["shape"] : 'rect';
 
     // create canvas, resize later.
     var canvas = document.createElement('canvas');
@@ -160,13 +152,20 @@ function makeTextSprite(message, parameters)
     const extraHeightFactor = 1.3;
     let w = textWidth + borderThickness;
     let h = fontsize * extraHeightFactor + borderThickness;
-    if (circular) {
-        const r = Math.max(w, h) / 2 - 2;
-        context.arc(canvas.width / 2, canvas.height / 2, r, 0, 2 * Math.PI);
-        context.fill();
-        context.stroke();
-    } else {
-        roundRect(context, borderThickness / 2, borderThickness / 2, w, h, 6);
+    switch (shape) {
+        case 'rect':
+            roundRect(context, borderThickness / 2, borderThickness / 2, w, h, 6);
+            break;
+        case 'circle':
+            const r = Math.max(w, h) / 2 - 2;
+            context.arc(canvas.width / 2, canvas.height / 2, r, 0, 2 * Math.PI);
+            context.fill();
+            context.stroke();
+            break;
+        case 'diamond':
+            // TODO: implement diamond shape
+        default:
+            console.error(`Unimplemented shape: ${shape}`);
     }
 
     // text color
