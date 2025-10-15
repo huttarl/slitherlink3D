@@ -380,14 +380,14 @@ function createTextMeshForFace(faceId, face, grid, material) {
 
 /**
  * Updates text visibility based on camera position
- * @param {THREE.Group} textGroup - Group containing text meshes
- * @param {THREE.Camera} camera - Camera for visibility calculation
- * @param {Grid} grid - Topology for face normal calculation
+ * @param {GameState} gameState - contains needed state
  */
-export function updateTextVisibility(textGroup, camera, grid) {
-    const cameraPosition = camera.position;
+export function updateTextVisibility(gameState) {
+    const clueTexts = gameState.sceneManager.clueTexts;
+    const grid = gameState.getPuzzleGrid();
+    const cameraPosition = gameState.sceneManager.camera.position;
     
-    for (const mesh of textGroup.children) {
+    for (const mesh of clueTexts.children) {
         const faceId = mesh.userData.faceId;
         const face = grid.faces.get(faceId);
         

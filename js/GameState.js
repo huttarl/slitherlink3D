@@ -189,18 +189,6 @@ export class GameState {
     }
 
     /**
-     * Gets text visibility data
-     * @returns {Object} Text visibility data
-     */
-    getTextVisibilityData() {
-        return {
-            clueTexts: this.sceneManager.clueTexts,
-            camera: this.sceneManager.camera,
-            grid: this.puzzleGrid
-        };
-    }
-
-    /**
      * Handles window resize
      */
     onWindowResize() {

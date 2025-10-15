@@ -2,7 +2,7 @@ import * as THREE from './three/three.module.min.js';
 import { addSkybox } from "./skybox.js";
 import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
-import { VERTEX_RADIUS } from "./constants.js";
+import {EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
 import {createClueTexts, createEdgeLabels, createVertexLabels} from "./textRenderer.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
@@ -37,7 +37,7 @@ export async function createGameState() {
             shininess: 100, 
             specular: 0x222222 
         }),
-        vertex: new THREE.MeshPhongMaterial({ color: 0x808080, shininess: 100 })
+        vertex: new THREE.MeshPhongMaterial({ color: EDGE_COLORS.filledIn, shininess: 100 })
     };
 
     // Set up the scene with geometry and puzzle data
@@ -73,10 +73,10 @@ function createVertexGroup(grid, material) {
     const vertexGroup = new THREE.Group();
     
     for (const [_vertexId, vertex] of grid.vertices) {
-        const vgeom = new THREE.SphereGeometry(VERTEX_RADIUS, 16, 16);
-        const vmesh = new THREE.Mesh(vgeom, material);
-        vmesh.position.copy(vertex.position);
-        vertexGroup.add(vmesh);
+        const vGeom = new THREE.SphereGeometry(VERTEX_RADIUS, 16, 16);
+        const vMesh = new THREE.Mesh(vGeom, material);
+        vMesh.position.copy(vertex.position);
+        vertexGroup.add(vMesh);
     }
     
     return vertexGroup;

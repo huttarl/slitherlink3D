@@ -14,6 +14,7 @@ export class SceneManager {
         this.renderer = null;
         this.camera = null;
         this.controls = null;
+        this.clock = new THREE.Clock();
         
         // Geometry and meshes
         this.polyhedronMesh = null;
@@ -33,6 +34,7 @@ export class SceneManager {
 
     /**
      * Initializes the THREE.js scene with basic setup
+     * TODO: this function is probably not helpful. Refactor.
      */
     initializeScene() {
         this.scene = new THREE.Scene();
@@ -78,6 +80,7 @@ export class SceneManager {
         this.controls.target.set(0, 0, 0);
         this.controls.minDistance = config.minDistance || 3;
         this.controls.maxDistance = config.maxDistance || 20;
+        this.controls.enableDamping = true;
         this.controls.update();
     }
 

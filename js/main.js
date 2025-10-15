@@ -37,8 +37,10 @@ async function main() {
         requestAnimationFrame(animate);
 
         // Update text visibility based on camera position
-        const textData = gameState.getTextVisibilityData();
-        updateTextVisibility(textData.clueTexts, textData.camera, textData.grid);
+        updateTextVisibility(gameState);
+
+        // OrbitControls update is required if autorotating.
+        sceneManager.controls.update(sceneManager.clock.getDelta());
 
         // Render the scene
         gameState.render();
