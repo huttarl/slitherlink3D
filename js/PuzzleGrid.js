@@ -16,13 +16,6 @@ export class PuzzleGrid extends Grid {
         this.puzzleData = null;
         this.currentPuzzleIndex = 0;
         this.gridId = null;
-        
-        // Cross-references to THREE.js geometry
-        this.faceMap = new Map();           // geometry face index -> face ID
-        this.faceVertexRanges = new Map();  // face ID -> vertex range in geometry
-        
-        // Edge mesh references for interaction
-        this.edgeMeshMap = new Map();       // edge ID -> THREE.Mesh
     }
 
     /**
@@ -367,7 +360,7 @@ export class PuzzleGrid extends Grid {
      */
     highlightEdgeError(edgeMesh, clearedEdgeHighlights) {
         if (!clearedEdgeHighlights) this.clearEdgeHighlights();
-                edgeMesh.material.color = EDGE_COLORS.error;
+        edgeMesh.material.color = EDGE_COLORS.error;
         return true;
     }
 

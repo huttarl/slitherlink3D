@@ -19,6 +19,17 @@ export class Grid {
         this.faces = new Map();
         this.vertexPairToEdge = new Map();
         this.nextId = 0;
+
+        // Edge mesh references for interaction
+        // TODO: why not just use the existing this.edges, which maps from edge ID to Edge, and put a
+        // reference to the edge Mesh in Edge?
+        this.edgeMeshMap = new Map();       // edge ID -> THREE.Mesh
+
+        // Cross-references to THREE.js geometry
+        this.faceMap = new Map();           // geometry face index -> face ID
+        // TODO: why not just use the existing this.faces, which maps from face ID to Face, and put the
+        // vertex range in Face?
+        this.faceVertexRanges = new Map();  // face ID -> vertex range in geometry
     }
 
     /** Adds a vertex to the grid.
