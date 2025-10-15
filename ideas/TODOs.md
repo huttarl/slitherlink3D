@@ -9,12 +9,10 @@
 - [ ] loading THREE.js and trackball controls? takes a lot of time to load. What
   can I do to improve this?
 - [ ] vertex labels appear to be stretched wide for single-digit numbers.
-- [ ] ~add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
-  - [x] show vertex IDs
-  - [x] display solution (don't just set the edge states; or maybe even don't change the edge states
-    but just the color of the edge geometry!)
-    - [ ] make sure we're not unnecessarily overwriting userGuess anywhere else.
-  - [ ] stop displaying solution when we turn off debugging mode
+- [x] display solution (don't just set the edge states; or maybe even don't change the edge states
+  but just the color of the edge geometry!)
+  - [ ] make sure we're not unnecessarily overwriting userGuess anywhere else.
+  - [ ] stop displaying solution when we turn off "display solution"
 - [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
 - [ ] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
@@ -226,3 +224,4 @@ Old items:
   making a hashmap from the pair of vertex IDs to the edge ID. Combine the two IDs using
   a string `${id1},${id2}` or probably into a single integer: (id1 << 16) | id2
 - [x] use local copies of THREE.js and OrbitControls so I can keep testing w/o wifi.
+- [x] add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.

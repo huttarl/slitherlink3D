@@ -1,6 +1,37 @@
 import * as THREE from './three/three.module.min.js';
 
 /**
+ * Creates ID labels for vertices, edges, or faces.
+ * @param {GameState} gameState - contains vertex data
+ * @param {Array} items - Iterable of items to label
+ * @param {function(item: any): THREE.Vector3} getLabelPosition - Function to get the position for an item
+ * @param {string} [shape] - Optional shape to use for the label (default 'rect'; also 'circle' or ...)
+ * @param {object} [color] - Optional color to use for the label (default {r:255, g:100, b:100, a:1})
+ * @returns {THREE.Group} Group containing all label sprites
+ *
+ * Based on https://stemkoski.github.io/Three.js/Labeled-Geometry.html
+ */
+export function createIdLabels(gameState, items, getLabelPosition,
+                               shape = 'rect', color= {r:255, g:100, b:100, a:1}) {
+    const grid = gameState.getPuzzleGrid();
+    const labelGroup = new THREE.Group();
+    const thinSpace = String.fromCharCode(0x2009);
+    // Cache the number format for performance.
+    const numberFormat = Intl.NumberFormat(gameState.numberLocale);
+    for (const [itemId, item] of items) {
+        const s = numberFormat.format(itemId);
+        const label = makeTextSprite(thinSpace + s + thinSpace,
+            // TODO: switch makeTextSprite() from boolean circular to shape parameter
+            { fontsize: 32, shape: shape, backgroundColor: color });
+        // Position the label a little further from the origin than the item.
+        // We rely on the fact that the vertex positions are already normalized.
+        label.position.copy(getLabelPosition(item)).multiplyScalar(1.15);
+        labelGroup.add(label);
+    }
+    return labelGroup;
+}
+
+/**
  * Create labels for vertices.
  * @param {GameState} gameState - contains vertex data
  * @returns {THREE.Group} Group containing all label sprites
@@ -115,6 +146,7 @@ function makeTextSprite(message, parameters)
     context = canvas.getContext('2d');
     context.font = "Bold " + fontsize + "px " + fontface;
 
+    // TODO maybe: simplify how color param is passed in and used
     // background color
     context.fillStyle   = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
         + backgroundColor.b + "," + backgroundColor.a + ")";
