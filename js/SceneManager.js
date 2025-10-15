@@ -20,9 +20,9 @@ export class SceneManager {
         // Geometry and meshes
         this.polyhedronMesh = null;
         this.geometry = null;
-        this.edgeMeshes = [];
-        this.vertexGroup = null;
-        
+        // this.edgeMeshes = []; // unused?
+        // this.vertexGroup = null; // unused?
+
         // Text elements
         this.clueTexts = null;
         this.vertexLabels = null;

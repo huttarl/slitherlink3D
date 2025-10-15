@@ -1,21 +1,7 @@
-- [ ] show some visual indication when puzzle is solved successfully.
-  - [ ] probably too slow & complex: a surface wobble. The idea was that for every polygon vertex v_i (not
-  to be confused with vertices of subtriangles of faces), you pick a random phase ph; then over say 2 seconds,
-  0 < t < 2, set the position p_i of v_i = (original p_i) * (1 + sin(t * 6.0 + ph) * amp), where
-  amp is a smoothed bump function like cos(t * 2π / t_max).
-    - The reason I think that's too slow & complex is that not only will every polygon vertex sphere position
-    have to be moved for every animation frame; but also every edge cylinder will have to be re-angled according
-    to the wobbled position of its adjacent polygon vertices, and every sub-triangle of each face polygon will have
-    to be repositioned according to the wobbled position of the relevant polygon vertices. That sounds like a lot
-    to achieve in 1/30 second, especially on a mobile device. A GPU optimization guru could maybe do it, but do
-    I want to do that work?
-  - [ ] A simpler option: animate the camera a bit. Spin-orbit the camera around and zoom out/in a bit.
-    - Maybe also do something with the direct and ambient lighting...
+- [ ] why is SceneManager.initializeScene() called in both GameState.initialize() and scene.js:createGameState()?
+- [ ] allow user to dismiss overlay using Esc and/or click on X.
 - [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
   - [ ] similarly createPolyhedron().
-- [ ] there still appears to be unused code after the refactor... especially return values.
-  - [~] also return*Data() in GameState
-  - [ ] unused members in SceneManager
 - [ ] vertex labels appear to be stretched wide for single-digit numbers.
 - [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
 - [ ] Add a "Done" button, at which point we check the user's guesses and
@@ -242,3 +228,19 @@ Old items:
     - [x] stop displaying solution when we turn off "display solution"
 - [x] move some of the sceneManager.setup*() calls in main() into a single
   a single sceneManager.setupStuff() function.
+- [x] show some visual indication when puzzle is solved successfully.
+    - [ ] probably too slow & complex: a surface wobble. The idea was that for every polygon vertex v_i (not
+      to be confused with vertices of subtriangles of faces), you pick a random phase ph; then over say 2 seconds,
+      0 < t < 2, set the position p_i of v_i = (original p_i) * (1 + sin(t * 6.0 + ph) * amp), where
+      amp is a smoothed bump function like cos(t * 2π / t_max).
+        - The reason I think that's too slow & complex is that not only will every polygon vertex sphere position
+          have to be moved for every animation frame; but also every edge cylinder will have to be re-angled according
+          to the wobbled position of its adjacent polygon vertices, and every sub-triangle of each face polygon will have
+          to be repositioned according to the wobbled position of the relevant polygon vertices. That sounds like a lot
+          to achieve in 1/30 second, especially on a mobile device. A GPU optimization guru could maybe do it, but do
+          I want to do that work?
+    - [x] A simpler option: animate the camera a bit. Spin-orbit the camera around and zoom out/in a bit.
+        - Maybe also do something with the direct and ambient lighting...
+- [x] there still appears to be unused code after the refactor... especially return values.
+    - [x] also return*Data() in GameState
+    - [x] unused members in SceneManager

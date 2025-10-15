@@ -49,9 +49,6 @@ export class GameState {
             return this;
         }
 
-        // Initialize scene manager
-        this.sceneManager.initializeScene();
-        
         // Store puzzle index for later use (after puzzle data is loaded)
         this.currentPuzzleIndex = config.puzzleIndex || 0;
         
