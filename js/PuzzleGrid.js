@@ -1,5 +1,5 @@
 import { Grid } from './Grid.js';
-import { EDGE_COLORS } from './constants.js';
+import {EDGE_COLORS, EDGE_STATES} from './constants.js';
 
 /**
  * Extended Grid class that includes puzzle data and cross-references to THREE.js objects.
@@ -175,7 +175,9 @@ export class PuzzleGrid extends Grid {
         }
     }
 
-    /** Resets all edge states to unknown */
+    /** Resets all edge states to unknown.
+     * When was I going to use this? Maybe a user-initiated puzzle reset?
+     * */
     resetEdgeStates() {
         for (const [_edgeId, edge] of this.edges) {
             edge.metadata.userGuess = 0; // 0 = unknown
@@ -240,7 +242,23 @@ export class PuzzleGrid extends Grid {
                 status = 1; // failed
                 console.log(`checkUserSolution: loop intersects itself at vertex ${vId}`);
                 // TODO: highlight offending edges in red only if appropriate to mode and settings.
+                if (edge) {
+                    if (edge.metadata.userGuess === 1) {
+                        // Highlight the just-clicked edge in red.
                 clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
+            }
+                } else {
+                    // Highlight all filled-in edges of the vertex in red.
+                    console.log(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
+                    for (const edgeId of vertex.edgeIDs) {
+                        const edge = this.edges.get(edgeId);
+                        const edgeMesh = this.getEdgeMesh(edgeId);
+                        console.log(`   e${edgeId} has userGuess ${edge.metadata.userGuess}`);
+                        if (edge.metadata.userGuess === 1) {
+                            clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
+                        }
+                    }
+                }
             }
         }
 
@@ -352,11 +370,13 @@ export class PuzzleGrid extends Grid {
      * color, removing any red or green highlighting.
      */
     clearEdgeHighlights() {
+        console.log("clearEdgeHighlights");
         for (const [edgeId, edgeMesh] of this.edgeMeshMap) {
             const edge = this.edges.get(edgeId);
-            edgeMesh.material.color = edge.metadata.userGuess;
+            // console.log(`   clearing edge ${edgeId} to state ${edge.metadata.userGuess}`);
+            // TODO this double lookup seems wasteful. Maybe have a map directly from userGuess values to colors?
+            edgeMesh.material.color = EDGE_COLORS[EDGE_STATES[edge.metadata.userGuess]];
         }
-        console.log("clearEdgeHighlights: cleared all edge highlights");
     }
 
     /**
@@ -366,6 +386,7 @@ export class PuzzleGrid extends Grid {
      * @returns {boolean} true - a convenience for setting clearedEdgeHighlights in the caller.
      */
     highlightEdgeError(edgeMesh, clearedEdgeHighlights) {
+        // console.log(`highlightEdgeError: edge ${edgeMesh.userData.edgeId}`);
         if (!clearedEdgeHighlights) this.clearEdgeHighlights();
         edgeMesh.material.color = EDGE_COLORS.error;
         return true;

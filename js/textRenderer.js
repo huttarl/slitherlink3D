@@ -21,7 +21,7 @@ export function createIdLabels(gameState, items, getLabelPosition,
         const s = numberFormat.format(itemId);
         const label = makeTextSprite(thinSpace + s + thinSpace,
             // TODO: switch makeTextSprite() from boolean circular to shape parameter
-            { fontsize: 32, shape: shape, backgroundColor: color });
+            { shape: shape, backgroundColor: color });
         // Position the label a little further from the origin than the item.
         // We rely on the fact that the vertex positions are already normalized.
         label.position.copy(getLabelPosition(item)).multiplyScalar(1.15);
@@ -90,7 +90,7 @@ export function createFaceLabels(gameState) {
  * @param {string} message - The text to render onto the sprite
  * @param {object} parameters - An object containing optional parameters for the sprite
  * @param {string} [parameters.fontface=Arial] - The font face to use for the sprite
- * @param {number} [parameters.fontsize=18] - The font size to use for the sprite
+ * @param {number} [parameters.fontsize=32] - The font size to use for the sprite
  * @param {number} [parameters.borderThickness=4] - The thickness of the border around the sprite
  * @param {object} [parameters.borderColor={r:0, g:0, b:0, a:1.0}] - The color of the border around the sprite
  * @param {string} [parameters.shape='rect'] - What shape to use for the sprite
@@ -106,7 +106,7 @@ function makeTextSprite(message, parameters)
         parameters["fontface"] : "Arial";
 
     var fontsize = parameters.hasOwnProperty("fontsize") ?
-        parameters["fontsize"] : 18;
+        parameters["fontsize"] : 32;
 
     var borderThickness = parameters.hasOwnProperty("borderThickness") ?
         parameters["borderThickness"] : 4;

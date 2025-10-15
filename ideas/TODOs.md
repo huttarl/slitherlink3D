@@ -1,13 +1,23 @@
+- [ ] move some of the sceneManager.setup*() calls in main() into a single
+  a single sceneManager.setupStuff() function.
+- [ ] show some visual indication when puzzle is solved successfully.
+  - [ ] probably too slow & complex: a surface wobble. The idea was that for every polygon vertex v_i (not
+  to be confused with vertices of subtriangles of faces), you pick a random phase ph; then over say 2 seconds,
+  0 < t < 2, set the position p_i of v_i = (original p_i) * (1 + sin(t * 6.0 + ph) * amp), where
+  amp is a smoothed bump function like cos(t * 2π / t_max).
+    - The reason I think that's too slow & complex is that not only will every polygon vertex sphere position
+    have to be moved for every animation frame; but also every edge cylinder will have to be re-angled according
+    to the wobbled position of its adjacent polygon vertices, and every sub-triangle of each face polygon will have
+    to be repositioned according to the wobbled position of the relevant polygon vertices. That sounds like a lot
+    to achieve in 1/30 second, especially on a mobile device. A GPU optimization guru could maybe do it, but do
+    I want to do that work?
+  - [ ] A simpler option: animate the camera a bit. Spin-orbit the camera around and zoom out/in a bit.
+    - Maybe also do something with the direct and ambient lighting...
 - [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
   - [ ] similarly createPolyhedron().
 - [ ] there still appears to be unused code after the refactor... especially return values.
   - [~] also return*Data() in GameState
   - [ ] unused members in SceneManager
-- [ ] clicking on an edge has been messed up in that it cycles thru more states than
-  just black/white/gray. Fix it. Actually, it only seems to have that problem when
-  in debug mode...
-- [ ] loading THREE.js and trackball controls? takes a lot of time to load. What
-  can I do to improve this?
 - [ ] vertex labels appear to be stretched wide for single-digit numbers.
 - [x] display solution (don't just set the edge states; or maybe even don't change the edge states
   but just the color of the edge geometry!)
@@ -225,3 +235,10 @@ Old items:
   a string `${id1},${id2}` or probably into a single integer: (id1 << 16) | id2
 - [x] use local copies of THREE.js and OrbitControls so I can keep testing w/o wifi.
 - [x] add a debugging mode that shows the vertex and face IDs, lets you display the solution, etc.
+- [x] loading THREE.js and trackball controls? takes a lot of time to load. What
+  can I do to improve this?
+- [x] I should probably move userGuess from Mesh.userData to Edge.metadata, because that's where it belongs.
+    But it will take some involved refactoring. Actually it wasn't too bad ... it was mostly in the right place already.
+- [x] clicking on an edge has been messed up in that it cycles thru more states than
+  just black/white/gray. Fix it. Actually, it only seems to have that problem when
+  in debug mode...
