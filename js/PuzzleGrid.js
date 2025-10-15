@@ -235,7 +235,7 @@ export class PuzzleGrid extends Grid {
         for (const vId of vIDsToCheck) {
             const vertex = this.vertices.get(vId);
             const { numEdgesFilled, _numEdgesRuledOut } = this.countGuesses(vertex.edgeIDs);
-            console.log(`checkUserSolution: vertex ${vId} has ${numEdgesFilled} edges filled in`);
+            console.log(`checkUserSolution: v${vId} has ${numEdgesFilled} edges filled in`);
             if (numEdgesFilled > 2) {
                 status = 1; // failed
                 console.log(`checkUserSolution: loop intersects itself at vertex ${vId}`);
@@ -254,8 +254,13 @@ export class PuzzleGrid extends Grid {
 
             const numEdges = face.vertexIDs.length;
             const { numEdgesFilled, numEdgesRuledOut } = this.countGuesses(face.edgeIDs);
-            if (numEdgesFilled > face.metadata.clue) {
+            if (isActiveMode && numEdgesFilled !== face.metadata.clue) {
+                // In active mode, clues must be exactly matched.
                 console.log(`checkUserSolution: face ${faceId} has ${numEdgesFilled} edges filled in but should have ${face.metadata.clue}`);
+                status = 1;
+                // TODO: highlight clue as error
+            } else if (numEdgesFilled > face.metadata.clue) {
+                console.log(`checkUserSolution: face ${faceId} has ${numEdgesFilled} edges filled in but should only have ${face.metadata.clue}`);
                 status = 1;
                 // TODO: highlight clue as error
             } else if (numEdges - numEdgesRuledOut < face.metadata.clue) {
@@ -288,12 +293,13 @@ export class PuzzleGrid extends Grid {
         }
 
         let startVertexId = startEdge.vertexIDs[0], currentVertexId = startEdge.vertexIDs[1];
+        console.log(`checkUserSolution: tracing from v${startVertexId} along e${startEdgeId}`);
         let currentVertex = this.vertices.get(currentVertexId);
         let currentEdge = startEdge, currentEdgeId = startEdgeId;
         let loopLength = 1;
         // Trace the route
         do {
-            console.log(`checkUserSolution: tracing vertex ${currentVertexId}, edge ${currentEdgeId}`);
+            console.log(`checkUserSolution: tracing to v${currentVertexId} via e${currentEdgeId}`);
             // Find an edge of currentVertex besides currentEdge that is filled in.
             let nextEdge = null, nextEdgeId = null;
             for (const edgeId of currentVertex.edgeIDs) {
@@ -309,7 +315,7 @@ export class PuzzleGrid extends Grid {
             // If no such edge exists, the puzzle is not solved.
             if (nextEdge == null) {
                 status = 1;
-                console.log(`checkUserSolution: Incomplete loop.\n   No edge of ${currentVertexId} besides ${currentEdgeId} is filled in`);
+                console.log(`checkUserSolution: Incomplete loop.\n   No edge of v${currentVertexId} is filled in except e${currentEdgeId}.`);
                 // TODO: give appropriate feedback to the user.
                 return;
             }
@@ -318,6 +324,7 @@ export class PuzzleGrid extends Grid {
             currentVertexId = (nextEdge.vertexIDs[0] === currentVertexId ? nextEdge.vertexIDs[1] : nextEdge.vertexIDs[0]);
             currentVertex = this.vertices.get(currentVertexId);
             currentEdgeId = nextEdgeId;
+            console.log(`checkUserSolution: got to vertex ${currentVertexId} via edge ${currentEdgeId}`);
             currentEdge = nextEdge;
             loopLength++; // Will this give us an off-by-one error?
         } while (currentVertexId !== startVertexId);
