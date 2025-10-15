@@ -1,5 +1,6 @@
 import { Grid } from './Grid.js';
 import {EDGE_COLORS, EDGE_STATES} from './constants.js';
+import {displayOverlay} from "./ui.js";
 
 /**
  * Extended Grid class that includes puzzle data and cross-references to THREE.js objects.
@@ -245,8 +246,8 @@ export class PuzzleGrid extends Grid {
                 if (edge) {
                     if (edge.metadata.userGuess === 1) {
                         // Highlight the just-clicked edge in red.
-                clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
-            }
+                        clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
+                    }
                 } else {
                     // Highlight all filled-in edges of the vertex in red.
                     console.log(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
@@ -361,8 +362,10 @@ export class PuzzleGrid extends Grid {
 
         // Success! Puzzle is solved!
         status = 2;
-        // TODO: give appropriate feedback to the user.
         console.log("checkUserSolution: Puzzle is solved!");
+        // TODO: add HTML markup to body.
+        displayOverlay("Congratulations!", "Puzzle is solved!");
+        // TODO: give appropriate feedback to the user. special effects.
     }
 
     /**

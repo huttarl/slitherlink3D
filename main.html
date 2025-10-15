@@ -84,6 +84,32 @@
             color: rgba(0, 0, 0, 0.7);
             border-radius: 5px;
         }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        .message-box {
+            background: #fff;
+            color: #222;
+            padding: 2em;
+            border-radius: 1em;
+            text-align: center;
+            box-shadow: 0 0.5em 1.5em rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+            cursor: auto;
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -122,6 +148,13 @@
                     <div id="selection-info"></div>
                 </div>
             </details>
+        </div>
+        <div id="overlayMessage" class="hidden overlay">
+            <div class="message-box">
+                <h2 id="messageTitle">Congratulations!</h2>
+                <p id="messageBody">You solved this <b>Dodecahedron</b>
+                    Slitherlink puzzle in <b>1m 42s</b>!</p>
+            </div>
         </div>
     </div>
     <script type="module" src="./js/main.js"></script>

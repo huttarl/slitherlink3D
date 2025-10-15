@@ -1,7 +1,7 @@
 import {updateTextVisibility} from './textRenderer.js';
 import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM} from './constants.js';
-import {makeInteraction} from './interaction.js';
 import {createGameState} from "./scene.js";
+import {setupUI} from "./ui.js";
 
 async function main() {
     // Create the game state with all necessary objects
@@ -30,26 +30,7 @@ async function main() {
         maxDistance: CAMERA_MAX_ZOOM
     });
 
-    // Set up interaction - pass GameState directly
-    gameState.setInteraction(makeInteraction(gameState));
-
-    // Wire up labels toggle
-    const showIDsToggle = document.getElementById('showIDs');
-    showIDsToggle.addEventListener('change', (e) => {
-        gameState.toggleShowIDs(e.target.checked);
-    });
-    // Wire up solution display toggle
-    const showSolutionToggle = document.getElementById('showSolution');
-    showSolutionToggle.addEventListener('change', (e) => {
-        gameState.toggleShowSolution(e.target.checked);
-    });
-
-
-    // Wire up debugging toggle
-    const checkSolutionButton = document.getElementById('checkSolution');
-    checkSolutionButton.addEventListener('click', () => {
-        gameState.getPuzzleGrid().checkUserSolution(true);
-    });
+    setupUI(gameState);
 
     // Render loop
     function animate() {
