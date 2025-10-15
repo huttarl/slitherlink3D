@@ -2,6 +2,7 @@
   - [ ] similarly createPolyhedron().
 - [ ] there still appears to be unused code after the refactor... especially return values.
   - [~] also return*Data() in GameState
+  - [ ] unused members in SceneManager
 - [ ] clicking on an edge has been messed up in that it cycles thru more states than
   just black/white/gray. Fix it. Actually, it only seems to have that problem when
   in debug mode...

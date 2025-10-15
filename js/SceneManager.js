@@ -24,14 +24,11 @@ export class SceneManager {
         // Text elements
         this.clueTexts = null;
         this.vertexLabels = null;
+        this.edgeLabels = null;
         
         // Lighting
         this.ambientLight = null;
         this.directionalLight = null;
-        
-        // Material references
-        this.polyhedronMaterial = null;
-        this.vertexMaterial = null;
     }
 
     /**
@@ -137,13 +134,15 @@ export class SceneManager {
      * Adds text elements to the scene
      * @param {THREE.Group} clueTexts - Group containing clue text objects
      * @param {THREE.Group} vertexLabels - Group containing vertex label objects
+     * @param {THREE.Group} edgeLabels - Group containing edge label objects
      */
-    addTextElements(clueTexts, vertexLabels) {
+    addTextElements(clueTexts, vertexLabels, edgeLabels) {
         this.clueTexts = clueTexts;
         this.vertexLabels = vertexLabels;
+        this.edgeLabels = edgeLabels;
         
         this.scene.add(clueTexts);
-        // Note: vertexLabels are only added in debug mode
+        // Note: vertexLabels and edgeLabels are only added upon request.
     }
 
     /**

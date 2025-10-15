@@ -19,7 +19,8 @@ export class GameState {
         this.showIDsMode = false;
         this.showSolutionMode = false;
         // Try ar-EG, fa, mr, en, bn, ccp, dz-BT, my-MM
-        this.numberLocale = 'fa';
+        // Not all of them will give different numerals. :-l
+        this.numberLocale = 'en';
     }
 
     /**
@@ -132,9 +133,10 @@ export class GameState {
      * Sets up text elements
      * @param {THREE.Group} clueTexts - Group containing clue text objects
      * @param {THREE.Group} vertexLabels - Group containing vertex label objects
+     * @param {THREE.Group} edgeLabels - Group containing edge label objects
      */
-    setupTextElements(clueTexts, vertexLabels) {
-        this.sceneManager.addTextElements(clueTexts, vertexLabels);
+    setupTextElements(clueTexts, vertexLabels, edgeLabels) {
+        this.sceneManager.addTextElements(clueTexts, vertexLabels, edgeLabels);
     }
 
     /**
@@ -152,14 +154,20 @@ export class GameState {
         this.showIDsMode = enable;
         
         if (enable) {
-            // Add vertex labels to scene
+            // Add ID labels to scene
             if (this.sceneManager.vertexLabels) {
                 this.sceneManager.scene.add(this.sceneManager.vertexLabels);
             }
+            if (this.sceneManager.edgeLabels) {
+                this.sceneManager.scene.add(this.sceneManager.edgeLabels);
+            }
         } else {
-            // Remove vertex labels from scene
+            // Remove ID labels from scene
             if (this.sceneManager.vertexLabels) {
                 this.sceneManager.scene.remove(this.sceneManager.vertexLabels);
+            }
+            if (this.sceneManager.edgeLabels) {
+                this.sceneManager.scene.remove(this.sceneManager.edgeLabels);
             }
         }
     }

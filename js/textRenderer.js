@@ -1,7 +1,8 @@
 import * as THREE from './three/three.module.min.js';
 
-/** Create labels for vertices.
- * @param {GameState} gameState - The grid containing vertex data
+/**
+ * Create labels for vertices.
+ * @param {GameState} gameState - contains vertex data
  * @returns {THREE.Group} Group containing all label sprites
  *
  * Based on https://stemkoski.github.io/Three.js/Labeled-Geometry.html
@@ -15,11 +16,48 @@ export function createVertexLabels(gameState) {
     for (const [vertexId, vertex] of grid.vertices) {
         const s = numberFormat.format(vertexId);
         const label = makeTextSprite(thinSpace + s + thinSpace,
-            { fontsize: 32, backgroundColor: {r:255, g:100, b:100, a:1} });
+            { fontsize: 32, circular: true, backgroundColor: {r:100, g:255, b:100, a:1} });
         // Position the label a little further from the origin than the vertex.
         // We rely on the fact that the vertex positions are already normalized.
-        label.position.copy(vertex.position).multiplyScalar(1.1);
+        label.position.copy(vertex.position).multiplyScalar(1.15);
         labelGroup.add(label);
+    }
+    return labelGroup;
+}
+
+/**
+ *  Create labels for edges.
+ * @param {GameState} gameState - contains edge data
+ * @returns {THREE.Group} Group containing all label sprites
+ * TODO: refactor this with createVertexLabels()
+ *
+ * Based on https://stemkoski.github.io/Three.js/Labeled-Geometry.html
+ * */
+export function createEdgeLabels(gameState) {
+    const grid = gameState.getPuzzleGrid();
+    const labelGroup = new THREE.Group();
+    const thinSpace = String.fromCharCode(0x2009);
+    // Cache the number format for performance.
+    const numberFormat = Intl.NumberFormat(gameState.numberLocale);
+
+    function getEdgeCenter(edge) {
+        const vertices = gameState.getPuzzleGrid().vertices;
+        const v1p = vertices.get(edge.vertexIDs[0]).position;
+        const v2p = vertices.get(edge.vertexIDs[1]).position;
+        // Average the two vertex positions, but instead of multiplying by 0.5,
+        // we combine that with moving it away from the origin, so we have 0.55.
+        return v1p.clone().add(v2p).multiplyScalar(0.55);
+    }
+
+    for (const [edgeId, edge] of grid.edges) {
+        const s = numberFormat.format(edgeId);
+        const label = makeTextSprite(thinSpace + s + thinSpace,
+            { fontsize: 32, backgroundColor: {r:255, g:100, b:100, a:1} });
+        // Position the label a little further from the origin than the edge center.
+        // We rely on the fact that the vertex positions are already normalized.
+        label.position.copy(getEdgeCenter(edge));
+        labelGroup.add(label);
+        console.log(`Adding edge label ${s} at ${label.position}`);
     }
     return labelGroup;
 }
@@ -32,6 +70,7 @@ export function createVertexLabels(gameState) {
  * @param {number} [parameters.fontsize=18] - The font size to use for the sprite
  * @param {number} [parameters.borderThickness=4] - The thickness of the border around the sprite
  * @param {object} [parameters.borderColor={r:0, g:0, b:0, a:1.0}] - The color of the border around the sprite
+ * @param {boolean} [parameters.circular=false] - Whether the sprite should be circular
  * @param {object} [parameters.backgroundColor={r:255, g:255, b:255, a:1.0}] - The background color of the sprite
  * @returns {THREE.Sprite} The sprite created with the given message and parameters
  */
@@ -54,6 +93,9 @@ function makeTextSprite(message, parameters)
 
     var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
         parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+
+    var circular = parameters.hasOwnProperty("circular") ?
+        parameters["circular"] : false;
 
     // create canvas, resize later.
     var canvas = document.createElement('canvas');
@@ -84,8 +126,16 @@ function makeTextSprite(message, parameters)
     // Extra height factor = 1.4 for descenders. We have only digits, with no descenders.
     // But 1.0, the bottom margin of the digits is too small.
     const extraHeightFactor = 1.3;
-    roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness,
-        fontsize * extraHeightFactor + borderThickness, 6);
+    let w = textWidth + borderThickness;
+    let h = fontsize * extraHeightFactor + borderThickness;
+    if (circular) {
+        const r = Math.max(w, h) / 2 - 2;
+        context.arc(canvas.width / 2, canvas.height / 2, r, 0, 2 * Math.PI);
+        context.fill();
+        context.stroke();
+    } else {
+        roundRect(context, borderThickness / 2, borderThickness / 2, w, h, 6);
+    }
 
     // text color
     context.fillStyle = "rgba(0, 0, 0, 1.0)";
@@ -115,6 +165,7 @@ function makeTextSprite(message, parameters)
  * @param x, y - lower? left corner of rectangle
  * @param w, h - width and height of rectangle
  * @param r - radius of rounded corners
+ * Note that as of 2023, there is a built-in roundRect() function in Canvas.
  */
 function roundRect(ctx, x, y, w, h, r)
 {

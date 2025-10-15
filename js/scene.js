@@ -3,7 +3,7 @@ import { addSkybox } from "./skybox.js";
 import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
 import { VERTEX_RADIUS } from "./constants.js";
-import { createClueTexts, createVertexLabels } from "./textRenderer.js";
+import {createClueTexts, createEdgeLabels, createVertexLabels} from "./textRenderer.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
 
@@ -54,7 +54,8 @@ export async function createGameState() {
     // Create text elements
     const clueTexts = createClueTexts(gameState);
     const vertexLabels = createVertexLabels(gameState);
-    gameState.setupTextElements(clueTexts, vertexLabels);
+    const edgeLabels = createEdgeLabels(gameState);
+    gameState.setupTextElements(clueTexts, vertexLabels, edgeLabels);
 
     // Set up lighting
     gameState.setupLighting();
