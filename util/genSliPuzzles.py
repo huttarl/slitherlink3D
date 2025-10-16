@@ -72,8 +72,36 @@ def process_args():
         num_puzzles_wanted = int(sys.argv[2])
 
 
+def generate_puzzle(i):
+    """Generate the ith puzzle."""
+    # Here are some thoughts for a fun strategy.
+    # A. Create a region of red faces and one of blue faces.
+        # 1. Pick two random (not necessarily uncolored) faces. Color one red, and the other blue.
+        #   Keep count of how many faces are red and blue, accounting for colors being overwritten.
+        # 2. Repeat #1 until all of the faces are colored. (Maybe do the last few not by picking random faces,
+        # but by iterating over faces and coloring uncolored faces.)
+        # 3. Pick a blue face at random and call that your initial blue region. Check whether it's connected to all other blue faces.
+        # If not, grow your blue region by coloring an adjacent red face blue. Repeat #3 until all blue
+        # faces are connected.
+        # 4. Do likewise with red faces until they are all connected.
+        # 5. Repeat #3 and #4 until both red and blue regions are all connected, without changes.
+        # 5.5. Try not to let the number of red faces or blue faces fall below a certain threshold.
+        #   If they do, start over with A.
+        # 6. Fill in every edge that is between red and blue faces. Now we have a loop (solution).
+    # B. Generate clues
+        # 1. Pick a random face. Give it a clue corresponding to the number of adjacent filled edges.
+        # 2. Repeat #1 for a certain percentage of the faces (adjustable heuristic).
+        # 3. Attempt to solve the puzzle using the clues:
+            # a. If there is no solution, remove one of the clues and try again.
+            # b. If there are multiple solutions, add a new clue and try again.
+            # c. If there is exactly one solution, we have a successful puzzle; record it.
+            # d. If our attempts exceed a preset limit, give up on this solution and start over with A.
+
+
 def generate_puzzles():
-    pass
+    """Generate puzzles."""
+    for i in range(num_puzzles_wanted):
+        generate_puzzle(i)
 
 
 def output_puzzles():
