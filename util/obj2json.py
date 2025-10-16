@@ -1,7 +1,5 @@
-# obj2json: Convert OBJ export from polyHedronisme to Slitherlink3D JSON data
+# obj2json: Convert OBJ file (export from polyHedronisme) to Slitherlink3D JSON data
 
-# The following is for printing to stderr.
-from __future__ import print_function
 import sys, json, re
 
 cells = []
