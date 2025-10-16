@@ -4,18 +4,20 @@ Output is written to stdout.
 For JSON format specifications, see docs/json-format.md."""
 
 import json, sys
+import networkx as nx
+import planarity
 
 # Global variables
 grid_json: dict|None = None
 grid_id: str|None = None
 num_puzzles_wanted: int = 1
 puzzles_output: dict = {}
-# Unneeded: grid_vertices: list|None = None
+grid_vertices: list|None = None
 num_vertices: int = 0
 grid_faces: list|None = None
 num_faces: int = 0
 puzzles: list = []
-
+G = nx.Graph()
 
 def require_properties(properties):
     for prop in properties:
@@ -24,15 +26,40 @@ def require_properties(properties):
             sys.exit(1)
 
 
+def build_graph():
+    """Build a graph from the faces and vertices loaded from the grid JSON."""
+    global G
+    G.clear()
+    for face in grid_faces:
+        for i in range(len(face)):
+            G.add_edge(face[i], face[(i + 1) % len(face)])
+
+    print("edges", G.edges)
+    print("vertices", G.nodes)
+
+    PG = planarity.PGraph(G)
+    print("Graph is planar?", planarity.is_planar(PG))
+    # print("Faces", PG.faces()) # no such method
+
+    # Next, make sure we have faces... It would be nice if we could add them explicitly,
+    # since we already have that info.
+
+    # pG = planarity.PGraph(G)
+    # pG.add_nodes_from(G.nodes())
+    # pG.add_edges_from(G.edges())
+    # print(planarity.is_planar(pG)) # Just for testing
+
+
 def process_grid_json():
     """Validate the grid JSON data and put into efficient data structures."""
-    global grid_json, grid_id, grid_faces, puzzles_output, num_vertices, num_faces
+    global grid_json, grid_id, grid_faces, num_faces, grid_vertices, num_vertices, puzzles_output
     # Validate required fields per json-format.md specification
     require_properties(["gridId", "gridName", "vertices", "faces"])
 
     grid_id = grid_json["gridId"]
     puzzles_output["gridId"] = grid_id
 
+    grid_vertices = grid_json["vertices"]
     num_vertices = len(grid_json["vertices"])
     # We're not actually going to need any vertex positions. Just their indices.
 
@@ -41,6 +68,7 @@ def process_grid_json():
 
     # Deallocate the grid JSON data.
     grid_json = None
+    build_graph()
 
 
 def load_grid_file():
@@ -86,15 +114,23 @@ def generate_puzzle(i):
         # 4. Do likewise with red faces until they are all connected.
         # 5. Repeat #3 and #4 until both red and blue regions are all connected, without changes.
         # 5.5. Try not to let the number of red faces or blue faces fall below a certain threshold.
-        #   If they do, start over with A.
+        #   If they do, sprinkle more red or blue paint and repeat #3 and #4.
         # 6. Fill in every edge that is between red and blue faces. Now we have a loop (solution).
+        # 7. Optional: check how many faces we have that have zero edges filled. A high percentage
+        #   would indicate a "boring" puzzle. Even worse: zero-edge-filled faces surrounded by other
+        #   zero-edge-filled faces. In a case like that, just change the color of that face and go
+        #   back to step 3.
     # B. Generate clues
         # 1. Pick a random face. Give it a clue corresponding to the number of adjacent filled edges.
         # 2. Repeat #1 for a certain percentage of the faces (adjustable heuristic).
         # 3. Attempt to solve the puzzle using the clues:
-            # a. If there is no solution, remove one of the clues and try again.
-            # b. If there are multiple solutions, add a new clue and try again.
-            # c. If there is exactly one solution, we have a successful puzzle; record it.
+            # a. If there is no solution, remove one of the clues and try again. But this should never
+                # happen, because the clues are based on an actual, valid solution.
+            # b. If there are multiple solutions, add a new clue and try again. We could even do
+                # a binary search to find the best number of clues: Maintain a min and max number
+                # of clues from previous tries. Zero in until we find clues that give a unique solution.
+            # c. If there is only one solution, we have a successful puzzle; record it.
+                # To make an easier puzzle (adjustable difficulty level), we could add more clues.
             # d. If our attempts exceed a preset limit, give up on this solution and start over with A.
 
 
