@@ -2,6 +2,7 @@
     "gridName": "Cube",
     "gridId": "C",
     "categories": ["Platonic solid"],
+    "recipe": "C",
     "_comment": "The vertices are not centered at the origin, nor scaled to unit cube, so that we can test normalization.",
     "vertices": [
         [2,2,2],

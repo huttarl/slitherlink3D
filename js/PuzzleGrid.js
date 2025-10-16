@@ -424,8 +424,12 @@ export class PuzzleGrid extends Grid {
         controls.autoRotateSpeed = 10.0;
         controls.autoRotate = true;
 
+        const name = this.gridName;
+        const elapsedTimeSec = Math.round(gameState.sceneManager.clock.getElapsedTime());
+        const min = Math.floor(elapsedTimeSec / 60), sec = elapsedTimeSec % 60;
+
         // TODO: add HTML markup to body, and name of grid, time taken, etc.
-        displayOverlay("Congratulations!", "You solved the puzzle!");
+        displayOverlay("Congratulations!", `You solved this ${name} puzzle in ${min}m ${sec}s!`);
         // TODO: give appropriate feedback to the user. special effects.
     }
 }

@@ -1,4 +1,4 @@
-- [ ] why is SceneManager.initializeScene() called in both GameState.initialize() and scene.js:createGameState()?
+- [ ] why are we copying data from grid to puzzleGrid, instead of inheriting it?
 - [ ] allow user to dismiss overlay using Esc and/or click on X.
 - [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
   - [ ] similarly createPolyhedron().
@@ -244,3 +244,4 @@ Old items:
 - [x] there still appears to be unused code after the refactor... especially return values.
     - [x] also return*Data() in GameState
     - [x] unused members in SceneManager
+- [x] why is SceneManager.initializeScene() called in both GameState.initialize() and scene.js:createGameState()?

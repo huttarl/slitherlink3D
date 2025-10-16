@@ -22,6 +22,7 @@ A JSON object containing the following properties:
     "gridId": "T",
     "gridName": "Tetrahedron",
     "categories": ["Platonic solid", "deltahedron"],
+    "recipe": "T",
     "vertices": [
       [0.577, 0.577, 0.577], [0.577, -0.577, -0.577],
       [-0.577, 0.577, -0.577], [-0.577, -0.577, 0.577]

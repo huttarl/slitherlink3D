@@ -39,6 +39,7 @@ export class SceneManager {
      */
     initializeScene() {
         this.scene = new THREE.Scene();
+        this.clock.start();
         return this.scene;
     }
 
@@ -97,6 +98,9 @@ export class SceneManager {
         this.controls.minDistance = config.minDistance || 3;
         this.controls.maxDistance = config.maxDistance || 20;
         this.controls.enableDamping = true;
+        // Default dampingFactor is 0.05, but we want more because when the
+        // shape keeps rotating it's hard to click on the right thing.
+        this.controls.dampingFactor = 0.1;
         this.controls.update();
     }
 

@@ -147,7 +147,7 @@ function createPolyhedron(vertices, faces) {
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
-    return {geometry, grid: grid, faceMap, faceVertexRanges};
+    return {geometry, grid, faceMap, faceVertexRanges};
 }
 
 /** Create geometry and topology of a cube.

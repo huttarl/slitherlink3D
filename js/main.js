@@ -1,5 +1,4 @@
 import {updateTextVisibility} from './textRenderer.js';
-import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM} from './constants.js';
 import {createGameState} from "./scene.js";
 import {setupUI} from "./ui.js";
 

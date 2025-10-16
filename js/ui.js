@@ -30,7 +30,7 @@ export function setupUI(gameState) {
 
     const overlay = document.getElementById('overlayMessage');
     overlay.addEventListener('click', e => {
-        if (e.target === overlay) hideOverlay();
+        hideOverlay();
     });
 }
 

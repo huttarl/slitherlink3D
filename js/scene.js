@@ -24,10 +24,14 @@ export async function createGameState() {
     addSkybox(scene, 'underwater');
 
     // Load geometry and puzzle data in parallel for better performance
+    const gridFilename = "icos";
     const [polyhedronData, puzzleData] = await Promise.all([
-        loadPolyhedronFromJSON('data/cube.json'),
-        loadPuzzleData('data/cube-puzzles.json')
+        loadPolyhedronFromJSON(`data/${gridFilename}.json`),
+        loadPuzzleData(`data/${gridFilename}-puzzles.json`)
     ]);
+
+    polyhedronData.grid.gridName = polyhedronData.gridName;
+    console.log(`createGameState: phD.gridName = ${polyhedronData.gridName}`);
 
     // Create materials
     const materials = {

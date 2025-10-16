@@ -22,8 +22,9 @@ export class GameState {
         // Application state
         this.isInitialized = false;
         this.currentPuzzleIndex = 0;
-        this.showIDsMode = false;
-        this.showSolutionMode = false;
+        // this.showIDsMode = false; // not used
+        // this.showSolutionMode = false; // not used
+
         // Try ar-EG, fa, mr, en, bn, ccp, dz-BT, my-MM
         // Not all of them will give different numerals. :-l
         this.numberLocale = 'en';
@@ -100,8 +101,10 @@ export class GameState {
         }
 
         const { geometry, grid, faceMap, faceVertexRanges, gridId } = polyhedronData;
-        
+
+        // TODO why are we copying data from the grid, instead of inheriting it?
         // Copy grid data to our puzzle grid
+        this.puzzleGrid.gridName = grid.gridName;
         this.puzzleGrid.vertices = grid.vertices;
         this.puzzleGrid.edges = grid.edges;
         this.puzzleGrid.faces = grid.faces;
