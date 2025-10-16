@@ -32,6 +32,10 @@ export function setupUI(gameState) {
     overlay.addEventListener('click', e => {
         hideOverlay();
     });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') hideOverlay();
+    })
 }
 
 /**
