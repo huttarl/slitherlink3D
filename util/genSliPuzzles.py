@@ -5,7 +5,6 @@ For JSON format specifications, see docs/json-format.md."""
 
 import json, sys
 from compas.datastructures import Mesh
-from compas_viewer import Viewer
 
 # Global variables
 grid_json: dict|None = None
@@ -18,7 +17,7 @@ grid_faces: list|None = None
 num_faces: int = 0
 puzzles: list = []
 mesh: Mesh|None = None
-viewer = Viewer()
+
 
 def require_properties(properties):
     """Ensure that all required properties are present in the grid JSON."""
@@ -26,6 +25,33 @@ def require_properties(properties):
         if prop not in grid_json:
             print(f"Error: Missing required property '{prop}' in grid JSON.")
             sys.exit(1)
+
+
+def display_mesh():
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+    # get vertex coordinates and faces
+    vertices = [mesh.vertex_coordinates(vkey) for vkey in mesh.vertices()]
+    faces = [[mesh.vertex_coordinates(vkey) for vkey in mesh.face_vertices(fkey)]
+             for fkey in mesh.faces()]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # draw faces
+    poly = Poly3DCollection(faces, facecolor='lightblue', edgecolor='k', alpha=0.8)
+    ax.add_collection3d(poly)
+
+    # set bounds
+    xs, ys, zs = zip(*vertices)
+    ax.auto_scale_xyz(xs, ys, zs)
+    ax.set_box_aspect([1, 1, 1])  # equal aspect ratio
+    
+    print("Displaying mesh...")
+    plt.show()
+    print("Done displaying.")
+
 
 
 def build_graph():
@@ -39,22 +65,7 @@ def build_graph():
     print("vertices", mesh.number_of_vertices())
     for vertex in mesh.vertices():
         print(vertex)
-
-    # Display mesh, for debugging
-    viewer.scene.add(mesh)
-    viewer.show()
-    print("Finished showing mesh.")
-
-    # for face in grid_faces:
-    #     for i in range(len(face)):
-    #         G.add_edge(face[i], face[(i + 1) % len(face)])
-    #
-    # print("edges", G.edges)
-    # print("vertices", G.nodes)
-    #
-    # PG = planarity.PGraph(G)
-    # print("Graph is planar?", planarity.is_planar(PG))
-    # # print("Faces", PG.faces()) # no such method
+    display_mesh()
 
 
 def process_grid_json():
