@@ -4,8 +4,8 @@ Output is written to stdout.
 For JSON format specifications, see docs/json-format.md."""
 
 import json, sys
-import networkx as nx
-import planarity
+from compas.datastructures import Mesh
+from compas_viewer import Viewer
 
 # Global variables
 grid_json: dict|None = None
@@ -17,9 +17,11 @@ num_vertices: int = 0
 grid_faces: list|None = None
 num_faces: int = 0
 puzzles: list = []
-G = nx.Graph()
+mesh: Mesh|None = None
+viewer = Viewer()
 
 def require_properties(properties):
+    """Ensure that all required properties are present in the grid JSON."""
     for prop in properties:
         if prop not in grid_json:
             print(f"Error: Missing required property '{prop}' in grid JSON.")
@@ -28,26 +30,31 @@ def require_properties(properties):
 
 def build_graph():
     """Build a graph from the faces and vertices loaded from the grid JSON."""
-    global G
-    G.clear()
-    for face in grid_faces:
-        for i in range(len(face)):
-            G.add_edge(face[i], face[(i + 1) % len(face)])
+    global mesh
+    # TODO: verify that the vertex IDs are the same ones we use in the javascript game, i.e.
+    #   the indices vertices. Because the game expects the solution to use those IDs.
+    mesh = Mesh.from_vertices_and_faces(grid_vertices, grid_faces)
+    print("faces", mesh.number_of_faces())
+    print("edges", mesh.number_of_edges())
+    print("vertices", mesh.number_of_vertices())
+    for vertex in mesh.vertices():
+        print(vertex)
 
-    print("edges", G.edges)
-    print("vertices", G.nodes)
+    # Display mesh, for debugging
+    viewer.scene.add(mesh)
+    viewer.show()
+    print("Finished showing mesh.")
 
-    PG = planarity.PGraph(G)
-    print("Graph is planar?", planarity.is_planar(PG))
-    # print("Faces", PG.faces()) # no such method
-
-    # Next, make sure we have faces... It would be nice if we could add them explicitly,
-    # since we already have that info.
-
-    # pG = planarity.PGraph(G)
-    # pG.add_nodes_from(G.nodes())
-    # pG.add_edges_from(G.edges())
-    # print(planarity.is_planar(pG)) # Just for testing
+    # for face in grid_faces:
+    #     for i in range(len(face)):
+    #         G.add_edge(face[i], face[(i + 1) % len(face)])
+    #
+    # print("edges", G.edges)
+    # print("vertices", G.nodes)
+    #
+    # PG = planarity.PGraph(G)
+    # print("Graph is planar?", planarity.is_planar(PG))
+    # # print("Faces", PG.faces()) # no such method
 
 
 def process_grid_json():
@@ -141,6 +148,7 @@ def generate_puzzles():
 
 
 def output_puzzles():
+    """Output generated puzzles in JSON format."""
     global puzzles_output
     json.dump(puzzles_output, sys.stdout, indent=3)
     # Output a newline, or else zsh will display a confusing '%' character.
@@ -148,7 +156,6 @@ def output_puzzles():
 
 
 def main():
-    global num_puzzles
     process_args()
     load_grid_file()
     generate_puzzles()
