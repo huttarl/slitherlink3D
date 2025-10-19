@@ -24,7 +24,7 @@ export async function createGameState() {
     addSkybox(scene, 'underwater');
 
     // Load geometry and puzzle data in parallel for better performance
-    const gridFilename = "T"; // Try cube, T, D, icos
+    const gridFilename = "D"; // Try cube, T, D, icos
     const [polyhedronData, puzzleData] = await Promise.all([
         loadPolyhedronFromJSON(`data/${gridFilename}.json`),
         loadPuzzleData(`data/${gridFilename}-puzzles.json`)
