@@ -3,15 +3,17 @@ Usage: python3 genSliPuzzles.py myGrid.json
 Output is written to stdout.
 For JSON format specifications, see docs/json-format.md."""
 
-import json, random, sys, math, random
+import json, random, sys
 
 import matplotlib.pyplot as plt
 import networkx as nx
 from compas.datastructures import Mesh
-from compas.geometry import centroid_points, Point, length_vector
+from compas.geometry import Point, length_vector
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+import slisolver
 
 # Global variables
 grid_json: dict|None = None
@@ -86,6 +88,7 @@ def setup_display():
         x, y, z = mesh.vertex_coordinates(vkey)
         ax.text(x * 1.1, y * 1.1, z * 1.1, str(vkey))
 
+    # TODO: would be nice to be able to toggle display of face/vertex IDs by keyboard.
     # # Label each face at its centroid
     # for fkey in mesh.faces():
     #     pts = [mesh.vertex_coordinates(vkey) for vkey in mesh.face_vertices(fkey)]
@@ -266,10 +269,10 @@ def adjust_populations():
 
 def paint_neighbor_face(component, color):
     """Expand the given connected component, which consists of faces of the given color,
-    into a new neighbor, painting it the same color.
+    by painting a neighbor the same color.
     Adjusts totals, and updates dual graph and *_needs_check as needed.
-    :param component: A set of face keys in the connected component.
-    :param color: The color to paint the new neighbor face."""
+        component - A set containing the face keys in the connected component.
+        color - The color to paint the new neighbor face."""
     # Convert set to a list for choosing randomly.
     faces = list(component)
     while True:
@@ -393,7 +396,6 @@ def enumerate_solution():
                 # Found an outgoing edge.
                 print(f"Found next edge! {ekey}")
                 if neighbor == start_vertex:
-                    plt.show()
                     return solution
                 solution.append(neighbor)
                 print(f"   {solution}...")
@@ -405,11 +407,93 @@ def enumerate_solution():
             raise ValueError("No outgoing edges found with different colored faces. This should never happen.")
 
     # Should never reach here.
+    assert False, "Should never reach this line."
     return solution
 
 
+def propose_clues():
+    """Randomly generate a set of clues for established solution."""
+    num_clues = round(num_faces * 0.3)
+    clues: list[int] = []
+    for i in range(num_clues):
+        # Pick a random face key from 0 to num_faces-1
+        fkey = random.randrange(num_faces)
+        # Get the num_walls attribute from face in mesh
+        # TODO: must populate this attribute!
+        clue: int = mesh.face_attribute(fkey, 'num_walls')
+        if (fkey >= len(clues)):
+            # Extend length of clues list to fkey+1
+            if fkey > len(clues):
+                clues.extend([-1] * (len(clues) - fkey))
+            clues.append(clue)
+        else:
+            clues[fkey] = clue
+
+    print(f"Proposed clues: {clues}")
+    return clues
+
+
+def populate_num_walls():
+    """Populate the mesh's 'num_walls' attribute for each face.
+
+    This means the number of edges that are 'filled in', i.e., part of the solution
+    loop. These are the edges between faces of different colors.
+    """
+    for fkey in mesh.faces():
+        # Note that 'boring' attribute is equivalent to 'num_walls == 0'.
+        # However they're updated at different times, so they may not always
+        # correspond, as it now stands.
+        this_color = mesh.face_attribute(fkey, 'color')
+        num_walls = sum(1 for neighbor in mesh.face_neighbors(fkey)
+                        if mesh.face_attribute(neighbor, 'color') != this_color)
+        mesh.face_attribute(fkey, 'num_walls', num_walls)
+
+
+def generate_valid_clues() -> list[int]:
+    """Using established solution, generate clues that fit only that solution.
+
+    In some cases this may not be possible, so the return value may be None.
+
+    Return value: A list of integers. The indices of the list correspond to face indices
+    (fkeys). The values in the list are the clues to be displayed on each face, i.e.,
+    how many edges of each face that form part of the solution loop. Missing values at the
+    end of the list, or -1, mean that no number should be displayed on those faces.
+    """
+    populate_num_walls()
+    clues: list[int] = propose_clues()
+    num_clues = sum(1 for x in clues if x > -1)
+    min_clues = 1
+    max_clues = num_faces
+    finished = False
+    while not finished:
+        if slisolver.solution_is_unique(clues):
+            ...
+        else:
+            ...
+    return clues
+
+
 def generate_puzzle(i):
-    """Generate the ith puzzle."""
+    """Generate the ith puzzle.
+
+    i is just used for logging, I think."""
+    clues = None
+    while not clues:
+        generate_regions(i)
+        solution = enumerate_solution()
+        clues = generate_valid_clues()
+        print(f"Generating clues for puzzle {i} {'succeeded' if clues else 'failed'}")
+        # If we couldn't generate proper clues for this puzzle, start over from scratch.
+
+    puzzle = { "clues": clues, "solution": solution }
+    puzzles_output["puzzles"].append(puzzle)
+
+    plt.show()
+
+
+def generate_regions(i):
+    """Generate random red and blue regions, which will determine the solution.
+    Makes sure each region is connected, reasonably large, and not boring."""
     global total_red, total_blue, blue_needs_check, red_needs_check
     randomize_face_colors()
     update_display()
@@ -418,7 +502,7 @@ def generate_puzzle(i):
     red_needs_check = True
     iterations = 0
     while not finished:
-        adjust_populations() # Could trigger red_needs_check or blue_needs_check.
+        adjust_populations()  # Could trigger red_needs_check or blue_needs_check.
         if blue_needs_check:
             # Make sure blue is connected.
             added_blue = ensure_connected(blue)
@@ -434,21 +518,11 @@ def generate_puzzle(i):
             if added_red:
                 blue_needs_check = True
         fix_boring_neighborhoods()
-        finished = not(blue_needs_check or red_needs_check)
+        finished = not (blue_needs_check or red_needs_check)
         iterations += 1
         print(f"{iterations} steps. Needs check: blue={blue_needs_check} red={red_needs_check}")
 
-    print(f"Achieved acceptable red and blue connected regions after {iterations} steps!")
-    print(f"Generated puzzle {i+1} with {total_red} red faces and {total_blue} blue faces.")
-
-    solution = enumerate_solution()
-
-    clues = [1, 2, -1, 5] # TODO generate clues!
-
-    puzzle = { "clues": clues, "solution": solution }
-    puzzles_output["puzzles"].append(puzzle)
-
-    plt.show()
+    print(f"Generated puzzle {i + 1} with {total_red} red faces and {total_blue} blue faces, in {iterations} steps.")
 
 
 def randomize_face_colors():
