@@ -3,8 +3,7 @@ Usage: python3 genSliPuzzles.py myGrid.json
 Output is written to stdout.
 For JSON format specifications, see docs/json-format.md."""
 
-import json, random, sys, math
-from random import choice
+import json, random, sys, math, random
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -35,6 +34,7 @@ puzzles: list = []
 # for Matplotlib
 fig: Figure|None = None
 ax: Axes3D|None = None
+poly: Poly3DCollection|None = None
 
 # Puzzle generation state
 total_red = 0
@@ -61,27 +61,19 @@ def on_key_press(event):
 
 def setup_display():
     """Set up the display for the mesh."""
-    global fig, ax
+    global fig, ax, poly
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     fig.canvas.mpl_connect('key_press_event', on_key_press)
     # plt.ion() # enable interactive mode
 
-
-def update_display():
-    """Update the display with the current mesh."""
-    global fig, ax
-
     # draw faces
     ax.clear()
-    # TODO: since the V/E/F don't change, only their colors, it would be better
-    # not to rebuild the mesh, but just update the colors.
     # Build the Poly3DCollection and its labels once.
     faces = [[mesh.vertex_coordinates(vkey) for vkey in mesh.face_vertices(fkey)]
              for fkey in mesh.faces()]
-    colors = [mesh.face_attribute(fkey, 'color') for fkey in mesh.faces()]
 
-    poly = Poly3DCollection(faces, facecolors=colors, edgecolor='gray', alpha=0.8, linewidths=2)
+    poly = Poly3DCollection(faces, edgecolor='gray', alpha=0.8, linewidths=2)
     ax.add_collection3d(poly)
 
     # Label each face at its centroid
@@ -101,9 +93,17 @@ def update_display():
     plt.grid(b=None)
     plt.axis('off')
 
+
+def update_display():
+    """Update the display with the current mesh."""
+    global fig, ax
+
+    colors = [mesh.face_attribute(fkey, 'color') for fkey in mesh.faces()]
+    poly.set_facecolor(colors)
+
     plt.draw()
     # print("Displaying mesh...")
-    plt.pause(0.01)  # brief pause to refresh display
+    plt.pause(0.001)  # brief pause to refresh display
 
 
 def log_mesh():
@@ -126,7 +126,7 @@ def build_graphs():
     mesh = Mesh.from_vertices_and_faces(grid_vertices, grid_faces)
     # That was easy!
     print(f"Built mesh. F: {mesh.number_of_faces()}, V: {mesh.number_of_vertices()}, E: {mesh.number_of_edges()}")
-    log_mesh()
+    # log_mesh()
     normalize_vertices()
 
     # Now make a dual graph in nx, with nodes for the faces of the grid.
@@ -257,11 +257,11 @@ def ensure_connected(color):
     """Check whether faces of the given color are connected.
     If not, add paint until they are.
     Return True if any faces were painted, False if the faces were already connected."""
-    print(f"Ensuring connectedness of faces of color {color}.")
+    print(f"Ensuring connectedness of {color} faces.")
     faces_painted = False
     while True:
         # Collect face nodes of the given color.
-        p = dualG.nodes(data=True)
+        # p = dualG.nodes(data=True)
         # print(f"Dual graph has {len(p)} nodes") # {repr(p)}
         this_color_face_nodes = [f for f, d in dualG.nodes(data=True) if d['color'] == color]
         is_connected = nx.is_connected(dualG.subgraph(this_color_face_nodes))
@@ -273,6 +273,7 @@ def ensure_connected(color):
 
         # At this point I had thought to pick a face adjacent to one of the connected groups.
         # But it may be just as effective (and is easier) to just paint a random face.
+        # No ... that seems to take interminable iterations to get to a suitable state.
         paint_random_faces(color, 1)
         faces_painted = True
         # TODO: re-collecting color face nodes in order to re-check connectedness is inefficient.
@@ -311,10 +312,12 @@ def fix_boring_neighborhoods():
                     old_color = mesh.face_attribute(f_to_color, "color")
                     print(f"  Painting face {f_to_color} {opposite_color[old_color]}")
                     paint_face(f_to_color, opposite_color[old_color])
+                    # Now this face is no longer boring, nor are (most of?) its neighbors.
+                    mesh.face_attribute(f_to_color, "boring", False)
+                    for nbr_of_changed in mesh.face_neighbors(f_to_color):
+                        mesh.face_attribute(nbr_of_changed, "boring", False)
                     # Stop processing this face. Check other boring faces (continue outer loop).
                     break
-
-
 
 
 def generate_puzzle(i):
@@ -326,6 +329,7 @@ def generate_puzzle(i):
     finished = False
     blue_needs_check = True
     red_needs_check = True
+    iterations = 0
     while not finished:
         adjust_populations() # Could trigger red_needs_check or blue_needs_check.
         if blue_needs_check:
@@ -344,7 +348,8 @@ def generate_puzzle(i):
                 blue_needs_check = True
         fix_boring_neighborhoods()
         finished = not(blue_needs_check or red_needs_check)
-        print(f"blue needs check: {blue_needs_check} red needs check: {red_needs_check}")
+        iterations += 1
+        print(f"{iterations} steps. Needs check: blue={blue_needs_check} red={red_needs_check}")
 
     print("Achieved acceptable red and blue connected regions!")
     plt.show()

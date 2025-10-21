@@ -64,7 +64,7 @@ def input_face(line):
 def sanitize_for_id(s):
     """Sanitize string for use as an ID."""
     # Allow alphanumeric ASCII characters + underscore.
-    return re.sub(r"[^0-9a-z_]", "", s.lower())
+    return re.sub(r"[^0-9A-Za-z_]", "", s)
 
 def output():
     # Make output format compact, so that it loads quickly.
