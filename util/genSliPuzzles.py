@@ -253,6 +253,25 @@ def adjust_populations():
         paint_random_faces('blue', round(num_faces / 3 - total_blue))
 
 
+def paint_neighbor_face(component, color):
+    """Expand the given connected component, which consists of faces of the given color,
+    into a new neighbor, painting it the same color.
+    Adjusts totals, and updates dual graph and *_needs_check as needed.
+    :param component: A set of face keys in the connected component."""
+    # Convert to a list for shuffling.
+    faces = list(component)
+    while True:
+        face_to_grow = random.choice(faces)
+        # Pick a neighbor of face_to_grow.
+        neighbor = random.choice (mesh.face_neighbors(face_to_grow))
+        # If the neighbor is already this color, try another neighbor.
+        if mesh.face_attribute(neighbor, "color") != color:
+            # If the neighbor is the same color, paint it the same color..
+            paint_face(neighbor, color)
+            return
+        # Otherwise, pick a new face and a new neighbor.
+
+
 def ensure_connected(color):
     """Check whether faces of the given color are connected.
     If not, add paint until they are.
@@ -264,7 +283,12 @@ def ensure_connected(color):
         # p = dualG.nodes(data=True)
         # print(f"Dual graph has {len(p)} nodes") # {repr(p)}
         this_color_face_nodes = [f for f, d in dualG.nodes(data=True) if d['color'] == color]
-        is_connected = nx.is_connected(dualG.subgraph(this_color_face_nodes))
+        subgraph = dualG.subgraph(this_color_face_nodes)
+        # is_connected = nx.is_connected(subgraph)
+        # Find the smallest connected component.
+        smallest_cc = min(nx.connected_components(subgraph), key=len)
+        is_connected = (len(smallest_cc) == len(this_color_face_nodes))
+
         print(f"Connectedness of {len(this_color_face_nodes)} {color}: {is_connected}.")
         update_display()
 
@@ -273,11 +297,11 @@ def ensure_connected(color):
 
         # At this point I had thought to pick a face adjacent to one of the connected groups.
         # But it may be just as effective (and is easier) to just paint a random face.
+        # paint_random_faces(color, 1)
         # No ... that seems to take interminable iterations to get to a suitable state.
-        paint_random_faces(color, 1)
+        paint_neighbor_face(smallest_cc, color)
         faces_painted = True
-        # TODO: re-collecting color face nodes in order to re-check connectedness is inefficient.
-        # Instead, add the just-painted face to the face node collection.
+
         update_display()
 
 
