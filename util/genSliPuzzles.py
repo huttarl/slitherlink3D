@@ -41,7 +41,11 @@ total_red = 0
 total_blue = 0
 red_needs_check = False
 blue_needs_check = False
-opposite_color = {"red": "blue", "blue": "red"}
+# Symbols for our colors, so that we don't risk typos.
+red = "red"
+blue = "blue"
+opposite_color = {red: blue, blue: red}
+
 
 def require_properties(properties):
     """Ensure that all required properties are present in the grid JSON."""
@@ -237,7 +241,7 @@ def paint_face(fkey, color):
     global total_red, total_blue, red_needs_check, blue_needs_check
     mesh.face_attribute(fkey, "color", color)
     dualG.nodes[fkey]["color"] = color
-    if color == "red":
+    if color == red:
         total_red += 1
         blue_needs_check = True
     else:
@@ -248,17 +252,18 @@ def paint_face(fkey, color):
 def adjust_populations():
     """If the number of blue or red faces is too low, increase it."""
     if total_red < num_faces / 3 or total_red < 1:
-        paint_random_faces('red', round(num_faces / 3 - total_red))
+        paint_random_faces(red, round(num_faces / 3 - total_red))
     elif total_blue < num_faces / 3 or total_blue < 1:
-        paint_random_faces('blue', round(num_faces / 3 - total_blue))
+        paint_random_faces(blue, round(num_faces / 3 - total_blue))
 
 
 def paint_neighbor_face(component, color):
     """Expand the given connected component, which consists of faces of the given color,
     into a new neighbor, painting it the same color.
     Adjusts totals, and updates dual graph and *_needs_check as needed.
-    :param component: A set of face keys in the connected component."""
-    # Convert to a list for shuffling.
+    :param component: A set of face keys in the connected component.
+    :param color: The color to paint the new neighbor face."""
+    # Convert set to a list for choosing randomly.
     faces = list(component)
     while True:
         face_to_grow = random.choice(faces)
@@ -358,14 +363,14 @@ def generate_puzzle(i):
         adjust_populations() # Could trigger red_needs_check or blue_needs_check.
         if blue_needs_check:
             # Make sure blue is connected.
-            added_blue = ensure_connected('blue')
+            added_blue = ensure_connected(blue)
             blue_needs_check = False
             # If that required painting faces blue...
             if added_blue:
                 red_needs_check = True
         if red_needs_check:
             # Make sure red is connected.
-            added_red = ensure_connected('red')
+            added_red = ensure_connected(red)
             red_needs_check = False
             # If that required painting faces red...
             if added_red:
@@ -382,8 +387,8 @@ def randomize_face_colors():
     """Assign red or blue randomly to each face."""
     global total_red, total_blue
     for fkey in mesh.faces():
-        color = random.choice(["red", "blue"])
-        if color == "red":
+        color = random.choice([red, blue])
+        if color == red:
             total_red += 1
         else:
             total_blue += 1
