@@ -39,6 +39,7 @@ poly: Poly3DCollection|None = None
 # Puzzle generation state
 total_red = 0
 total_blue = 0
+# If a face has been painted blue, we need to check whether the red faces are still connected; and v.v.
 red_needs_check = False
 blue_needs_check = False
 # Symbols for our colors, so that we don't risk typos.
@@ -80,14 +81,19 @@ def setup_display():
     poly = Poly3DCollection(faces, edgecolor='gray', alpha=0.8, linewidths=2)
     ax.add_collection3d(poly)
 
-    # Label each face at its centroid
-    for fkey in mesh.faces():
-        pts = [mesh.vertex_coordinates(vkey) for vkey in mesh.face_vertices(fkey)]
-        cx, cy, cz = centroid_points(pts)
-        # Move these away from origin.
-        factor = 1.15
-        ax.text(cx * factor, cy * factor, cz * factor, str(fkey),
-                color='black', fontsize=8, ha='center', va='center')
+    # Label each vertex
+    for vkey in mesh.vertices():
+        x, y, z = mesh.vertex_coordinates(vkey)
+        ax.text(x * 1.1, y * 1.1, z * 1.1, str(vkey))
+
+    # # Label each face at its centroid
+    # for fkey in mesh.faces():
+    #     pts = [mesh.vertex_coordinates(vkey) for vkey in mesh.face_vertices(fkey)]
+    #     cx, cy, cz = centroid_points(pts)
+    #     # Move these away from origin.
+    #     factor = 1.00
+    #     ax.text(cx * factor, cy * factor, cz * factor, str(fkey),
+    #             color='black', fontsize=8, ha='center', va='center')
 
     xs, ys, zs = zip(*[mesh.vertex_coordinates(v) for v in mesh.vertices()])
     ax.auto_scale_xyz(xs, ys, zs)
@@ -179,6 +185,7 @@ def process_grid_json():
 
     grid_id = grid_json["gridId"]
     puzzles_output["gridId"] = grid_id
+    puzzles_output["puzzles"] = []
 
     grid_vertices = grid_json["vertices"]
     num_vertices = len(grid_json["vertices"])
@@ -349,11 +356,62 @@ def fix_boring_neighborhoods():
                     break
 
 
+def is_edge_boring(ekey):
+    """Given an edge key, return True if the edge has two faces with the same color."""
+    # Get the two faces it connects.
+    (f1, f2) = mesh.edge_faces(ekey)
+    return (mesh.face_attribute(f1, "color") == mesh.face_attribute(f2, "color"))
+
+
+def enumerate_solution():
+    """Express the solution as a sequence of vertex IDs that specify the loop."""
+    solution = []
+    start_vertex = None
+    next_vertex = None
+    for ekey in mesh.edges():
+        if not is_edge_boring(ekey):
+            # Remember that an edge key is just (v1, v2), that is a tuple of two vertex IDs.
+            start_vertex, next_vertex = ekey
+            break
+    if start_vertex is None:
+        raise ValueError("No edges found with different colors. This should never happen.")
+    solution.append(start_vertex)
+    solution.append(next_vertex)
+    prev_vertex = start_vertex
+    print(f"Solution: {solution}...")
+    while next_vertex != start_vertex:
+        # Get vertex neighbors of next_vertex
+        neighbors = mesh.vertex_neighbors(next_vertex)
+        found_next = False
+        # Find the one that runs an outward edge between difference colorned faces.
+        for neighbor in neighbors:
+            if neighbor == prev_vertex:
+                continue # Skip the previous vertex.
+            print(" trying neighbor", neighbor)
+            ekey = (next_vertex, neighbor)
+            if not is_edge_boring(ekey):
+                # Found an outgoing edge.
+                print(f"Found next edge! {ekey}")
+                if neighbor == start_vertex:
+                    plt.show()
+                    return solution
+                solution.append(neighbor)
+                print(f"   {solution}...")
+                prev_vertex = next_vertex
+                next_vertex = neighbor
+                found_next = True
+                break # out of for; continue while
+        if not found_next:
+            raise ValueError("No outgoing edges found with different colored faces. This should never happen.")
+
+    # Should never reach here.
+    return solution
+
+
 def generate_puzzle(i):
     """Generate the ith puzzle."""
     global total_red, total_blue, blue_needs_check, red_needs_check
     randomize_face_colors()
-    print(f"Generated puzzle {i+1} with {total_red} red faces and {total_blue} blue faces.")
     update_display()
     finished = False
     blue_needs_check = True
@@ -380,8 +438,18 @@ def generate_puzzle(i):
         iterations += 1
         print(f"{iterations} steps. Needs check: blue={blue_needs_check} red={red_needs_check}")
 
-    print("Achieved acceptable red and blue connected regions!")
+    print(f"Achieved acceptable red and blue connected regions after {iterations} steps!")
+    print(f"Generated puzzle {i+1} with {total_red} red faces and {total_blue} blue faces.")
+
+    solution = enumerate_solution()
+
+    clues = [1, 2, -1, 5] # TODO generate clues!
+
+    puzzle = { "clues": clues, "solution": solution }
+    puzzles_output["puzzles"].append(puzzle)
+
     plt.show()
+
 
 def randomize_face_colors():
     """Assign red or blue randomly to each face."""
