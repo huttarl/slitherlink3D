@@ -41,7 +41,7 @@ export async function createGameState() {
             shininess: 100, 
             specular: 0x222222 
         }),
-        vertex: new THREE.MeshPhongMaterial({ color: EDGE_COLORS.filledIn, shininess: 100 })
+        vertex: new THREE.MeshPhongMaterial({ color: new THREE.Color(0), shininess: 100 })
     };
 
     // Set up the scene with geometry and puzzle data

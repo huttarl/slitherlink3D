@@ -20,7 +20,7 @@ export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44); // Used for debug
 // Edge state machine configuration
 export const EDGE_COLORS = {
     unknown: new THREE.Color(0x808080), // 50% gray
-    filledIn: new THREE.Color(0x111111), // almost black
+    filledIn: new THREE.Color(0x0000a0), // almost black
     ruledOut: new THREE.Color(0xf8f8f8), // almost white
     solution: new THREE.Color(0x66dd66), // green
     error: new THREE.Color(0xff8888), // red
