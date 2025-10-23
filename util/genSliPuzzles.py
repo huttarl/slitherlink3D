@@ -2,8 +2,7 @@
 Usage: python3 genSliPuzzles.py myGrid.json
 Output is written to stdout.
 For JSON format specifications, see docs/json-format.md."""
-
-import json, random, sys
+import itertools, json, random, sys, math
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -13,6 +12,7 @@ from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+# Our local module
 import slisolver
 
 # Global variables
@@ -33,6 +33,8 @@ dualG: nx.Graph|None = None
 # The structure of these graphs will not change, only the colors of faces and edges.
 
 puzzles: list = []
+solution: list[int] = []
+
 # for Matplotlib
 fig: Figure|None = None
 ax: Axes3D|None = None
@@ -411,25 +413,12 @@ def enumerate_solution():
     return solution
 
 
-def propose_clues():
-    """Randomly generate a set of clues for established solution."""
-    num_clues = round(num_faces * 0.3)
-    clues: list[int] = []
-    for i in range(num_clues):
-        # Pick a random face key from 0 to num_faces-1
-        fkey = random.randrange(num_faces)
-        # Get the num_walls attribute from face in mesh
-        # TODO: must populate this attribute!
-        clue: int = mesh.face_attribute(fkey, 'num_walls')
-        if (fkey >= len(clues)):
-            # Extend length of clues list to fkey+1
-            if fkey > len(clues):
-                clues.extend([-1] * (len(clues) - fkey))
-            clues.append(clue)
-        else:
-            clues[fkey] = clue
-
-    print(f"Proposed clues: {clues}")
+def random_face_ordering():
+    """Generate a random ordering of (face, clue) pairs for the established solution."""
+    # Make a list of (face, clue) pairs, and shuffle it.
+    clues = [(fkey, mesh.face_attribute(fkey, 'num_walls')) for fkey in mesh.faces()]
+    random.shuffle(clues)
+    print(f"Clue ordering: {clues}")
     return clues
 
 
@@ -449,8 +438,18 @@ def populate_num_walls():
         mesh.face_attribute(fkey, 'num_walls', num_walls)
 
 
-def generate_valid_clues() -> list[int]:
-    """Using established solution, generate clues that fit only that solution.
+def clues_by_face(clues_in, num_clues):
+    """Convert the first num_clues clues from [(face, num_walls)] to [num_walls] format.
+
+    In the returned list, the indices of the list correspond to face indices."""
+    clues_out = [-1] * num_clues
+    for fkey, num_walls in itertools.islice(clues_in, num_clues):
+        clues_out[fkey] = num_walls
+    return clues_out
+
+
+def generate_minimal_clueset() -> list[int]:
+    """Using established solution, generate a fairly minimal set of clues that fit only that solution.
 
     In some cases this may not be possible, so the return value may be None.
 
@@ -459,29 +458,71 @@ def generate_valid_clues() -> list[int]:
     how many edges of each face that form part of the solution loop. Missing values at the
     end of the list, or -1, mean that no number should be displayed on those faces.
     """
-    populate_num_walls()
-    clues: list[int] = propose_clues()
-    num_clues = sum(1 for x in clues if x > -1)
+    # cut_clues() could fail, not because there is no set of clues
+    # that yields a unique solution, but because of the ordering... right?
+    # Or maybe a poor ordering wouldn't make us fail but would just require more
+    # clues than we could otherwise use... E.g. all of them. So...
+    # We may need to iterate a bit over random orderings, before giving up...
+    # but how would we know our set of clues was suboptimal?
+    # Maybe try a few times and pick the best.
+    min_needed = num_faces
+    face_clues = None
+    # TODO: Start these in separate threads for parallelism, and cancel if they take too long.
+    for i in range(5):
+        face_clues = random_face_ordering()
+        num_needed = cut_clues(face_clues)
+        if num_needed < min_needed:
+            min_needed = num_needed
+
+    return clues_by_face(face_clues, min_needed)
+
+
+def cut_clues(clues: list[tuple]) -> int:
+    """Given a list of (face, clue) pairs, determine the minimum prefix needed to give a unique solution.
+
+    If there is no such prefix, return None.
+    """
+    # We now have all the clues, in a random order. We just need to determine how many
+    # of them are needed.
+    num_clues = round(num_faces * 0.3)
     min_clues = 1
+    min_succeeded = float('inf')
     max_clues = num_faces
+    max_succeeded = -1
     finished = False
     while not finished:
-        if slisolver.solution_is_unique(clues):
-            ...
+        print(f"Trying {num_clues} clues. min={min_clues} max={max_clues} succeeded={min_succeeded} {max_succeeded}")
+        if slisolver.solution_is_unique(clues, num_clues, solution, mesh, dualG):
+            # We don't need any more clues than num_clues.
+            max_clues = num_clues
+            if num_clues > max_succeeded:
+                max_succeeded = num_clues
+            if num_clues < min_succeeded:
+                min_succeeded = num_clues
+            if num_clues == min_clues:
+                # We've found the minimum set of clues.
+                finished = True
         else:
-            ...
-    return clues
+            # We need more clues.
+            min_clues = num_clues + 1
+            if min_clues > max_clues:
+                # Even with all clues filled in, we still don't have a unique solution.
+                return None
+        num_clues = round((min_clues + max_clues) / 2)
+
+    return num_clues
 
 
 def generate_puzzle(i):
     """Generate the ith puzzle.
 
     i is just used for logging, I think."""
+    global solution
     clues = None
     while not clues:
         generate_regions(i)
         solution = enumerate_solution()
-        clues = generate_valid_clues()
+        clues = generate_minimal_clueset()
         print(f"Generating clues for puzzle {i} {'succeeded' if clues else 'failed'}")
         # If we couldn't generate proper clues for this puzzle, start over from scratch.
 
@@ -493,7 +534,9 @@ def generate_puzzle(i):
 
 def generate_regions(i):
     """Generate random red and blue regions, which will determine the solution.
-    Makes sure each region is connected, reasonably large, and not boring."""
+
+    Makes sure each region is connected, reasonably large, and not boring.
+    i is the puzzle index, just used for logging."""
     global total_red, total_blue, blue_needs_check, red_needs_check
     randomize_face_colors()
     update_display()
@@ -522,7 +565,8 @@ def generate_regions(i):
         iterations += 1
         print(f"{iterations} steps. Needs check: blue={blue_needs_check} red={red_needs_check}")
 
-    print(f"Generated puzzle {i + 1} with {total_red} red faces and {total_blue} blue faces, in {iterations} steps.")
+    print(f"Generated regions for puzzle {i + 1} with {total_red} red faces and {total_blue} blue faces, in {iterations} steps.")
+    populate_num_walls()
 
 
 def randomize_face_colors():
@@ -556,6 +600,7 @@ def main():
     process_args()
     load_grid_file()
     setup_display()
+    # random.seed() # Uncomment once we're finished debugging.
     generate_puzzles()
     output_puzzles()
 
