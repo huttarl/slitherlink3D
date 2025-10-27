@@ -128,6 +128,7 @@ def select_edge_for_branching(mesh):
     - Choose edges adjacent to faces with clues
     - Choose edges where one choice would immediately cause propagation
     - Choose edges in high-degree vertices
+    - Choose edges that continue the existing loop
 
     Returns an edge key or None if no unknown edges exist.
     """
@@ -138,13 +139,13 @@ def select_edge_for_branching(mesh):
 
 
 def save_state(mesh):
-    """Save the current state of all edge guesses."""
-    # TODO: can we make this just a list instead of a dict, since all
-    # fkeys should be consecutive starting from 0?
-    return {ekey: mesh.edge_attribute(ekey, 'guess') for ekey in mesh.edges()}
+    """Save the current state of all edge guesses.
+    It's a list of all edge guesses, in the same order as the mesh edges."""
+    return mesh.edges_attribute('guess')
 
 
 def restore_state(mesh, state):
-    """Restore edge guesses to a saved state."""
-    for ekey, guess in state.items():
+    """Restore edge guesses to a saved state.
+    state is a list of all edge guesses, in the same order as the mesh edges."""
+    for ekey, guess in zip(mesh.edges(), state):
         mesh.edge_attribute(ekey, 'guess', guess)
