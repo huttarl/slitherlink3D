@@ -13,6 +13,7 @@ if possible.
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from scipy.spatial import ConvexHull
 
 
 def generate_random_points_on_sphere(n, radius=1.0):
@@ -54,8 +55,8 @@ def generate_random_points_on_sphere(n, radius=1.0):
 
 
 def simulate_repulsion(points, radius=1.0, max_iterations=1000,
-                       force_strength=0.1, max_force=0.5,
-                       damping=0.01, max_velocity=0.5,
+                       force_strength=0.1, max_force=1.0,
+                       damping=0.9, max_velocity=0.1,
                        convergence_threshold=1e-4):
     """
     Simulate electrostatic repulsion between points on sphere surface.
@@ -82,7 +83,6 @@ def simulate_repulsion(points, radius=1.0, max_iterations=1000,
 
         # Calculate repulsive forces between all pairs
         for i in range(n):
-            # Can we use j in range(i+1, n) and then apply forces symmetrically, saving some time?
             for j in range(n):
                 if i == j:
                     continue
@@ -146,13 +146,14 @@ def simulate_repulsion(points, radius=1.0, max_iterations=1000,
     return points
 
 
-def visualize_points_on_sphere(points, radius=1.0):
+def visualize_points_on_sphere(points, radius=1.0, hull=None):
     """
     Visualize points on a sphere using matplotlib.
 
     Args:
         points: numpy array of shape (n, 3) with point coordinates
         radius: radius of the sphere for reference wireframe
+        hull: optional ConvexHull object to display the polyhedron
     """
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d')
@@ -161,6 +162,20 @@ def visualize_points_on_sphere(points, radius=1.0):
     ax.scatter(points[:, 0], points[:, 1], points[:, 2],
                c='red', marker='o', s=100, alpha=0.8, label='Random vertices')
 
+    # Draw convex hull if provided
+    if hull is not None:
+        # Draw edges of the convex hull
+        for simplex in hull.simplices:
+            # Each simplex is a triangular face with 3 vertex indices
+            # Draw the three edges of the triangle
+            for i in range(3):
+                start = points[simplex[i]]
+                end = points[simplex[(i + 1) % 3]]
+                ax.plot([start[0], end[0]],
+                       [start[1], end[1]],
+                       [start[2], end[2]],
+                       'b-', linewidth=1, alpha=0.6)
+
     # Draw a wireframe sphere for reference
     u = np.linspace(0, 2 * np.pi, 30)
     v = np.linspace(0, np.pi, 20)
@@ -168,13 +183,16 @@ def visualize_points_on_sphere(points, radius=1.0):
     y = radius * np.outer(np.sin(u), np.sin(v))
     z = radius * np.outer(np.ones(np.size(u)), np.cos(v))
 
-    ax.plot_wireframe(x, y, z, color='lightblue', alpha=0.3, linewidth=0.5)
+    ax.plot_wireframe(x, y, z, color='lightblue', alpha=0.2, linewidth=0.5)
 
     # Set labels and title
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    ax.set_title(f'{len(points)} Random Points on Unit Sphere')
+    title = f'{len(points)} Random Points on Unit Sphere'
+    if hull is not None:
+        title += f'\nConvex Hull: {len(hull.simplices)} faces, {len(hull.vertices)} vertices'
+    ax.set_title(title)
 
     # Set equal aspect ratio
     max_range = radius * 1.1
@@ -189,9 +207,9 @@ def visualize_points_on_sphere(points, radius=1.0):
 
 def main():
     # Set random seed for reproducibility (optional)
-    np.random.seed()
+    np.random.seed(42)
 
-    # Generate random points on unit sphere
+    # Generate 40 random points on unit sphere
     n = 40
     points = generate_random_points_on_sphere(n, radius=1.0)
 
@@ -215,8 +233,15 @@ def main():
     print("\nAdjusted points:")
     print(adjusted_points)
 
-    # Visualize the adjusted points
-    visualize_points_on_sphere(adjusted_points, radius=1.0)
+    # Compute convex hull
+    print("\nComputing convex hull...")
+    hull = ConvexHull(adjusted_points)
+
+    print(f"Convex hull has {len(hull.vertices)} vertices and {len(hull.simplices)} faces")
+    print(f"All vertices are on hull: {len(hull.vertices) == n}")
+
+    # Visualize the adjusted points with convex hull
+    visualize_points_on_sphere(adjusted_points, radius=1.0, hull=hull)
 
 
 if __name__ == "__main__":
