@@ -222,11 +222,11 @@ def main():
     adjusted_points = simulate_repulsion(
         points,
         radius=1.0,
-        max_iterations=1000,
-        force_strength=0.1,
-        max_force=1.0,
-        damping=0.9,
-        max_velocity=0.1,
+        max_iterations=2000,
+        force_strength=0.05,  # Reduced from 0.1
+        max_force=0.5,        # Reduced from 1.0
+        damping=0.85,         # Reduced from 0.9 for more damping
+        max_velocity=0.05,    # Reduced from 0.1
         convergence_threshold=1e-4
     )
 
