@@ -1,3 +1,15 @@
+"""Generate random polyhedra, for use in Slitherlink3D puzzles.
+I used Claude to draft the code.
+We'll start with random points on a sphere, then spread them out evenly using repulsion.
+
+The plan is then to convert to a polyhedron, either by computing the convex hull,
+or Delaunay triangulation, or something similar.
+
+We'll likely end up with only triangular faces, because the odds of 4 nearby points
+being coplanar are so low. But we may convert near-coplanar squares to actual squares
+if possible.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -42,8 +54,8 @@ def generate_random_points_on_sphere(n, radius=1.0):
 
 
 def simulate_repulsion(points, radius=1.0, max_iterations=1000,
-                       force_strength=0.1, max_force=1.0,
-                       damping=0.9, max_velocity=0.1,
+                       force_strength=0.1, max_force=0.5,
+                       damping=0.01, max_velocity=0.5,
                        convergence_threshold=1e-4):
     """
     Simulate electrostatic repulsion between points on sphere surface.
@@ -70,6 +82,7 @@ def simulate_repulsion(points, radius=1.0, max_iterations=1000,
 
         # Calculate repulsive forces between all pairs
         for i in range(n):
+            # Can we use j in range(i+1, n) and then apply forces symmetrically, saving some time?
             for j in range(n):
                 if i == j:
                     continue
@@ -176,10 +189,10 @@ def visualize_points_on_sphere(points, radius=1.0):
 
 def main():
     # Set random seed for reproducibility (optional)
-    np.random.seed(42)
+    np.random.seed()
 
-    # Generate 20 random points on unit sphere
-    n = 20
+    # Generate random points on unit sphere
+    n = 40
     points = generate_random_points_on_sphere(n, radius=1.0)
 
     print(f"Generated {n} points on unit sphere")
