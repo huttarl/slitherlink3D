@@ -8,6 +8,11 @@ or Delaunay triangulation, or something similar.
 We'll likely end up with only triangular faces, because the odds of 4 nearby points
 being coplanar are so low. But we may convert near-coplanar squares to actual squares
 if possible.
+
+UPDATE: Now includes functionality to merge coplanar adjacent triangles into quads.
+The merge_coplanar_triangles_to_quads() function detects triangle pairs that are nearly
+coplanar (within a configurable angle threshold) and merges them into quadrilateral faces.
+The resulting mesh can contain both triangles and quads, which is exported to OBJ format.
 """
 
 import numpy as np
@@ -255,6 +260,271 @@ def visualize_points_on_sphere(points, radius=1.0, hull=None):
 
     plt.show()
 
+
+def find_coplanar_triangles(hull, points, angle_threshold_deg=5.0):
+    """
+    Find pairs of adjacent triangles that are nearly coplanar.
+    
+    Args:
+        hull: ConvexHull object
+        points: vertex coordinates
+        angle_threshold_deg: maximum angle deviation (in degrees) to consider coplanar
+    
+    Returns:
+        List of (face_idx1, face_idx2) tuples for coplanar pairs
+    """
+    coplanar_pairs = []
+    angle_threshold = np.cos(np.radians(angle_threshold_deg))
+    
+    for i, neighbors in enumerate(hull.neighbors):
+        for j in neighbors:
+            if j > i:  # Only check each pair once
+                # Get normal vectors from plane equations
+                normal_i = hull.equations[i][:3]
+                normal_j = hull.equations[j][:3]
+                
+                # Check if normals are nearly parallel (dot product close to ±1)
+                dot_product = abs(np.dot(normal_i, normal_j))
+                if dot_product > angle_threshold:
+                    coplanar_pairs.append((i, j))
+    
+    return coplanar_pairs
+
+
+def order_quad_vertices(tri1, tri2, points):
+    """
+    Order 4 vertices from two triangles sharing an edge into a proper convex quad.
+    
+    Args:
+        tri1, tri2: arrays of 3 vertex indices each
+        points: vertex coordinates array
+    
+    Returns:
+        Array of 4 vertex indices ordered for a convex quad, or None if invalid
+    """
+    # Find shared edge (2 common vertices)
+    common = set(tri1) & set(tri2)
+    if len(common) != 2:
+        return None
+    
+    # Find the unique vertices (one per triangle)
+    unique1 = (set(tri1) - common).pop()
+    unique2 = (set(tri2) - common).pop()
+    shared = list(common)
+    
+    # We need to order vertices as: unique1 -> shared_a -> unique2 -> shared_b
+    # such that we traverse the quad boundary in order
+    
+    # Find which shared vertex is adjacent to unique1 in tri1
+    # Triangles are ordered, so we look at the edges
+    tri1_list = list(tri1)
+    
+    # Find position of unique1 in tri1
+    idx_unique1 = tri1_list.index(unique1)
+    
+    # The two adjacent vertices in tri1 are the shared vertices
+    # Get them in the order they appear relative to unique1
+    shared_a = tri1_list[(idx_unique1 + 1) % 3]
+    shared_b = tri1_list[(idx_unique1 + 2) % 3]
+    
+    # Order the quad: unique1, shared_a, unique2, shared_b
+    quad = np.array([unique1, shared_a, unique2, shared_b])
+    
+    # Verify the quad is convex by checking that all cross products point the same direction
+    if not is_quad_convex(quad, points):
+        # Try the other ordering
+        quad = np.array([unique1, shared_b, unique2, shared_a])
+        if not is_quad_convex(quad, points):
+            return None
+    
+    return quad
+
+
+def is_quad_convex(quad, points):
+    """
+    Check if a quad is convex by verifying all cross products point outward.
+    
+    Args:
+        quad: array of 4 vertex indices
+        points: vertex coordinates
+    
+    Returns:
+        True if the quad is convex
+    """
+    # Get the 4 vertices
+    v = points[quad]
+    
+    # Compute normal at each vertex using cross product of adjacent edges
+    normals = []
+    for i in range(4):
+        v1 = v[(i + 1) % 4] - v[i]
+        v2 = v[(i - 1) % 4] - v[i]
+        normal = np.cross(v1, v2)
+        normals.append(normal)
+    
+    # Check if all normals point in roughly the same direction
+    reference = normals[0]
+    for normal in normals[1:]:
+        if np.dot(reference, normal) < 0:
+            return False
+    
+    return True
+
+
+def merge_coplanar_triangles_to_quads(hull, points, angle_threshold_deg=5.0):
+    """
+    Merge coplanar adjacent triangles into quadrilateral faces.
+    
+    Args:
+        hull: ConvexHull object
+        points: vertex coordinates
+        angle_threshold_deg: maximum angle deviation to consider coplanar
+    
+    Returns:
+        faces: list of faces, where each face is a list of vertex indices
+               (can be triangles or quads)
+    """
+    print(f"\nMerging coplanar triangles (angle threshold: {angle_threshold_deg}°)...")
+    
+    # Find all coplanar pairs
+    coplanar_pairs = find_coplanar_triangles(hull, points, angle_threshold_deg)
+    print(f"Found {len(coplanar_pairs)} coplanar triangle pairs")
+    
+    # Track which triangles have been merged
+    merged = set()
+    faces = []
+    
+    # Process coplanar pairs
+    for face_i, face_j in coplanar_pairs:
+        if face_i in merged or face_j in merged:
+            continue
+        
+        tri1 = hull.simplices[face_i]
+        tri2 = hull.simplices[face_j]
+        
+        # Try to merge into a quad
+        quad = order_quad_vertices(tri1, tri2, points)
+        
+        if quad is not None:
+            faces.append(list(quad))
+            merged.add(face_i)
+            merged.add(face_j)
+    
+    # Add remaining triangles that weren't merged
+    for i, simplex in enumerate(hull.simplices):
+        if i not in merged:
+            faces.append(list(simplex))
+    
+    # Count face types
+    num_triangles = sum(1 for f in faces if len(f) == 3)
+    num_quads = sum(1 for f in faces if len(f) == 4)
+    
+    print(f"Result: {num_triangles} triangles, {num_quads} quads (total {len(faces)} faces)")
+    
+    return faces
+
+
+def visualize_mesh(points, faces, radius=1.0):
+    """
+    Visualize a mesh with mixed triangle and quad faces.
+    
+    Args:
+        points: numpy array of shape (n, 3) with vertex coordinates
+        faces: list of faces, where each face is a list of vertex indices
+        radius: radius of the sphere for reference wireframe
+    """
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Plot the points
+    ax.scatter(points[:, 0], points[:, 1], points[:, 2],
+               c='red', marker='o', s=100, alpha=0.8, label='Vertices')
+    
+    # Draw edges of all faces
+    triangle_count = 0
+    quad_count = 0
+    
+    for face in faces:
+        n_vertices = len(face)
+        if n_vertices == 3:
+            triangle_count += 1
+            color = 'blue'
+        elif n_vertices == 4:
+            quad_count += 1
+            color = 'green'
+        else:
+            color = 'purple'
+        
+        # Draw edges of this face
+        for i in range(n_vertices):
+            start = points[face[i]]
+            end = points[face[(i + 1) % n_vertices]]
+            ax.plot([start[0], end[0]],
+                   [start[1], end[1]],
+                   [start[2], end[2]],
+                   color=color, linewidth=1, alpha=0.6)
+    
+    # Draw a wireframe sphere for reference
+    u = np.linspace(0, 2 * np.pi, 30)
+    v = np.linspace(0, np.pi, 20)
+    x = radius * np.outer(np.cos(u), np.sin(v))
+    y = radius * np.outer(np.sin(u), np.sin(v))
+    z = radius * np.outer(np.ones(np.size(u)), np.cos(v))
+    
+    ax.plot_wireframe(x, y, z, color='lightblue', alpha=0.2, linewidth=0.5)
+    
+    # Set labels and title
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    title = f'{len(points)} Vertices\n{triangle_count} Triangles (blue), {quad_count} Quads (green)'
+    ax.set_title(title)
+    
+    # Set equal aspect ratio
+    max_range = radius * 1.1
+    ax.set_xlim([-max_range, max_range])
+    ax.set_ylim([-max_range, max_range])
+    ax.set_zlim([-max_range, max_range])
+    
+    ax.legend()
+    
+    plt.show()
+
+
+def export_mesh_to_obj(points, faces, filename='polyhedron.obj'):
+    """
+    Export a mesh with mixed triangle and quad faces to Wavefront OBJ format.
+    
+    Args:
+        points: numpy array of shape (n, 3) with vertex coordinates
+        faces: list of faces, where each face is a list of vertex indices
+        filename: output filename (default: 'polyhedron.obj')
+    """
+    with open(filename, 'w') as f:
+        f.write("# Polyhedron with triangles and quads\n")
+        f.write("g polyhedron\n")
+        f.write("# vertices\n")
+        
+        # Write all vertices
+        for point in points:
+            f.write(f"v {point[0]} {point[1]} {point[2]}\n")
+        
+        f.write("# faces\n")
+        
+        # Write all faces (can be triangles or quads)
+        # Note: OBJ format uses 1-based indexing
+        for face in faces:
+            face_str = ' '.join(str(idx + 1) for idx in face)
+            f.write(f"f {face_str}\n")
+    
+    num_triangles = sum(1 for f in faces if len(f) == 3)
+    num_quads = sum(1 for f in faces if len(f) == 4)
+    
+    print(f"\nExported mesh to {filename}")
+    print(f"  Vertices: {len(points)}")
+    print(f"  Faces: {len(faces)} ({num_triangles} triangles, {num_quads} quads)")
+
+
 def generate_golden_spiral(n):
     indices = np.arange(0, n, dtype=float) + 0.5
 
@@ -272,7 +542,9 @@ def generate_golden_spiral(n):
 def main():
     method = 'random_repulsion'
     # method = 'golden_spiral'
-    n = 70
+    n = 70  # Number of vertices
+    merge_quads = True  # Set to True to merge coplanar triangles into quads
+    angle_threshold = 5.0  # Degrees - lower values = stricter coplanarity requirement
 
     points = random_with_repulsion(n) if method == 'random_repulsion' else generate_golden_spiral(n)
 
@@ -283,10 +555,15 @@ def main():
     print(f"Convex hull has {len(hull.vertices)} vertices and {len(hull.simplices)} faces")
     print(f"All vertices are on hull: {len(hull.vertices) == n}")
 
-    export_to_obj(points, hull)
-
-    # Visualize the adjusted points with convex hull
-    visualize_points_on_sphere(points, radius=1.0, hull=hull)
+    if merge_quads:
+        # Merge coplanar triangles into quads
+        faces = merge_coplanar_triangles_to_quads(hull, points, angle_threshold)
+        export_mesh_to_obj(points, faces, 'polyhedron_with_quads.obj')
+        visualize_mesh(points, faces, radius=1.0)
+    else:
+        # Export original triangulated hull
+        export_to_obj(points, hull, 'polyhedron_triangulated.obj')
+        visualize_points_on_sphere(points, radius=1.0, hull=hull)
 
 
 def random_with_repulsion(n: int):
@@ -301,18 +578,19 @@ def random_with_repulsion(n: int):
     print(points)
 
     # Apply repulsion simulation to spread points evenly
+    # Parameters scale with number of points for better convergence
     print("\nSimulating repulsion with real-time animation...")
     adjusted_points = simulate_repulsion(
         points,
         radius=1.0,
-        max_iterations=1000,
-        force_strength=0.05,  # Reduced from 0.1
-        max_force=0.5,  # Reduced from 1.0
-        damping=0.85,  # Reduced from 0.9 for more damping
-        max_velocity=0.05,  # Reduced from 0.1
+        max_iterations=2000,
+        force_strength=0.03,  # Lower for more points
+        max_force=0.3,        # Lower cap for stability
+        damping=0.80,         # More damping for convergence
+        max_velocity=0.03,    # Lower velocity for control
         convergence_threshold=1e-3,
         animate=True,
-        update_interval=10  # Update display every 10 iterations
+        update_interval=20    # Update display every 20 iterations
     )
 
     print("\nAdjusted points:")
