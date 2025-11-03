@@ -1,23 +1,16 @@
 """Generate random polyhedra, for use in Slitherlink3D puzzles.
 I used Claude to draft the code.
-We'll start with random points on a sphere, then spread them out evenly using repulsion.
 
-The plan is then to convert to a polyhedron, either by computing the convex hull,
-or Delaunay triangulation, or something similar.
+Choose the method in main():
+method = 'random_repulsion': Start with random points on a sphere, then spread them out evenly by simulating repulsion.
+method = 'golden_spiral': Use golden spiral to lay out points evenly (yields more quads around equator).
 
-We'll likely end up with only triangular faces, because the odds of 4 nearby points
-being coplanar are so low. But we may convert near-coplanar squares to actual squares
-if possible.
-
-UPDATE: Now includes functionality to merge coplanar adjacent triangles into quads.
-The merge_coplanar_triangles_to_quads() function detects triangle pairs that are nearly
-coplanar (within a configurable angle threshold) and merges them into quadrilateral faces.
-The resulting mesh can contain both triangles and quads, which is exported to OBJ format.
+We then to convert to a polyhedron by computing the convex hull, then merge almost-coplanar
+adjacent triangles into quads. The resulting mesh is exported to OBJ format.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
 from scipy.spatial import ConvexHull
 
 
@@ -462,7 +455,7 @@ def visualize_mesh(points, faces, radius=1.0):
             ax.plot([start[0], end[0]],
                    [start[1], end[1]],
                    [start[2], end[2]],
-                   color=color, linewidth=1, alpha=0.6)
+                   color=color, linewidth=2, alpha=0.6)
     
     # Draw a wireframe sphere for reference
     u = np.linspace(0, 2 * np.pi, 30)
@@ -540,8 +533,8 @@ def generate_golden_spiral(n):
 
 
 def main():
-    method = 'random_repulsion'
-    # method = 'golden_spiral'
+    # method = 'random_repulsion'
+    method = 'golden_spiral'
     n = 70  # Number of vertices
     merge_quads = True  # Set to True to merge coplanar triangles into quads
     angle_threshold = 5.0  # Degrees - lower values = stricter coplanarity requirement
@@ -583,7 +576,7 @@ def random_with_repulsion(n: int):
     adjusted_points = simulate_repulsion(
         points,
         radius=1.0,
-        max_iterations=2000,
+        max_iterations=1000,
         force_strength=0.03,  # Lower for more points
         max_force=0.3,        # Lower cap for stability
         damping=0.80,         # More damping for convergence
