@@ -95,7 +95,7 @@ def simulate_repulsion(points, radius=1.0, max_iterations=1000,
 
         # Initialize scatter plot
         scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2],
-                            c='red', marker='o', s=100, alpha=0.8)
+                            c='gray', marker='o', s=100, alpha=0.8)
 
         # Set labels and limits
         ax.set_xlabel('X')
@@ -209,7 +209,7 @@ def visualize_points_on_sphere(points, radius=1.0, hull=None):
 
     # Plot the points
     ax.scatter(points[:, 0], points[:, 1], points[:, 2],
-               c='red', marker='o', s=100, alpha=0.8, label='Vertices')
+               c='gray', marker='o', s=100, alpha=0.8, label='Vertices')
 
     # Draw convex hull if provided
     if hull is not None:
@@ -528,7 +528,7 @@ def visualize_mesh(points, faces, radius=1.0):
                                          facecolors='lightblue', 
                                          edgecolors='blue', 
                                          linewidths=1.5, 
-                                         alpha=0.7)
+                                         alpha=0.8)
         ax.add_collection3d(tri_collection)
     
     # Draw quads as filled polygons
@@ -536,22 +536,25 @@ def visualize_mesh(points, faces, radius=1.0):
         quad_collection = Poly3DCollection(quad_faces, 
                                           facecolors='lightgreen', 
                                           edgecolors='darkgreen', 
-                                          linewidths=2, 
+                                          linewidths=2,
                                           alpha=0.8)
         ax.add_collection3d(quad_collection)
     
     # Plot the vertices
     ax.scatter(points[:, 0], points[:, 1], points[:, 2],
-               c='red', marker='o', s=50, alpha=1.0, label='Vertices', zorder=10)
+               c='gray', marker='o', s=30, alpha=1.0, label='Vertices',
+               depthshade=True, # doesn't seem to help
+               zorder=-1, # was 10
+               )
     
-    # Draw a wireframe sphere for reference
-    u = np.linspace(0, 2 * np.pi, 30)
-    v = np.linspace(0, np.pi, 20)
-    x = radius * np.outer(np.cos(u), np.sin(v))
-    y = radius * np.outer(np.sin(u), np.sin(v))
-    z = radius * np.outer(np.ones(np.size(u)), np.cos(v))
-    
-    ax.plot_wireframe(x, y, z, color='gray', alpha=0.1, linewidth=0.5)
+    # # Draw a wireframe sphere for reference
+    # u = np.linspace(0, 2 * np.pi, 30)
+    # v = np.linspace(0, np.pi, 20)
+    # x = radius * np.outer(np.cos(u), np.sin(v))
+    # y = radius * np.outer(np.sin(u), np.sin(v))
+    # z = radius * np.outer(np.ones(np.size(u)), np.cos(v))
+    #
+    # ax.plot_wireframe(x, y, z, color='gray', alpha=0.1, linewidth=0.5)
     
     # Set labels and title
     ax.set_xlabel('X')
@@ -657,8 +660,8 @@ def random_with_repulsion(n: int):
     points = generate_random_points_on_sphere(n, radius=1.0)
 
     print(f"Generated {n} points on unit sphere")
-    print("Initial points:")
-    print(points)
+    # print("Initial points:")
+    # print(points)
 
     # Apply repulsion simulation to spread points evenly
     # Parameters scale with number of points for better convergence
@@ -673,11 +676,11 @@ def random_with_repulsion(n: int):
         max_velocity=0.05,     # Allow some movement but cap it
         convergence_threshold=0.001,  # Max movement threshold (per particle)
         animate=True,
-        update_interval=20    # Update display every 20 iterations
+        update_interval=5    # Update display every n iterations
     )
 
-    print("\nAdjusted points:")
-    print(adjusted_points)
+    # print("\nAdjusted points:")
+    # print(adjusted_points)
     return adjusted_points
 
 
