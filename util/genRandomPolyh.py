@@ -163,10 +163,10 @@ def simulate_repulsion(points, radius=1.0, max_iterations=1000,
             points[i] = radius * points[i] / np.linalg.norm(points[i])
 
         # Check for convergence
-        total_movement = np.sum(np.linalg.norm(velocities, axis=1))
+        max_movement = np.max(np.linalg.norm(velocities, axis=1))
 
         if iteration % 100 == 0:
-            print(f"Iteration {iteration}: total movement = {total_movement:.6f}")
+            print(f"Iteration {iteration}: max movement = {max_movement:.6f}")
 
         # Update display if animating
         if animate and iteration % update_interval == 0:
@@ -175,8 +175,8 @@ def simulate_repulsion(points, radius=1.0, max_iterations=1000,
             fig.canvas.draw()
             fig.canvas.flush_events()
 
-        if total_movement < convergence_threshold:
-            print(f"Converged after {iteration} iterations (movement = {total_movement:.6f})")
+        if max_movement < convergence_threshold:
+            print(f"Converged after {iteration} iterations (max movement = {max_movement:.6f})")
             if animate:
                 # Final update
                 scatter._offsets3d = (points[:, 0], points[:, 1], points[:, 2])
@@ -667,11 +667,11 @@ def random_with_repulsion(n: int):
         points,
         radius=1.0,
         max_iterations=1000,
-        force_strength=0.03,  # Lower for more points
-        max_force=0.3,        # Lower cap for stability
-        damping=0.80,         # More damping for convergence
-        max_velocity=0.03,    # Lower velocity for control
-        convergence_threshold=1e-3,
+        force_strength=0.025,  # Lower for more points
+        max_force=0.25,        # Lower cap for stability
+        damping=0.75,          # Higher damping for faster convergence
+        max_velocity=0.05,     # Allow some movement but cap it
+        convergence_threshold=0.001,  # Max movement threshold (per particle)
         animate=True,
         update_interval=20    # Update display every 20 iterations
     )
