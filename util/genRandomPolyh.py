@@ -363,14 +363,87 @@ def is_quad_convex(quad, points):
     return True
 
 
-def merge_coplanar_triangles_to_quads(hull, points, angle_threshold_deg=5.0):
+def project_quad_to_plane(quad_indices, points):
+    """
+    Adjust quad vertices to make them exactly coplanar by projecting onto best-fit plane.
+    
+    Args:
+        quad_indices: array of 4 vertex indices
+        points: vertex coordinates array (will be modified in place)
+    
+    Returns:
+        None (modifies points in place)
+    """
+    # Get the 4 vertices
+    quad_verts = points[quad_indices]
+    
+    # Compute centroid
+    centroid = np.mean(quad_verts, axis=0)
+    
+    # Center the vertices
+    centered = quad_verts - centroid
+    
+    # Compute best-fit plane using SVD
+    # The plane normal is the singular vector with smallest singular value
+    _, _, vh = np.linalg.svd(centered)
+    normal = vh[2, :]  # Last row of V^T is the normal to the best-fit plane
+    
+    # Project each vertex onto the plane
+    for i, idx in enumerate(quad_indices):
+        # Vector from centroid to vertex
+        v = points[idx] - centroid
+        
+        # Remove component perpendicular to plane
+        v_projected = v - np.dot(v, normal) * normal
+        
+        # Update vertex position (projected point)
+        points[idx] = centroid + v_projected
+    
+    # Re-normalize vertices to lie on unit sphere
+    for idx in quad_indices:
+        points[idx] = points[idx] / np.linalg.norm(points[idx])
+
+
+def is_quad_convex(quad, points):
+    """
+    Check if a quad is convex by verifying all cross products point outward.
+    
+    Args:
+        quad: array of 4 vertex indices
+        points: vertex coordinates
+    
+    Returns:
+        True if the quad is convex
+    """
+    # Get the 4 vertices
+    v = points[quad]
+    
+    # Compute normal at each vertex using cross product of adjacent edges
+    normals = []
+    for i in range(4):
+        v1 = v[(i + 1) % 4] - v[i]
+        v2 = v[(i - 1) % 4] - v[i]
+        normal = np.cross(v1, v2)
+        normals.append(normal)
+    
+    # Check if all normals point in roughly the same direction
+    reference = normals[0]
+    for normal in normals[1:]:
+        if np.dot(reference, normal) < 0:
+            return False
+    
+    return True
+
+
+def merge_coplanar_triangles_to_quads(hull, points, angle_threshold_deg=5.0, adjust_vertices=False):
     """
     Merge coplanar adjacent triangles into quadrilateral faces.
     
     Args:
         hull: ConvexHull object
-        points: vertex coordinates
+        points: vertex coordinates (may be modified if adjust_vertices=True)
         angle_threshold_deg: maximum angle deviation to consider coplanar
+        adjust_vertices: if True, project quad vertices onto best-fit plane
     
     Returns:
         faces: list of faces, where each face is a list of vertex indices
@@ -385,6 +458,7 @@ def merge_coplanar_triangles_to_quads(hull, points, angle_threshold_deg=5.0):
     # Track which triangles have been merged
     merged = set()
     faces = []
+    quads_created = []
     
     # Process coplanar pairs
     for face_i, face_j in coplanar_pairs:
@@ -401,11 +475,18 @@ def merge_coplanar_triangles_to_quads(hull, points, angle_threshold_deg=5.0):
             faces.append(list(quad))
             merged.add(face_i)
             merged.add(face_j)
+            quads_created.append(quad)
     
     # Add remaining triangles that weren't merged
     for i, simplex in enumerate(hull.simplices):
         if i not in merged:
             faces.append(list(simplex))
+    
+    # Optionally adjust vertices to make quads exactly coplanar
+    if adjust_vertices and quads_created:
+        print(f"Adjusting {len(quads_created)} quads to be exactly coplanar...")
+        for quad in quads_created:
+            project_quad_to_plane(np.array(quad), points)
     
     # Count face types
     num_triangles = sum(1 for f in faces if len(f) == 3)
@@ -425,36 +506,43 @@ def visualize_mesh(points, faces, radius=1.0):
         faces: list of faces, where each face is a list of vertex indices
         radius: radius of the sphere for reference wireframe
     """
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+    
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d')
     
-    # Plot the points
-    ax.scatter(points[:, 0], points[:, 1], points[:, 2],
-               c='red', marker='o', s=100, alpha=0.8, label='Vertices')
-    
-    # Draw edges of all faces
-    triangle_count = 0
-    quad_count = 0
+    # Separate triangles and quads for different coloring
+    triangle_faces = []
+    quad_faces = []
     
     for face in faces:
-        n_vertices = len(face)
-        if n_vertices == 3:
-            triangle_count += 1
-            color = 'blue'
-        elif n_vertices == 4:
-            quad_count += 1
-            color = 'green'
-        else:
-            color = 'purple'
-        
-        # Draw edges of this face
-        for i in range(n_vertices):
-            start = points[face[i]]
-            end = points[face[(i + 1) % n_vertices]]
-            ax.plot([start[0], end[0]],
-                   [start[1], end[1]],
-                   [start[2], end[2]],
-                   color=color, linewidth=2, alpha=0.6)
+        face_vertices = points[face]
+        if len(face) == 3:
+            triangle_faces.append(face_vertices)
+        elif len(face) == 4:
+            quad_faces.append(face_vertices)
+    
+    # Draw triangles as filled polygons
+    if triangle_faces:
+        tri_collection = Poly3DCollection(triangle_faces, 
+                                         facecolors='lightblue', 
+                                         edgecolors='blue', 
+                                         linewidths=1.5, 
+                                         alpha=0.7)
+        ax.add_collection3d(tri_collection)
+    
+    # Draw quads as filled polygons
+    if quad_faces:
+        quad_collection = Poly3DCollection(quad_faces, 
+                                          facecolors='lightgreen', 
+                                          edgecolors='darkgreen', 
+                                          linewidths=2, 
+                                          alpha=0.8)
+        ax.add_collection3d(quad_collection)
+    
+    # Plot the vertices
+    ax.scatter(points[:, 0], points[:, 1], points[:, 2],
+               c='red', marker='o', s=50, alpha=1.0, label='Vertices', zorder=10)
     
     # Draw a wireframe sphere for reference
     u = np.linspace(0, 2 * np.pi, 30)
@@ -463,12 +551,14 @@ def visualize_mesh(points, faces, radius=1.0):
     y = radius * np.outer(np.sin(u), np.sin(v))
     z = radius * np.outer(np.ones(np.size(u)), np.cos(v))
     
-    ax.plot_wireframe(x, y, z, color='lightblue', alpha=0.2, linewidth=0.5)
+    ax.plot_wireframe(x, y, z, color='gray', alpha=0.1, linewidth=0.5)
     
     # Set labels and title
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
+    triangle_count = len(triangle_faces)
+    quad_count = len(quad_faces)
     title = f'{len(points)} Vertices\n{triangle_count} Triangles (blue), {quad_count} Quads (green)'
     ax.set_title(title)
     
@@ -532,19 +622,17 @@ def generate_golden_spiral(n):
 
 
 def main():
-    # method = 'random_repulsion'
-    method = 'golden_spiral'
+    method = 'random_repulsion'
+    # method = 'golden_spiral'
     n = 70  # Number of vertices
     merge_quads = True  # Set to True to merge coplanar triangles into quads
     angle_threshold = 5.0  # Degrees - lower values = stricter coplanarity requirement
+    adjust_vertices = True  # If True, project quad vertices onto best-fit plane for exact coplanarity
 
     points = random_with_repulsion(n) if method == 'random_repulsion' else generate_golden_spiral(n)
 
     # Compute convex hull
     print("\nComputing convex hull...")
-    # Option An means post-merge adajacent facets if the cosine of the angle between them > n.
-    # However this doesn't make two merged triangles into a quad; it makes them into a thick triangle,
-    # as far as I understand. So we're going to do the merging ourselves.
     hull = ConvexHull(points)
 
     print(f"Convex hull has {len(hull.vertices)} vertices and {len(hull.simplices)} faces")
@@ -552,7 +640,7 @@ def main():
 
     if merge_quads:
         # Merge coplanar triangles into quads
-        faces = merge_coplanar_triangles_to_quads(hull, points, angle_threshold)
+        faces = merge_coplanar_triangles_to_quads(hull, points, angle_threshold, adjust_vertices)
         export_mesh_to_obj(points, faces, 'polyhedron_with_quads.obj')
         visualize_mesh(points, faces, radius=1.0)
     else:
