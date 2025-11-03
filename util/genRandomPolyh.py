@@ -211,7 +211,7 @@ def visualize_points_on_sphere(points, radius=1.0, hull=None):
 
     # Plot the points
     ax.scatter(points[:, 0], points[:, 1], points[:, 2],
-               c='red', marker='o', s=100, alpha=0.8, label='Random vertices')
+               c='red', marker='o', s=100, alpha=0.8, label='Vertices')
 
     # Draw convex hull if provided
     if hull is not None:
@@ -283,6 +283,8 @@ def main():
     print(f"Convex hull has {len(hull.vertices)} vertices and {len(hull.simplices)} faces")
     print(f"All vertices are on hull: {len(hull.vertices) == n}")
 
+    export_to_obj(points, hull)
+
     # Visualize the adjusted points with convex hull
     visualize_points_on_sphere(points, radius=1.0, hull=hull)
 
@@ -303,7 +305,7 @@ def random_with_repulsion(n: int):
     adjusted_points = simulate_repulsion(
         points,
         radius=1.0,
-        max_iterations=2000,
+        max_iterations=1000,
         force_strength=0.05,  # Reduced from 0.1
         max_force=0.5,  # Reduced from 1.0
         damping=0.85,  # Reduced from 0.9 for more damping
@@ -317,6 +319,35 @@ def random_with_repulsion(n: int):
     print(adjusted_points)
     return adjusted_points
 
+
+def export_to_obj(points, hull, filename='polyhedron.obj'):
+    """
+    Export a convex hull to Wavefront OBJ format.
+
+    Args:
+        points: numpy array of shape (n, 3) with vertex coordinates
+        hull: ConvexHull object from scipy.spatial
+        filename: output filename (default: 'polyhedron.obj')
+    """
+    with open(filename, 'w') as f:
+        f.write("group polyhedron\n")
+        f.write("#vertices\n")
+
+        # Write all vertices
+        for point in points:
+            f.write(f"v {point[0]} {point[1]} {point[2]}\n")
+
+        f.write("#face defs\n")
+
+        # Write all faces (triangles from convex hull)
+        # Note: OBJ format uses 1-based indexing, so add 1 to each index
+        for simplex in hull.simplices:
+            # Each simplex is a triangle with 3 vertex indices
+            f.write(f"f {simplex[0] + 1} {simplex[1] + 1} {simplex[2] + 1}\n")
+
+    print(f"Exported convex hull to {filename}")
+    print(f"  Vertices: {len(points)}")
+    print(f"  Faces: {len(hull.simplices)}")
 
 if __name__ == "__main__":
     main()
