@@ -254,13 +254,12 @@ def visualize_points_on_sphere(points, radius=1.0, hull=None):
     plt.show()
 
 
-def find_coplanar_triangles(hull, points, angle_threshold_deg=5.0):
+def find_coplanar_triangles(hull, angle_threshold_deg=5.0):
     """
     Find pairs of adjacent triangles that are nearly coplanar.
     
     Args:
         hull: ConvexHull object
-        points: vertex coordinates
         angle_threshold_deg: maximum angle deviation (in degrees) to consider coplanar
     
     Returns:
@@ -380,7 +379,7 @@ def merge_coplanar_triangles_to_quads(hull, points, angle_threshold_deg=5.0):
     print(f"\nMerging coplanar triangles (angle threshold: {angle_threshold_deg}°)...")
     
     # Find all coplanar pairs
-    coplanar_pairs = find_coplanar_triangles(hull, points, angle_threshold_deg)
+    coplanar_pairs = find_coplanar_triangles(hull, angle_threshold_deg)
     print(f"Found {len(coplanar_pairs)} coplanar triangle pairs")
     
     # Track which triangles have been merged
@@ -543,6 +542,9 @@ def main():
 
     # Compute convex hull
     print("\nComputing convex hull...")
+    # Option An means post-merge adajacent facets if the cosine of the angle between them > n.
+    # However this doesn't make two merged triangles into a quad; it makes them into a thick triangle,
+    # as far as I understand. So we're going to do the merging ourselves.
     hull = ConvexHull(points)
 
     print(f"Convex hull has {len(hull.vertices)} vertices and {len(hull.simplices)} faces")
