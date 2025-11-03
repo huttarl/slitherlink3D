@@ -95,7 +95,7 @@ def simulate_repulsion(points, radius=1.0, max_iterations=1000,
 
         # Initialize scatter plot
         scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2],
-                            c='gray', marker='o', s=100, alpha=0.8)
+                            c='gray', marker='o', s=40, alpha=0.8)
 
         # Set labels and limits
         ax.set_xlabel('X')
@@ -105,6 +105,9 @@ def simulate_repulsion(points, radius=1.0, max_iterations=1000,
         ax.set_xlim([-max_range, max_range])
         ax.set_ylim([-max_range, max_range])
         ax.set_zlim([-max_range, max_range])
+
+        # Force equal aspect ratio for all axes
+        ax.set_box_aspect([1, 1, 1])
 
         title = ax.set_title('Repulsion Simulation - Iteration 0')
         plt.show()
@@ -248,6 +251,9 @@ def visualize_points_on_sphere(points, radius=1.0, hull=None):
     ax.set_xlim([-max_range, max_range])
     ax.set_ylim([-max_range, max_range])
     ax.set_zlim([-max_range, max_range])
+    
+    # Force equal aspect ratio for all axes
+    ax.set_box_aspect([1, 1, 1])
 
     ax.legend()
 
@@ -536,7 +542,7 @@ def visualize_mesh(points, faces, radius=1.0):
         quad_collection = Poly3DCollection(quad_faces, 
                                           facecolors='lightgreen', 
                                           edgecolors='darkgreen', 
-                                          linewidths=2,
+                                          linewidths=2, 
                                           alpha=0.8)
         ax.add_collection3d(quad_collection)
     
@@ -570,6 +576,9 @@ def visualize_mesh(points, faces, radius=1.0):
     ax.set_xlim([-max_range, max_range])
     ax.set_ylim([-max_range, max_range])
     ax.set_zlim([-max_range, max_range])
+    
+    # Force equal aspect ratio for all axes
+    ax.set_box_aspect([1, 1, 1])
     
     ax.legend()
     
