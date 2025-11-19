@@ -31,8 +31,10 @@ Specific shapes & categories:
 - near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_solid
     - e.g. expanded truncated icosahedron, with 3/4/5/6-gons!
         https://levskaya.github.io/polyhedronisme/?recipe=C1000aatI
+        also shown at https://www.youtube.com/watch?v=XMiT2iCnZFE
+        (dual of rhombic enneacontahedron)
 - Catalan solids
-- zonohedra
+- zonohedra, such as rhombic enneacontahedron
 - prisms & antiprisms
 - Goldberg (hex-based) polyhedra, beyond dodecahedron and truncated icosahedron.
         https://en.wikipedia.org/wiki/Goldberg_polyhedron
