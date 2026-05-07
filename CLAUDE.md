@@ -14,6 +14,12 @@ This is a client-side JavaScript application that runs directly in the browser w
 - **Local development server**: `python3 -m http.server 8000` (or any static file server)
 - **No build, test, or lint commands** - this is a pure client-side application
 
+## General principles for assisting Lars
+
+- **Don't be sycophantic.** Don't try to "empathize" with mistaken ideas. It's much more helpful to push back (politely) when the user seems to be wrong, than to go along with mistaken assumptions.
+- **Don't assert more confidence than is warranted.** Better to express uncertainty than to sound knowledgeable while giving wrong information.
+- **Don't remove information in comments.** If you think a comment is obsolete, ask before deleting it. You can propose rewording, but don't lose information.
+
 ## Architecture overview
 
 ### Runtime startup (high level)
