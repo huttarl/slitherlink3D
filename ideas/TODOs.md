@@ -1,5 +1,8 @@
-- [ ] why are we copying data from grid to puzzleGrid, instead of inheriting it?
-- [ ] allow user to dismiss overlay using Esc and/or click on X.
+Note, some of these items may be already done even if they're not checked off.
+- [ ] UI: implement an "undo" function, to undo edge guesses.
+- [ ] UI: fix the "reset" function, to clear guesses. It may be partially implemented, but doesn't look like it works.
+- [ ] In JS code, why are we copying data from grid to puzzleGrid, instead of inheriting it?
+- [ ] UI: allow user to dismiss overlay using Esc and/or click on X.
 - [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
   - [ ] similarly createPolyhedron().
 - [ ] vertex labels appear to be stretched wide for single-digit numbers.
