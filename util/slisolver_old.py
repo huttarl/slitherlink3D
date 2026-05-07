@@ -1,7 +1,7 @@
 """Slitherlink puzzle solver."""
-import itertools
-# import networkx as nx
-# from compas.datastructures import Mesh
+
+import networkx as nx
+from compas.datastructures import Mesh
 
 def solution_is_unique(clues, num_clues, solution, mesh, dualG):
     """Return True if given solution is the only possible one for given clues.
@@ -11,7 +11,7 @@ def solution_is_unique(clues, num_clues, solution, mesh, dualG):
         num_clues: How many clues from the list to use
         solution: The known solution (list of vertex indices forming a loop)
         mesh: COMPAS Mesh representing the grid
-        dualG: NetworkX dual graph with nodes for faces (may not be needed)
+        dualG: NetworkX dual graph with nodes for faces
 
     Returns:
         True if there is exactly one solution, False if multiple solutions exist
@@ -39,16 +39,14 @@ def solution_is_unique(clues, num_clues, solution, mesh, dualG):
             # This branch is invalid, backtrack
             return True
 
-        # If all edges are determined, this branch is terminal.
+        # Check if we have a complete solution
         if is_complete_solution(mesh):
             if is_valid_loop(mesh):
-                # TODO: check whether this solution is identical to the known one,
-                # and if not, we've found multiple solutions, so abort.
                 solutions_found[0] += 1
                 if solutions_found[0] > 1:
-                    # Found multiple solutions; abort search.
+                    # Found multiple solutions, abort search
                     return False
-            # Either a valid first solution, or invalid — either way, no deeper search.
+            # Continue searching (this branch either invalid or is first solution)
             return True
 
         # Choose an edge to guess on
@@ -58,11 +56,10 @@ def solution_is_unique(clues, num_clues, solution, mesh, dualG):
             # No edges left to guess on but solution incomplete - contradiction
             return True
 
-        # Save current state
-        outer_state = save_state(mesh)
-
         # Try both possibilities for this edge
         for guess_value in ['filledIn', 'ruledOut']:
+            # Save current state
+            state = save_state(mesh)
 
             # Make the guess
             mesh.edge_attribute(edge_to_guess, 'guess', guess_value)
@@ -71,7 +68,7 @@ def solution_is_unique(clues, num_clues, solution, mesh, dualG):
             should_continue = dfs_search(depth + 1)
 
             # Restore state for next branch
-            restore_state(mesh, outer_state)
+            restore_state(mesh, state)
 
             if not should_continue:
                 # Found multiple solutions, abort entire search
@@ -87,17 +84,13 @@ def solution_is_unique(clues, num_clues, solution, mesh, dualG):
 
 
 def apply_clues(clues, num_clues, mesh):
-    """Apply the given clues to the mesh by setting face clue values.
-
-    Remember that the 'clue' attribute, when present, is the same as
-    the 'num_walls' attribute, but 'num_walls' is present on all faces,
-    whereas 'clue' is only present on faces with clues."""
-    # Initialize all faces with no clue.
+    """Apply the given clues to the mesh by setting face clue values."""
+    # Initialize all faces with no clue
     for fkey in mesh.faces():
         mesh.face_attribute(fkey, 'clue', None)
 
-    # Apply the clues we're using to the mesh.
-    for face, num_walls in itertools.islice(clues, num_clues):
+    # Apply the clues we're using
+    for face, num_walls in clues[:num_clues]:
         mesh.face_attribute(face, 'clue', num_walls)
 
 
@@ -123,47 +116,12 @@ def is_valid_loop(mesh):
     """Check if the current edge configuration forms a valid single loop.
 
     A valid solution must:
-    - Have at least one filled edge
-    - Each vertex incident to a filled edge has exactly 2 filled edges
-      (other vertices have 0)
-    - The filled edges form a single connected component (one cycle, not several)
+    - Form exactly one closed loop
+    - Each vertex on the loop has exactly 2 'filledIn' edges
+    - All other vertices have 0 'filledIn' edges
     """
-    # Collect filled edges and per-vertex filled-edge counts in one pass.
-    filled_edges = []
-    degree = {}  # vertex key -> count of incident filled edges
-    for ekey in mesh.edges():
-        if mesh.edge_attribute(ekey, 'guess') == 'filledIn':
-            v1, v2 = ekey
-            filled_edges.append((v1, v2))
-            degree[v1] = degree.get(v1, 0) + 1
-            degree[v2] = degree.get(v2, 0) + 1
-
-    if not filled_edges:
-        return False
-
-    # Every loop vertex must have exactly 2 filled edges. Vertices not in
-    # `degree` implicitly have 0, which is fine.
-    if any(d != 2 for d in degree.values()):
-        return False
-
-    # With every vertex of degree 0 or 2, the filled subgraph is a disjoint
-    # union of simple cycles. Check it has exactly one component.
-    adj = {v: [] for v in degree}
-    for v1, v2 in filled_edges:
-        adj[v1].append(v2)
-        adj[v2].append(v1)
-
-    start = next(iter(degree))
-    visited = {start}
-    stack = [start]
-    while stack:
-        v = stack.pop()
-        for nbr in adj[v]:
-            if nbr not in visited:
-                visited.add(nbr)
-                stack.append(nbr)
-
-    return len(visited) == len(degree)
+    # TODO: Implement loop validation
+    return True
 
 
 def select_edge_for_branching(mesh):
@@ -173,7 +131,6 @@ def select_edge_for_branching(mesh):
     - Choose edges adjacent to faces with clues
     - Choose edges where one choice would immediately cause propagation
     - Choose edges in high-degree vertices
-    - Choose edges that continue the existing loop
 
     Returns an edge key or None if no unknown edges exist.
     """
@@ -184,13 +141,11 @@ def select_edge_for_branching(mesh):
 
 
 def save_state(mesh):
-    """Save the current state of all edge guesses.
-    It's a list of all edge guesses, in the same order as the mesh edges."""
-    return mesh.edges_attribute('guess')
+    """Save the current state of all edge guesses."""
+    return [mesh.edge_attribute(ekey, 'guess') for ekey in mesh.edges()]
 
 
 def restore_state(mesh, state):
-    """Restore edge guesses to a saved state.
-    state is a list of all edge guesses, in the same order as the mesh edges."""
+    """Restore edge guesses to a saved state."""
     for ekey, guess in zip(mesh.edges(), state):
         mesh.edge_attribute(ekey, 'guess', guess)
