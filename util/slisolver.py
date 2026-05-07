@@ -135,45 +135,49 @@ def is_valid_loop(mesh):
     #   return nx.is_connected(G)
     # But rolling our own is faster and more transparent.
 
-    # Collect filled edges and per-vertex filled-edge counts in one pass.
-    filled_edges = []
-    degree = {}  # vertex key -> count of incident filled edges
+    # Build adjacency dict for filled edges in one pass. len(adj[v]) doubles as
+    # the per-vertex filled-edge degree, so we don't need a separate counter.
+    adj = {}  # vertex key -> list of filled neighbors
     for ekey in mesh.edges():
         if mesh.edge_attribute(ekey, 'guess') == 'filledIn':
             (v1, v2) = ekey
-            filled_edges.append(ekey)
-            degree[v1] = degree.get(v1, 0) + 1
-            degree[v2] = degree.get(v2, 0) + 1
+            # setdefault(v, []): return adj[v], inserting [] first if v is new.
+            # We then append to the (possibly new) list in place.
+            adj.setdefault(v1, []).append(v2)
+            adj.setdefault(v2, []).append(v1)
 
-    if not filled_edges:
+    # No filled edges at all -> not a loop.
+    if not adj:
         return False
 
-    # Every loop vertex must have exactly 2 filled edges. Vertices not in
-    # `degree` implicitly have 0, which is fine.
-    if any(d != 2 for d in degree.values()):
+    # Every loop vertex must have exactly 2 filled edges, or equivalently,
+    # 2 neighbors (connected to the current vertex by filled edges). Vertices not in
+    # `adj` implicitly have 0, which is fine.
+    if any(len(nbrs) != 2 for nbrs in adj.values()):
         return False
 
     # With every vertex of degree 0 or 2, the filled subgraph is a disjoint
     # union of simple cycles. Walk from any vertex to count the cycle's
     # length; if it equals the total vertex count, there's exactly one cycle.
-    adj = {v: [] for v in degree}
-    for v1, v2 in filled_edges:
-        adj[v1].append(v2)
-        adj[v2].append(v1)
-
-    start = next(iter(degree))
+    # (If it's smaller, this cycle is one of multiple disjoint ones.)
+    start = next(iter(adj))  # Any vertex in adj works as a starting point.
     cur = start
     prev = None
     steps = 0
-    # Loop until we've reached the start vertex again.
+    # Walk until we return to start. The `prev is None` clause is needed
+    # because cur == start initially; without it, the loop would exit
+    # before taking a single step.
     while cur != start or prev is None:
-        # Set (a, b) to the vertices adjacent to the current vertex.
+        # Each vertex has degree 2, so adj[cur] has exactly two entries:
+        # one is `prev` (where we came from), the other is where we go next.
         (a, b) = adj[cur]
         prev = cur
+        # Pick the neighbor that isn't prev. On the first step prev is None
+        # and vertex keys are never None, so the conditional picks `a`.
         cur = (a if a != prev else b)
         steps += 1
 
-    return steps == len(degree)
+    return steps == len(adj)
 
 
 def select_edge_for_branching(mesh):
