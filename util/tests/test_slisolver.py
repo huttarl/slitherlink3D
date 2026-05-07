@@ -62,6 +62,18 @@ def dodecahedron():
 
 
 @pytest.fixture
+def dodec_puzzle():
+    """Hand-crafted puzzle from data/D-puzzles.json, as (clues, solution).
+
+    clues is in (face, num_walls) tuple form ready for apply_clues.
+    """
+    data = json.loads((REPO_ROOT / 'data' / 'D-puzzles.json').read_text())
+    p = data['puzzles'][0]
+    clues = [(face, n) for face, n in enumerate(p['clues']) if n != -1]
+    return clues, p['solution']
+
+
+@pytest.fixture
 def octahedron():
     """Octahedron: 6 vertices, 8 triangle faces, 12 edges.
 
@@ -797,29 +809,31 @@ class TestDodecahedronIntegration:
         assert sum(1 for _ in dodecahedron.faces()) == 12
         assert sum(1 for _ in dodecahedron.edges()) == 30
 
-    def test_existing_puzzle_terminates_quickly(self, dodecahedron):
-        """Run solution_is_unique on the existing data/D-puzzles.json
-        puzzle. Doesn't assert True/False — the puzzle's own comment says
-        uniqueness was never verified (the prior solver was non-functional).
-        The point of this test is the timing assertion: a 30-edge puzzle
-        should finish in seconds, not minutes."""
-        puzzle_data = json.loads(
-            (REPO_ROOT / 'data' / 'D-puzzles.json').read_text()
-        )
-        puzzle = puzzle_data['puzzles'][0]
-        # Convert array-of-clues form (face index -> n, with -1 for "no clue")
-        # to the (face, n) tuple form that apply_clues expects.
-        clues = [(face, n) for face, n in enumerate(puzzle['clues']) if n != -1]
-        solution = puzzle['solution']
+    def test_existing_puzzle_terminates_quickly(self, dodecahedron, dodec_puzzle):
+        """Timing-only check on the existing dodecahedron puzzle. Guards
+        against propagation regressions that would push the 30-edge solve
+        into worst-case 2^30 territory."""
+        clues, solution = dodec_puzzle
 
         start = time.time()
-        result = solution_is_unique(clues, len(clues), solution, dodecahedron, None)
+        solution_is_unique(clues, len(clues), solution, dodecahedron, None)
         elapsed = time.time() - start
 
         assert elapsed < 30.0, (
             f"solver took {elapsed:.1f}s on a 30-edge puzzle — "
             f"propagation is likely too weak (or there's a bug)"
         )
-        # The result is informational, not asserted. Surface it via the
-        # assertion message so it appears in pytest -v output on -rA.
-        print(f"\n[dodecahedron puzzle] uniqueness={result}, elapsed={elapsed:.2f}s")
+
+    def test_existing_puzzle_solution_is_unique(self, dodecahedron, dodec_puzzle):
+        """The puzzle in data/D-puzzles.json has exactly one valid solution.
+
+        TODO: Lars to verify this uniqueness by hand. The puzzle was
+        created manually (not by genSliPuzzles.py, whose verifier was
+        non-functional until recently), and its own _comment in the data
+        file admits uniqueness was never checked. For now we trust our
+        solver's verdict here — if hand-verification later finds a second
+        valid loop, this test would still pass but be silently wrong.
+        """
+        clues, solution = dodec_puzzle
+        result = solution_is_unique(clues, len(clues), solution, dodecahedron, None)
+        assert result is True
