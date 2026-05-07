@@ -1,19 +1,21 @@
-"""Unit tests for slisolver.py — focused on is_valid_loop().
+"""Unit tests for slisolver.py.
 
 Strategy:
     Build small known meshes (a cube, an octahedron) once per test via
-    fixtures, then mark specific edges as 'filledIn' to reproduce each
-    logical case is_valid_loop has to handle:
-        - empty filled set
-        - degree-1 vertices (single edge, path)
-        - valid cycle (3-cycle on octahedron, 4-cycle on cube)
-        - multiple disjoint cycles
-        - figure-eight (vertex of degree 4 in the filled subgraph)
+    fixtures. Each test sets up edge guesses or face clues directly, then
+    invokes the function under test.
 """
 import pytest
 from compas.datastructures import Mesh
 
-from slisolver import is_valid_loop
+from slisolver import (
+    apply_clues,
+    is_complete_solution,
+    is_valid_loop,
+    restore_state,
+    save_state,
+    select_edge_for_branching,
+)
 
 
 # --- fixtures ---
@@ -72,6 +74,8 @@ def fill(mesh, edge_endpoints):
     `edge_endpoints` is an iterable of (u, v) pairs. Order within a pair
     doesn't matter — we compare against canonical edge keys via frozenset.
     """
+    # frozenset() gives us order independence for the comparison.
+    # So edge (0, 1) is the same as (1, 0).
     target = {frozenset(p) for p in edge_endpoints}
     for ekey in mesh.edges():
         guess = 'filledIn' if frozenset(ekey) in target else 'unknown'
@@ -166,9 +170,7 @@ class TestFixtureSanity:
             f"path={path}, adj={adj}"
         )
 
-        # And finally: confirm the actual function agrees on a fresh fixture.
-        # (Using `cube` again is fine — fill state is preserved on the same instance.)
-        from slisolver import is_valid_loop
+        # And finally: confirm the actual function agrees on the same input.
         assert is_valid_loop(cube) is True, (
             f"inline walk says True, but is_valid_loop says False. "
             f"adj={adj}, path={path}"
@@ -246,3 +248,158 @@ class TestIsValidLoop:
         # Path: 0-1-5-6-7-4-0 (a hexagonal slice).
         fill(cube, [(0, 1), (1, 5), (5, 6), (6, 7), (7, 4), (4, 0)])
         assert is_valid_loop(cube) is True
+
+
+# --- helpers for the next set of tests ---
+
+def set_all_edges(mesh, guess):
+    """Set every edge's 'guess' attribute to the given value."""
+    for ekey in mesh.edges():
+        mesh.edge_attribute(ekey, 'guess', guess)
+
+
+# --- is_complete_solution ---
+
+class TestIsCompleteSolution:
+    def test_all_unknown_returns_false(self, cube):
+        set_all_edges(cube, 'unknown')
+        assert is_complete_solution(cube) is False
+
+    def test_all_filled_in_returns_true(self, cube):
+        set_all_edges(cube, 'filledIn')
+        assert is_complete_solution(cube) is True
+
+    def test_all_ruled_out_returns_true(self, cube):
+        set_all_edges(cube, 'ruledOut')
+        assert is_complete_solution(cube) is True
+
+    def test_mix_of_filled_and_ruled_out_returns_true(self, cube):
+        for i, ekey in enumerate(cube.edges()):
+            cube.edge_attribute(ekey, 'guess',
+                                'filledIn' if i % 2 == 0 else 'ruledOut')
+        assert is_complete_solution(cube) is True
+
+    def test_one_unknown_among_otherwise_complete_returns_false(self, cube):
+        # The typical near-complete state during DFS — worth its own case.
+        set_all_edges(cube, 'filledIn')
+        target = next(iter(cube.edges()))
+        cube.edge_attribute(target, 'guess', 'unknown')
+        assert is_complete_solution(cube) is False
+
+
+# --- save_state / restore_state ---
+
+class TestSaveRestoreState:
+    def test_round_trip_preserves_all_edges(self, cube):
+        # Set a deterministic mix using the three legal values.
+        guess_cycle = ['unknown', 'filledIn', 'ruledOut']
+        original = {}
+        for i, ekey in enumerate(cube.edges()):
+            g = guess_cycle[i % 3]
+            cube.edge_attribute(ekey, 'guess', g)
+            original[ekey] = g
+
+        saved = save_state(cube)
+
+        # Trash everything.
+        set_all_edges(cube, 'unknown')
+
+        restore_state(cube, saved)
+
+        for ekey, expected in original.items():
+            assert cube.edge_attribute(ekey, 'guess') == expected, (
+                f"edge {ekey}: expected {expected}, "
+                f"got {cube.edge_attribute(ekey, 'guess')}"
+            )
+
+    def test_save_state_length_matches_edge_count(self, cube):
+        set_all_edges(cube, 'unknown')
+        # Materialize via list() so this works whether save_state returns
+        # a list or a generator.
+        state = list(save_state(cube))
+        assert len(state) == sum(1 for _ in cube.edges())
+
+    def test_edge_iteration_is_order_stable_across_calls(self, cube):
+        # restore_state's correctness depends on this. If COMPAS ever made
+        # mesh.edges() non-deterministic, restore_state would silently
+        # scramble edge attributes (zip pairs the i-th saved value with
+        # the i-th edge in iteration order).
+        order_a = list(cube.edges())
+        order_b = list(cube.edges())
+        assert order_a == order_b
+
+
+# --- apply_clues ---
+
+class TestApplyClues:
+    def test_empty_clues_clears_all_faces(self, cube):
+        # Pre-set clues so we can verify they're cleared.
+        for fkey in cube.faces():
+            cube.face_attribute(fkey, 'clue', 99)
+
+        apply_clues([], 0, cube)
+
+        for fkey in cube.faces():
+            assert cube.face_attribute(fkey, 'clue') is None
+
+    def test_partial_application_uses_only_first_n(self, cube):
+        clues = [(0, 1), (1, 2), (2, 3)]
+        apply_clues(clues, 2, cube)
+
+        assert cube.face_attribute(0, 'clue') == 1
+        assert cube.face_attribute(1, 'clue') == 2
+        # Face 2 was in the list but past num_clues; should remain unset.
+        assert cube.face_attribute(2, 'clue') is None
+        # Other faces also unset.
+        for fkey in (3, 4, 5):
+            assert cube.face_attribute(fkey, 'clue') is None
+
+    def test_reapplication_clears_previous_clues(self, cube):
+        # First call sets faces 0,1,2.
+        apply_clues([(0, 5), (1, 3), (2, 4)], 3, cube)
+        # Second call only sets face 0; faces 1 and 2 must be cleared.
+        apply_clues([(0, 1)], 1, cube)
+
+        assert cube.face_attribute(0, 'clue') == 1
+        assert cube.face_attribute(1, 'clue') is None
+        assert cube.face_attribute(2, 'clue') is None
+
+    def test_num_clues_exceeds_list_length_does_not_error(self, cube):
+        # itertools.islice silently truncates; we lock in that behavior.
+        apply_clues([(0, 1)], 5, cube)
+        assert cube.face_attribute(0, 'clue') == 1
+
+
+# --- select_edge_for_branching ---
+
+class TestSelectEdgeForBranching:
+    def test_returns_unknown_edge_when_some_exist(self, cube):
+        set_all_edges(cube, 'filledIn')
+        # Mark a single edge as unknown; the result should be that edge
+        # (or, more loosely, any edge whose guess is 'unknown').
+        target = list(cube.edges())[5]
+        cube.edge_attribute(target, 'guess', 'unknown')
+
+        result = select_edge_for_branching(cube)
+        assert result is not None
+        assert cube.edge_attribute(result, 'guess') == 'unknown'
+
+    def test_returns_none_when_no_unknown_edges(self, cube):
+        set_all_edges(cube, 'filledIn')
+        assert select_edge_for_branching(cube) is None
+
+    def test_returns_unknown_when_all_unknown(self, cube):
+        set_all_edges(cube, 'unknown')
+        result = select_edge_for_branching(cube)
+        assert result is not None
+        assert cube.edge_attribute(result, 'guess') == 'unknown'
+
+    def test_returns_specific_edge_when_only_one_is_unknown(self, cube):
+        # When exactly one edge is unknown, the contract pins down the
+        # answer — there's no other valid choice.
+        set_all_edges(cube, 'ruledOut')
+        target = list(cube.edges())[3]
+        cube.edge_attribute(target, 'guess', 'unknown')
+
+        result = select_edge_for_branching(cube)
+        assert result == target

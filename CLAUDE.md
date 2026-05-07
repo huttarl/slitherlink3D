@@ -8,11 +8,17 @@ Slitherlink3D is an interactive 3D puzzle game that brings the classic Slitherli
 
 ## Development Commands
 
-This is a client-side JavaScript application that runs directly in the browser with no build process required:
+The JS side of the app runs directly in the browser with no build process:
 
 - **Run the application**: Open `main.html` in a web browser or serve via a local web server
 - **Local development server**: `python3 -m http.server 8000` (or any static file server)
-- **No build, test, or lint commands** - this is a pure client-side application
+- **No build/lint commands** for the JS code — vanilla ES modules.
+
+The Python utilities under `util/` have a pytest suite:
+
+- **Run Python tests**: `pytest util/tests` from the repo root.
+- Python deps used by `util/`: `compas`, `networkx`, `matplotlib`, `pytest`.
+- Run the suite after changing any file in `util/`.
 
 ## General principles for assisting Lars
 
@@ -127,8 +133,9 @@ main.js
     color is connected and non-boring, derives the loop along edges between
     differently-colored faces, then uses `slisolver` to whittle clues to a
     minimal uniquely-solvable set.
-  - `slisolver.py`, `slisolver_claude.py` — solver(s) used to verify clue
-    uniqueness.
+  - `slisolver.py` — solver used to verify clue uniqueness.
+    (`slisolver_old.py` is a retired earlier draft, kept for reference.)
+  - `tests/` — pytest suite, currently focused on `slisolver.py`.
 - **main.html** — single page; loads `js/main.js` as an ES module.
 
 ## Data formats

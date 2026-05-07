@@ -94,7 +94,7 @@ def apply_clues(clues, num_clues, mesh):
     whereas 'clue' is only present on faces with clues."""
     # Initialize all faces with no clue.
     for fkey in mesh.faces():
-        mesh.face_attribute(fkey, 'clue', None)
+        mesh.unset_face_attribute(fkey, 'clue')
 
     # Apply the clues we're using to the mesh.
     for face, num_walls in itertools.islice(clues, num_clues):
