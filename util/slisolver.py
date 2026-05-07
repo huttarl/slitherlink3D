@@ -104,18 +104,29 @@ def apply_clues(clues, num_clues, mesh):
 def propagate_constraints(mesh, clues, num_clues):
     """Apply deterministic inference rules until no more progress can be made.
 
+    Alternates apply_vertex_rules and apply_clue_rules in a fixed-point
+    loop. Bails on the first contradiction from either family.
+
+    Each pass either changes at least one edge or returns. Since the
+    set of edge states is finite and rules only refine 'unknown' edges
+    (never reverting determined ones), the loop terminates in O(E)
+    rule-firings.
+
+    The clues/num_clues arguments are not read here — clue values live
+    in face attributes set earlier by apply_clues. They're kept in the
+    signature for compatibility with the calling site.
+
     Returns False if a contradiction is detected, True otherwise.
     """
-    # TODO: Implement constraint propagation rules
-    # This is where you'll add your pruning logic.
-    # Sketch:
-    #   while True:
-    #       ok, changed_v = apply_vertex_rules(mesh)
-    #       if not ok: return False
-    #       ok, changed_c = apply_clue_rules(mesh)   # not yet implemented
-    #       if not ok: return False
-    #       if not (changed_v or changed_c): return True
-    return True
+    while True:
+        (ok, changed_v) = apply_vertex_rules(mesh)
+        if not ok:
+            return False
+        (ok, changed_c) = apply_clue_rules(mesh)
+        if not ok:
+            return False
+        if not (changed_v or changed_c):
+            return True
 
 
 def apply_vertex_rules(mesh):

@@ -14,9 +14,11 @@ from slisolver import (
     apply_vertex_rules,
     is_complete_solution,
     is_valid_loop,
+    propagate_constraints,
     restore_state,
     save_state,
     select_edge_for_branching,
+    solution_is_unique,
 )
 
 
@@ -611,3 +613,158 @@ class TestApplyClueRules:
         ok, changed = apply_clue_rules(cube)
         assert ok is True
         assert changed is False
+
+
+# --- propagate_constraints ---
+
+class TestPropagateConstraints:
+    """End-to-end tests of the orchestrator: vertex rules and clue rules
+    alternating to a fixed point, with contradiction detection from either
+    side.
+    """
+
+    @staticmethod
+    def _reset_edges(cube):
+        for ekey in cube.edges():
+            cube.edge_attribute(ekey, 'guess', 'unknown')
+
+    # 1. Empty no-op: nothing to infer.
+    def test_empty_state_returns_true_no_changes(self, cube):
+        self._reset_edges(cube)
+        result = propagate_constraints(cube, [], 0)
+        assert result is True
+        for ekey in cube.edges():
+            assert cube.edge_attribute(ekey, 'guess') == 'unknown'
+
+    # 2. Already satisfied state — a complete bottom-loop solution with
+    #    consistent clues. Every rule's preconditions fail because u==0
+    #    everywhere, so the loop converges in one pass with no changes.
+    def test_already_at_fixed_point(self, cube):
+        bottom = [(0, 3), (3, 2), (2, 1), (1, 0)]
+        top    = [(4, 5), (5, 6), (6, 7), (7, 4)]
+        verticals = [(0, 4), (1, 5), (2, 6), (3, 7)]
+        for e in bottom:
+            cube.edge_attribute(e, 'guess', 'filledIn')
+        for e in top + verticals:
+            cube.edge_attribute(e, 'guess', 'ruledOut')
+        cube.face_attribute(0, 'clue', 4)   # bottom: all filled
+        cube.face_attribute(1, 'clue', 0)   # top:    none filled
+
+        result = propagate_constraints(cube, [], 0)
+        assert result is True
+        for e in bottom:
+            assert cube.edge_attribute(e, 'guess') == 'filledIn'
+        for e in top + verticals:
+            assert cube.edge_attribute(e, 'guess') == 'ruledOut'
+
+    # 3. Clue-rule fires first, then vertex rules cascade.
+    def test_clue_then_vertex_cascade(self, cube):
+        self._reset_edges(cube)
+        cube.face_attribute(0, 'clue', 4)   # bottom: all filled
+
+        result = propagate_constraints(cube, [], 0)
+        assert result is True
+        # Bottom (filled by clue rule):
+        for e in [(0, 3), (3, 2), (2, 1), (1, 0)]:
+            assert cube.edge_attribute(e, 'guess') == 'filledIn'
+        # Verticals (ruled out by vertex rule once each face-0 vertex has f=2):
+        for e in [(0, 4), (1, 5), (2, 6), (3, 7)]:
+            assert cube.edge_attribute(e, 'guess') == 'ruledOut'
+        # Top (no constraint reaches here, stays unknown):
+        for e in [(4, 5), (5, 6), (6, 7), (7, 4)]:
+            assert cube.edge_attribute(e, 'guess') == 'unknown'
+
+    # 4. Vertex-rule fires first, then a clue rule fires using the new
+    #    state, then vertex rules cascade further. Verifies multi-round
+    #    alternation between families.
+    def test_vertex_then_clue_then_vertex_cascade(self, cube):
+        self._reset_edges(cube)
+        # Pre-set 2 of vertex 0's 3 incident edges as filled.
+        cube.edge_attribute((0, 1), 'guess', 'filledIn')
+        cube.edge_attribute((0, 4), 'guess', 'filledIn')
+        # Set clue=1 on face 5 (left). After the vertex rule rules out (0,3),
+        # face 5 has f=1, n=1 with two unknowns — the clue rule rules them out.
+        # Those rule-outs then cascade back into more vertex inferences.
+        cube.face_attribute(5, 'clue', 1)
+
+        result = propagate_constraints(cube, [], 0)
+        assert result is True
+
+        # From vertex rule at vertex 0 (round 1):
+        assert cube.edge_attribute((0, 3), 'guess') == 'ruledOut'
+        # From clue rule at face 5 (round 1, after vertex rule):
+        assert cube.edge_attribute((4, 7), 'guess') == 'ruledOut'
+        assert cube.edge_attribute((3, 7), 'guess') == 'ruledOut'
+        # From vertex rules cascading after clue rule (round 2):
+        assert cube.edge_attribute((4, 5), 'guess') == 'filledIn'  # vertex 4: f=1,r=1,u=1
+        assert cube.edge_attribute((6, 7), 'guess') == 'ruledOut'  # vertex 7: f=0,r=2,u=1
+        assert cube.edge_attribute((2, 3), 'guess') == 'ruledOut'  # vertex 3: f=0,r=2,u=1
+
+    # 5. Vertex-rule contradiction (3 filled at one vertex) → False.
+    def test_vertex_contradiction_returns_false(self, cube):
+        self._reset_edges(cube)
+        # Vertex 0 incident edges: (0,1), (0,3), (0,4). All three filled.
+        cube.edge_attribute((0, 1), 'guess', 'filledIn')
+        cube.edge_attribute((0, 3), 'guess', 'filledIn')
+        cube.edge_attribute((0, 4), 'guess', 'filledIn')
+
+        result = propagate_constraints(cube, [], 0)
+        assert result is False
+
+    # 6. Clue-rule contradiction (f > n) → False. Vertex rules fire first
+    #    and may make some changes, but then clue rules detect f > n.
+    def test_clue_contradiction_returns_false(self, cube):
+        self._reset_edges(cube)
+        # Two of face 0's edges filled, but clue says only 1.
+        cube.edge_attribute((0, 3), 'guess', 'filledIn')
+        cube.edge_attribute((1, 0), 'guess', 'filledIn')
+        cube.face_attribute(0, 'clue', 1)
+
+        result = propagate_constraints(cube, [], 0)
+        assert result is False
+
+
+# --- solution_is_unique (integration) ---
+
+class TestSolutionIsUnique:
+    """End-to-end small-puzzle tests. Each builds a cube + clues + a known
+    solution and asserts uniqueness. dualG is unused by the solver, so we
+    pass None.
+    """
+
+    def test_unique_solution_one_face_loop(self, cube):
+        # clue 4 on bottom + clue 0 on top → propagation alone determines
+        # every edge, leaving exactly one valid loop (the bottom 4-cycle).
+        clues = [(0, 4), (1, 0)]
+        solution = [0, 3, 2, 1]
+        result = solution_is_unique(clues, len(clues), solution, cube, None)
+        assert result is True
+
+    def test_unique_solution_via_negative_clue(self, cube):
+        # clue 0 on the front face → all 4 front edges ruled out, isolating
+        # the 4 front-side vertices to degree-1 in the remaining graph.
+        # The only valid loop on the remaining edges is the back 4-cycle.
+        clues = [(2, 0)]
+        solution = [2, 3, 7, 6]
+        result = solution_is_unique(clues, len(clues), solution, cube, None)
+        assert result is True
+
+    def test_no_single_loop_returns_false(self, cube):
+        # clue 4 on bottom AND top forces both faces filled — but those
+        # two 4-cycles are disjoint, not a single loop. is_valid_loop
+        # rejects it; solutions_found stays at 0; uniqueness check fails.
+        clues = [(0, 4), (1, 4)]
+        # Provide any "solution"; the function counts valid loops, not
+        # matches against the input.
+        solution = [0, 3, 2, 1]
+        result = solution_is_unique(clues, len(clues), solution, cube, None)
+        assert result is False
+
+    def test_no_clues_admits_multiple_solutions(self, cube):
+        # No clues → many valid loops exist on the cube (face cycles,
+        # hex slices, Hamiltonian cycles). Solver should find ≥2 and
+        # abort early.
+        clues = []
+        solution = [0, 3, 2, 1]
+        result = solution_is_unique(clues, 0, solution, cube, None)
+        assert result is False
