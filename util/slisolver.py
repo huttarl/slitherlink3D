@@ -1,6 +1,6 @@
 """Slitherlink puzzle solver."""
 import itertools
-# import networkx as nx
+import networkx as nx
 # from compas.datastructures import Mesh
 
 def solution_is_unique(clues, num_clues, solution, mesh, dualG):
@@ -120,50 +120,25 @@ def is_complete_solution(mesh):
 
 
 def is_valid_loop(mesh):
-    """Check if the current edge configuration forms a valid single loop.
+    """Check if the filled edges form a single simple cycle.
 
-    A valid solution must:
-    - Have at least one filled edge
-    - Each vertex incident to a filled edge has exactly 2 filled edges
-      (other vertices have 0)
-    - The filled edges form a single connected component (one cycle, not several)
+    Equivalently: the filled subgraph is non-empty, every vertex it
+    touches has degree exactly 2, and it is connected.
+
+    Speed: this builds a fresh networkx graph each call. If profiling
+    later shows it's hot, a hand-rolled dict-of-lists + cycle walk is
+    ~2-3x faster.
     """
-    # Collect filled edges and per-vertex filled-edge counts in one pass.
-    filled_edges = []
-    degree = {}  # vertex key -> count of incident filled edges
+    G = nx.Graph()
     for ekey in mesh.edges():
         if mesh.edge_attribute(ekey, 'guess') == 'filledIn':
-            v1, v2 = ekey
-            filled_edges.append((v1, v2))
-            degree[v1] = degree.get(v1, 0) + 1
-            degree[v2] = degree.get(v2, 0) + 1
+            G.add_edge(*ekey)
 
-    if not filled_edges:
+    if G.number_of_edges() == 0:
         return False
-
-    # Every loop vertex must have exactly 2 filled edges. Vertices not in
-    # `degree` implicitly have 0, which is fine.
-    if any(d != 2 for d in degree.values()):
+    if any(d != 2 for _, d in G.degree()):
         return False
-
-    # With every vertex of degree 0 or 2, the filled subgraph is a disjoint
-    # union of simple cycles. Check it has exactly one component.
-    adj = {v: [] for v in degree}
-    for v1, v2 in filled_edges:
-        adj[v1].append(v2)
-        adj[v2].append(v1)
-
-    start = next(iter(degree))
-    visited = {start}
-    stack = [start]
-    while stack:
-        v = stack.pop()
-        for nbr in adj[v]:
-            if nbr not in visited:
-                visited.add(nbr)
-                stack.append(nbr)
-
-    return len(visited) == len(degree)
+    return nx.is_connected(G)
 
 
 def select_edge_for_branching(mesh):
