@@ -10,6 +10,7 @@ from compas.datastructures import Mesh
 
 from slisolver import (
     apply_clues,
+    apply_vertex_rules,
     is_complete_solution,
     is_valid_loop,
     restore_state,
@@ -403,3 +404,78 @@ class TestSelectEdgeForBranching:
 
         result = select_edge_for_branching(cube)
         assert result == target
+
+
+# --- apply_vertex_rules ---
+
+class TestApplyVertexRules:
+    """Each test sets vertex 0's three incident edges (to neighbors 1, 3, 4)
+    to specific guesses, leaves all other edges 'unknown', and asserts what
+    apply_vertex_rules infers. Other vertices stay in states (f<=1, u>=2)
+    where no rule fires, so they don't interfere.
+    """
+
+    @staticmethod
+    def _setup_v0(cube, e01, e03, e04):
+        for ekey in cube.edges():
+            cube.edge_attribute(ekey, 'guess', 'unknown')
+        cube.edge_attribute((0, 1), 'guess', e01)
+        cube.edge_attribute((0, 3), 'guess', e03)
+        cube.edge_attribute((0, 4), 'guess', e04)
+
+    def test_f2_u1_rules_out_unknown(self, cube):
+        self._setup_v0(cube, 'filledIn', 'filledIn', 'unknown')
+        ok, changed = apply_vertex_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert cube.edge_attribute((0, 4), 'guess') == 'ruledOut'
+
+    def test_f1_u1_fills_unknown(self, cube):
+        self._setup_v0(cube, 'filledIn', 'ruledOut', 'unknown')
+        ok, changed = apply_vertex_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert cube.edge_attribute((0, 4), 'guess') == 'filledIn'
+
+    def test_f0_u1_rules_out_unknown(self, cube):
+        self._setup_v0(cube, 'ruledOut', 'ruledOut', 'unknown')
+        ok, changed = apply_vertex_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert cube.edge_attribute((0, 4), 'guess') == 'ruledOut'
+
+    def test_f2_u0_no_change(self, cube):
+        self._setup_v0(cube, 'filledIn', 'filledIn', 'ruledOut')
+        ok, changed = apply_vertex_rules(cube)
+        assert ok is True
+        assert changed is False
+        # State preserved.
+        assert cube.edge_attribute((0, 1), 'guess') == 'filledIn'
+        assert cube.edge_attribute((0, 3), 'guess') == 'filledIn'
+        assert cube.edge_attribute((0, 4), 'guess') == 'ruledOut'
+
+    def test_all_unknown_no_inference(self, cube):
+        for ekey in cube.edges():
+            cube.edge_attribute(ekey, 'guess', 'unknown')
+        ok, changed = apply_vertex_rules(cube)
+        assert ok is True
+        assert changed is False
+
+    def test_f1_u2_no_inference(self, cube):
+        self._setup_v0(cube, 'filledIn', 'unknown', 'unknown')
+        ok, changed = apply_vertex_rules(cube)
+        assert ok is True
+        assert changed is False
+        # The two unknowns at vertex 0 stay unknown.
+        assert cube.edge_attribute((0, 3), 'guess') == 'unknown'
+        assert cube.edge_attribute((0, 4), 'guess') == 'unknown'
+
+    def test_f3_contradiction(self, cube):
+        self._setup_v0(cube, 'filledIn', 'filledIn', 'filledIn')
+        ok, _ = apply_vertex_rules(cube)
+        assert ok is False
+
+    def test_f1_u0_contradiction(self, cube):
+        self._setup_v0(cube, 'filledIn', 'ruledOut', 'ruledOut')
+        ok, _ = apply_vertex_rules(cube)
+        assert ok is False

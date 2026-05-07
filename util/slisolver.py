@@ -107,8 +107,70 @@ def propagate_constraints(mesh, clues, num_clues):
     Returns False if a contradiction is detected, True otherwise.
     """
     # TODO: Implement constraint propagation rules
-    # This is where you'll add your pruning logic
+    # This is where you'll add your pruning logic.
+    # Sketch:
+    #   while True:
+    #       ok, changed_v = apply_vertex_rules(mesh)
+    #       if not ok: return False
+    #       ok, changed_c = apply_clue_rules(mesh)   # not yet implemented
+    #       if not ok: return False
+    #       if not (changed_v or changed_c): return True
     return True
+
+
+def apply_vertex_rules(mesh):
+    """Apply vertex-balance inference at every vertex (one pass).
+
+    In a valid Slitherlink loop, each vertex has exactly 0 or 2 filled
+    edges incident. Given the current per-vertex counts of filled (f),
+    unknown (u), and ruled-out edges, the deterministic inferences are:
+
+        f >= 3                  -> contradiction
+        f == 1 and u == 0       -> contradiction (stuck at 1)
+        f == 2 and u >= 1       -> all unknowns become 'ruledOut'
+        f == 1 and u == 1       -> the unknown becomes 'filledIn'
+        f == 0 and u == 1       -> the unknown becomes 'ruledOut'
+        otherwise               -> nothing forced locally
+
+    Returns:
+        (ok, changed):
+            ok      - False on contradiction; the caller should not
+                      trust the resulting mesh state.
+            changed - True if any edge's 'guess' attribute was updated.
+    """
+    changed = False
+    for vkey in mesh.vertices():
+        # Bucket the incident edges by their guess state (filled, unknown).
+        filled = []
+        unknown = []
+        for nbr in mesh.vertex_neighbors(vkey):
+            ekey = (vkey, nbr)
+            g = mesh.edge_attribute(ekey, 'guess')
+            if g == 'filledIn':
+                filled.append(ekey)
+            elif g == 'unknown':
+                unknown.append(ekey)
+        f = len(filled)
+        u = len(unknown)
+
+        # Contradictions: bail immediately, propagating whatever changed
+        # earlier in this pass (the caller will discard the state anyway).
+        if f > 2 or (f == 1 and u == 0):
+            return False, changed
+
+        # Forced inferences:
+        if f == 2 and u >= 1:
+            for ekey in unknown:
+                mesh.edge_attribute(ekey, 'guess', 'ruledOut')
+            changed = True
+        elif (f, u) == (1, 1):
+            mesh.edge_attribute(unknown[0], 'guess', 'filledIn')
+            changed = True
+        elif (f, u) == (0, 1):
+            mesh.edge_attribute(unknown[0], 'guess', 'ruledOut')
+            changed = True
+
+    return True, changed
 
 
 def is_complete_solution(mesh):
