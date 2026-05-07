@@ -26,6 +26,11 @@ The Python utilities under `util/` have a pytest suite:
 - **Don't assert more confidence than is warranted.** Better to express uncertainty than to sound knowledgeable while giving wrong information.
 - **Don't remove information in comments.** If you think a comment is obsolete, ask before deleting it. You can propose rewording, but don't lose information.
 
+## Coding style
+
+- Lean toward **clarity** for generalist developers, not code golfing that requires a reader to be an expert in the particular programming language.
+  - For example, when assigning to a tuple in Python, use parentheses on the LHS. E.g. `(a, b) = 1, 2` instead of `a, b = 1, 2`.
+
 ## Architecture overview
 
 ### Runtime startup (high level)

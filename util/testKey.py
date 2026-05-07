@@ -16,7 +16,7 @@ def on_press(event):
 # Fixing random state for reproducibility
 np.random.seed(19680801)
 
-fig, ax = plt.subplots()
+(fig, ax) = plt.subplots()
 
 fig.canvas.mpl_connect('key_press_event', on_press)
 

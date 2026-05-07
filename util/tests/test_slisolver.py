@@ -175,7 +175,7 @@ class TestFixtureSanity:
         adj = {}
         for ekey in cube.edges():
             if cube.edge_attribute(ekey, 'guess') == 'filledIn':
-                v1, v2 = ekey
+                (v1, v2) = ekey
                 adj.setdefault(v1, []).append(v2)
                 adj.setdefault(v2, []).append(v1)
 
@@ -188,7 +188,7 @@ class TestFixtureSanity:
         steps = 0
         path = [start]
         while cur != start or prev is None:
-            a, b = adj[cur]
+            (a, b) = adj[cur]
             nxt = a if a != prev else b
             prev = cur
             cur = nxt
@@ -214,7 +214,7 @@ class TestFixtureSanity:
         adj = {}
         for ekey in cube.edges():
             if cube.edge_attribute(ekey, 'guess') == 'filledIn':
-                v1, v2 = ekey
+                (v1, v2) = ekey
                 adj.setdefault(v1, []).append(v2)
                 adj.setdefault(v2, []).append(v1)
         assert set(adj.keys()) == {0, 1, 2, 3}, f"adj keys: {sorted(adj.keys())}"
@@ -471,28 +471,28 @@ class TestApplyVertexRules:
 
     def test_f2_u1_rules_out_unknown(self, cube):
         self._setup_v0(cube, 'filledIn', 'filledIn', 'unknown')
-        ok, changed = apply_vertex_rules(cube)
+        (ok, changed) = apply_vertex_rules(cube)
         assert ok is True
         assert changed is True
         assert cube.edge_attribute((0, 4), 'guess') == 'ruledOut'
 
     def test_f1_u1_fills_unknown(self, cube):
         self._setup_v0(cube, 'filledIn', 'ruledOut', 'unknown')
-        ok, changed = apply_vertex_rules(cube)
+        (ok, changed) = apply_vertex_rules(cube)
         assert ok is True
         assert changed is True
         assert cube.edge_attribute((0, 4), 'guess') == 'filledIn'
 
     def test_f0_u1_rules_out_unknown(self, cube):
         self._setup_v0(cube, 'ruledOut', 'ruledOut', 'unknown')
-        ok, changed = apply_vertex_rules(cube)
+        (ok, changed) = apply_vertex_rules(cube)
         assert ok is True
         assert changed is True
         assert cube.edge_attribute((0, 4), 'guess') == 'ruledOut'
 
     def test_f2_u0_no_change(self, cube):
         self._setup_v0(cube, 'filledIn', 'filledIn', 'ruledOut')
-        ok, changed = apply_vertex_rules(cube)
+        (ok, changed) = apply_vertex_rules(cube)
         assert ok is True
         assert changed is False
         # State preserved.
@@ -503,13 +503,13 @@ class TestApplyVertexRules:
     def test_all_unknown_no_inference(self, cube):
         for ekey in cube.edges():
             cube.edge_attribute(ekey, 'guess', 'unknown')
-        ok, changed = apply_vertex_rules(cube)
+        (ok, changed) = apply_vertex_rules(cube)
         assert ok is True
         assert changed is False
 
     def test_f1_u2_no_inference(self, cube):
         self._setup_v0(cube, 'filledIn', 'unknown', 'unknown')
-        ok, changed = apply_vertex_rules(cube)
+        (ok, changed) = apply_vertex_rules(cube)
         assert ok is True
         assert changed is False
         # The two unknowns at vertex 0 stay unknown.
@@ -518,12 +518,12 @@ class TestApplyVertexRules:
 
     def test_f3_contradiction(self, cube):
         self._setup_v0(cube, 'filledIn', 'filledIn', 'filledIn')
-        ok, _ = apply_vertex_rules(cube)
+        (ok, _) = apply_vertex_rules(cube)
         assert ok is False
 
     def test_f1_u0_contradiction(self, cube):
         self._setup_v0(cube, 'filledIn', 'ruledOut', 'ruledOut')
-        ok, _ = apply_vertex_rules(cube)
+        (ok, _) = apply_vertex_rules(cube)
         assert ok is False
 
 
@@ -558,7 +558,7 @@ class TestApplyClueRules:
     def test_f_eq_n_rules_out_unknowns(self, cube):
         # n=2, f=2, u=2 → both unknowns become ruledOut.
         self._setup(cube, 2, [self.F, self.F, self.U, self.U])
-        ok, changed = apply_clue_rules(cube)
+        (ok, changed) = apply_clue_rules(cube)
         assert ok is True
         assert changed is True
         assert cube.edge_attribute((2, 1), 'guess') == 'ruledOut'
@@ -569,7 +569,7 @@ class TestApplyClueRules:
         # (Note: if f == n, case 3 fires first and rules out the unknown
         # instead — case 4 only applies when the face still needs fills.)
         self._setup(cube, 3, [self.F, self.F, self.U, self.R])
-        ok, changed = apply_clue_rules(cube)
+        (ok, changed) = apply_clue_rules(cube)
         assert ok is True
         assert changed is True
         assert cube.edge_attribute((2, 1), 'guess') == 'filledIn'
@@ -577,7 +577,7 @@ class TestApplyClueRules:
     def test_clue_zero_rules_out_all(self, cube):
         # n=0, f=0, u=4 → case 3 (f == n == 0) fills nothing, rules out all.
         self._setup(cube, 0, [self.U, self.U, self.U, self.U])
-        ok, changed = apply_clue_rules(cube)
+        (ok, changed) = apply_clue_rules(cube)
         assert ok is True
         assert changed is True
         for ekey in self.FACE0_EDGES:
@@ -586,7 +586,7 @@ class TestApplyClueRules:
     def test_clue_d_fills_all(self, cube):
         # n=4 (== d), f=0, u=4 → case 4 (f+u == n) fills everything.
         self._setup(cube, 4, [self.U, self.U, self.U, self.U])
-        ok, changed = apply_clue_rules(cube)
+        (ok, changed) = apply_clue_rules(cube)
         assert ok is True
         assert changed is True
         for ekey in self.FACE0_EDGES:
@@ -595,7 +595,7 @@ class TestApplyClueRules:
     def test_no_inference_between_extremes(self, cube):
         # n=2, f=1, u=3 → 0 < n-f < u, nothing forced.
         self._setup(cube, 2, [self.F, self.U, self.U, self.U])
-        ok, changed = apply_clue_rules(cube)
+        (ok, changed) = apply_clue_rules(cube)
         assert ok is True
         assert changed is False
         # The three unknowns stay unknown.
@@ -605,26 +605,26 @@ class TestApplyClueRules:
     def test_f_gt_n_contradiction(self, cube):
         # n=1, f=2 → over the limit.
         self._setup(cube, 1, [self.F, self.F, self.U, self.U])
-        ok, _ = apply_clue_rules(cube)
+        (ok, _) = apply_clue_rules(cube)
         assert ok is False
 
     def test_f_plus_u_lt_n_contradiction(self, cube):
         # n=3, f=0, u=2, r=2 → can't reach 3.
         self._setup(cube, 3, [self.R, self.R, self.U, self.U])
-        ok, _ = apply_clue_rules(cube)
+        (ok, _) = apply_clue_rules(cube)
         assert ok is False
 
     def test_satisfied_with_no_unknowns_no_change(self, cube):
         # n=2, f=2, r=2, u=0 → already satisfied, the u >= 1 guards bite.
         self._setup(cube, 2, [self.F, self.F, self.R, self.R])
-        ok, changed = apply_clue_rules(cube)
+        (ok, changed) = apply_clue_rules(cube)
         assert ok is True
         assert changed is False
 
     def test_unclued_face_is_ignored(self, cube):
         # No clue → no rule, no contradiction even though n=2 here would fire.
         self._setup(cube, None, [self.F, self.F, self.U, self.U])
-        ok, changed = apply_clue_rules(cube)
+        (ok, changed) = apply_clue_rules(cube)
         assert ok is True
         assert changed is False
         # Edges untouched.
@@ -636,7 +636,7 @@ class TestApplyClueRules:
         # against a future bug where someone might validate every face
         # against an implicit limit.
         self._setup(cube, None, [self.F, self.F, self.F, self.F])
-        ok, changed = apply_clue_rules(cube)
+        (ok, changed) = apply_clue_rules(cube)
         assert ok is True
         assert changed is False
 
@@ -813,7 +813,7 @@ class TestDodecahedronIntegration:
         """Timing-only check on the existing dodecahedron puzzle. Guards
         against propagation regressions that would push the 30-edge solve
         into worst-case 2^30 territory."""
-        clues, solution = dodec_puzzle
+        (clues, solution) = dodec_puzzle
 
         start = time.time()
         solution_is_unique(clues, len(clues), solution, dodecahedron, None)
@@ -826,14 +826,8 @@ class TestDodecahedronIntegration:
 
     def test_existing_puzzle_solution_is_unique(self, dodecahedron, dodec_puzzle):
         """The puzzle in data/D-puzzles.json has exactly one valid solution.
-
-        TODO: Lars to verify this uniqueness by hand. The puzzle was
-        created manually (not by genSliPuzzles.py, whose verifier was
-        non-functional until recently), and its own _comment in the data
-        file admits uniqueness was never checked. For now we trust our
-        solver's verdict here — if hand-verification later finds a second
-        valid loop, this test would still pass but be silently wrong.
+        (Verified this by hand.)
         """
-        clues, solution = dodec_puzzle
+        (clues, solution) = dodec_puzzle
         result = solution_is_unique(clues, len(clues), solution, dodecahedron, None)
         assert result is True

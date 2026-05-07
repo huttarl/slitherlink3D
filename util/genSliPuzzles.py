@@ -87,7 +87,7 @@ def setup_display():
 
     # Label each vertex
     for vkey in mesh.vertices():
-        x, y, z = mesh.vertex_coordinates(vkey)
+        (x, y, z) = mesh.vertex_coordinates(vkey)
         ax.text(x * 1.1, y * 1.1, z * 1.1, str(vkey))
 
     # TODO: would be nice to be able to toggle display of face/vertex IDs by keyboard.
@@ -100,7 +100,7 @@ def setup_display():
     #     ax.text(cx * factor, cy * factor, cz * factor, str(fkey),
     #             color='black', fontsize=8, ha='center', va='center')
 
-    xs, ys, zs = zip(*[mesh.vertex_coordinates(v) for v in mesh.vertices()])
+    (xs, ys, zs) = zip(*[mesh.vertex_coordinates(v) for v in mesh.vertices()])
     ax.auto_scale_xyz(xs, ys, zs)
     ax.set_box_aspect([1, 1, 1])
 
@@ -376,7 +376,7 @@ def enumerate_solution():
     for ekey in mesh.edges():
         if not is_edge_boring(ekey):
             # Remember that an edge key is just (v1, v2), that is a tuple of two vertex IDs.
-            start_vertex, next_vertex = ekey
+            (start_vertex, next_vertex) = ekey
             break
     if start_vertex is None:
         raise ValueError("No edges found with different colors. This should never happen.")

@@ -391,7 +391,7 @@ def project_quad_to_plane(quad_indices, points):
     
     # Compute best-fit plane using SVD
     # The plane normal is the singular vector with smallest singular value
-    _, _, vh = np.linalg.svd(centered)
+    (_, _, vh) = np.linalg.svd(centered)
     normal = vh[2, :]  # Last row of V^T is the normal to the best-fit plane
     
     # Project each vertex onto the plane
