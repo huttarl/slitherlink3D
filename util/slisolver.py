@@ -171,10 +171,13 @@ def is_valid_loop(mesh):
         # Each vertex has degree 2, so adj[cur] has exactly two entries:
         # one is `prev` (where we came from), the other is where we go next.
         (a, b) = adj[cur]
+        # Compute next BEFORE overwriting prev — otherwise the comparison
+        # uses the new prev (== cur) and we'd march straight back to start.
+        # On the first step prev is None and vertex keys are never None,
+        # so the conditional picks `a`.
+        next_vertex = a if a != prev else b
         prev = cur
-        # Pick the neighbor that isn't prev. On the first step prev is None
-        # and vertex keys are never None, so the conditional picks `a`.
-        cur = (a if a != prev else b)
+        cur = next_vertex
         steps += 1
 
     return steps == len(adj)
