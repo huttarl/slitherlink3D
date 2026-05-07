@@ -140,8 +140,8 @@ def is_valid_loop(mesh):
     degree = {}  # vertex key -> count of incident filled edges
     for ekey in mesh.edges():
         if mesh.edge_attribute(ekey, 'guess') == 'filledIn':
-            v1, v2 = ekey
-            filled_edges.append((v1, v2))
+            (v1, v2) = ekey
+            filled_edges.append(ekey)
             degree[v1] = degree.get(v1, 0) + 1
             degree[v2] = degree.get(v2, 0) + 1
 
@@ -154,23 +154,26 @@ def is_valid_loop(mesh):
         return False
 
     # With every vertex of degree 0 or 2, the filled subgraph is a disjoint
-    # union of simple cycles. Check it has exactly one component.
+    # union of simple cycles. Walk from any vertex to count the cycle's
+    # length; if it equals the total vertex count, there's exactly one cycle.
     adj = {v: [] for v in degree}
     for v1, v2 in filled_edges:
         adj[v1].append(v2)
         adj[v2].append(v1)
 
     start = next(iter(degree))
-    visited = {start}
-    stack = [start]
-    while stack:
-        v = stack.pop()
-        for nbr in adj[v]:
-            if nbr not in visited:
-                visited.add(nbr)
-                stack.append(nbr)
+    cur = start
+    prev = None
+    steps = 0
+    # Loop until we've reached the start vertex again.
+    while cur != start or prev is None:
+        # Set (a, b) to the vertices adjacent to the current vertex.
+        (a, b) = adj[cur]
+        prev = cur
+        cur = (a if a != prev else b)
+        steps += 1
 
-    return len(visited) == len(degree)
+    return steps == len(degree)
 
 
 def select_edge_for_branching(mesh):
