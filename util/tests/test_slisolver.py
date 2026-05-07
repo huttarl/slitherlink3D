@@ -5,8 +5,14 @@ Strategy:
     fixtures. Each test sets up edge guesses or face clues directly, then
     invokes the function under test.
 """
+import json
+import time
+from pathlib import Path
+
 import pytest
 from compas.datastructures import Mesh
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 from slisolver import (
     apply_clue_rules,
@@ -45,6 +51,14 @@ def cube():
         [3, 0, 4, 7],   # left   (-x)
     ]
     return Mesh.from_vertices_and_faces(vertices, faces)
+
+
+@pytest.fixture
+def dodecahedron():
+    """Regular dodecahedron loaded from data/D.json: 20 vertices,
+    12 pentagonal faces, 30 edges. Each vertex has degree 3."""
+    grid = json.loads((REPO_ROOT / 'data' / 'D.json').read_text())
+    return Mesh.from_vertices_and_faces(grid['vertices'], grid['faces'])
 
 
 @pytest.fixture
@@ -768,3 +782,44 @@ class TestSolutionIsUnique:
         solution = [0, 3, 2, 1]
         result = solution_is_unique(clues, 0, solution, cube, None)
         assert result is False
+
+
+# --- dodecahedron integration ---
+
+class TestDodecahedronIntegration:
+    """Exercise the solver on a 30-edge mesh — large enough that worst-case
+    DFS (2^30 leaves) is intractable, so a passing test confirms propagation
+    is doing real work."""
+
+    def test_dodecahedron_fixture_loads(self, dodecahedron):
+        # Guard against silent fixture breakage (data file moved/changed).
+        assert sum(1 for _ in dodecahedron.vertices()) == 20
+        assert sum(1 for _ in dodecahedron.faces()) == 12
+        assert sum(1 for _ in dodecahedron.edges()) == 30
+
+    def test_existing_puzzle_terminates_quickly(self, dodecahedron):
+        """Run solution_is_unique on the existing data/D-puzzles.json
+        puzzle. Doesn't assert True/False — the puzzle's own comment says
+        uniqueness was never verified (the prior solver was non-functional).
+        The point of this test is the timing assertion: a 30-edge puzzle
+        should finish in seconds, not minutes."""
+        puzzle_data = json.loads(
+            (REPO_ROOT / 'data' / 'D-puzzles.json').read_text()
+        )
+        puzzle = puzzle_data['puzzles'][0]
+        # Convert array-of-clues form (face index -> n, with -1 for "no clue")
+        # to the (face, n) tuple form that apply_clues expects.
+        clues = [(face, n) for face, n in enumerate(puzzle['clues']) if n != -1]
+        solution = puzzle['solution']
+
+        start = time.time()
+        result = solution_is_unique(clues, len(clues), solution, dodecahedron, None)
+        elapsed = time.time() - start
+
+        assert elapsed < 30.0, (
+            f"solver took {elapsed:.1f}s on a 30-edge puzzle — "
+            f"propagation is likely too weak (or there's a bug)"
+        )
+        # The result is informational, not asserted. Surface it via the
+        # assertion message so it appears in pytest -v output on -rA.
+        print(f"\n[dodecahedron puzzle] uniqueness={result}, elapsed={elapsed:.2f}s")
