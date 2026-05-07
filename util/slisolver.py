@@ -173,6 +173,60 @@ def apply_vertex_rules(mesh):
     return True, changed
 
 
+def apply_clue_rules(mesh):
+    """Apply face/clue inference at every clued face (one pass).
+
+    For a face with clue n and d edges around it, with f filled, u
+    unknown, and r ruled out (f + r + u = d), the deterministic
+    inferences are:
+
+        f > n                       -> contradiction (over the limit)
+        f + u < n                   -> contradiction (can't reach n)
+        f == n and u >= 1           -> all unknowns become 'ruledOut'
+        f + u == n and u >= 1       -> all unknowns become 'filledIn'
+        otherwise                   -> nothing forced locally
+
+    Faces without a clue (face_attribute 'clue' unset / None) are skipped
+    entirely — no constraint to enforce.
+
+    Returns (ok, changed) — same convention as apply_vertex_rules.
+    """
+    changed = False
+    for fkey in mesh.faces():
+        n = mesh.face_attribute(fkey, 'clue')
+        if n is None:
+            continue
+
+        # Bucket the face's edges by guess state.
+        filled = []
+        unknown = []
+        for ekey in mesh.face_halfedges(fkey):
+            g = mesh.edge_attribute(ekey, 'guess')
+            if g == 'filledIn':
+                filled.append(ekey)
+            elif g == 'unknown':
+                unknown.append(ekey)
+        f = len(filled)
+        u = len(unknown)
+
+        # Contradictions: bail immediately.
+        if f > n or f + u < n:
+            return False, changed
+
+        # Forced inferences (both guarded by u >= 1, since u == 0 means
+        # there are no unknowns left to flip).
+        if f == n and u >= 1:
+            for ekey in unknown:
+                mesh.edge_attribute(ekey, 'guess', 'ruledOut')
+            changed = True
+        elif f + u == n and u >= 1:
+            for ekey in unknown:
+                mesh.edge_attribute(ekey, 'guess', 'filledIn')
+            changed = True
+
+    return True, changed
+
+
 def is_complete_solution(mesh):
     """Check if all edges have been determined (no 'unknown' edges remain)."""
     for ekey in mesh.edges():

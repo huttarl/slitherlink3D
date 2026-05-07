@@ -9,6 +9,7 @@ import pytest
 from compas.datastructures import Mesh
 
 from slisolver import (
+    apply_clue_rules,
     apply_clues,
     apply_vertex_rules,
     is_complete_solution,
@@ -76,7 +77,7 @@ def fill(mesh, edge_endpoints):
     doesn't matter — we compare against canonical edge keys via frozenset.
     """
     # frozenset() gives us order independence for the comparison.
-    # So edge (0, 1) is the same as (1, 0).
+    # So frozenset((0, 1)) is the same as frozenset((1, 0)).
     target = {frozenset(p) for p in edge_endpoints}
     for ekey in mesh.edges():
         guess = 'filledIn' if frozenset(ekey) in target else 'unknown'
@@ -192,6 +193,23 @@ class TestFixtureSanity:
         for v, nbrs in adj.items():
             assert len(nbrs) == 2, f"vertex {v} -> {nbrs} (degree {len(nbrs)})"
             assert set(nbrs) <= {0, 1, 2, 3}, f"vertex {v} -> {nbrs}"
+
+    def test_edge_attribute_is_orientation_independent(self, cube):
+        # Locks in the assumption that COMPAS stores edge attributes per
+        # *undirected* edge: writing via one orientation must be visible
+        # when reading via the other. apply_clue_rules relies on this
+        # because face_halfedges yields directed pairs that may not match
+        # the canonical edges in mesh.edges().
+        cube.edge_attribute((0, 1), 'guess', 'filledIn')
+        assert cube.edge_attribute((1, 0), 'guess') == 'filledIn'
+        cube.edge_attribute((1, 0), 'guess', 'ruledOut')
+        assert cube.edge_attribute((0, 1), 'guess') == 'ruledOut'
+
+    def test_face_halfedges_covers_all_face_edges(self, cube):
+        # Face 0 = [0, 3, 2, 1], so its 4 edges are (0,3), (3,2), (2,1), (1,0).
+        expected = {frozenset(p) for p in [(0, 3), (3, 2), (2, 1), (1, 0)]}
+        actual = {frozenset(h) for h in cube.face_halfedges(0)}
+        assert actual == expected
 
 
 # --- tests ---
@@ -479,3 +497,117 @@ class TestApplyVertexRules:
         self._setup_v0(cube, 'filledIn', 'ruledOut', 'ruledOut')
         ok, _ = apply_vertex_rules(cube)
         assert ok is False
+
+
+# --- apply_clue_rules ---
+
+class TestApplyClueRules:
+    """Each test sets a clue on cube face 0 (bottom, edges (0,3) (3,2)
+    (2,1) (1,0)), sets those edges' guesses, and asserts what
+    apply_clue_rules infers. Faces 1-5 have no clue, so they're skipped.
+    """
+
+    # In face_halfedges order for face [0, 3, 2, 1]:
+    FACE0_EDGES = [(0, 3), (3, 2), (2, 1), (1, 0)]
+
+    # Compact aliases for readability in test bodies.
+    F = 'filledIn'
+    R = 'ruledOut'
+    U = 'unknown'
+
+    @staticmethod
+    def _setup(cube, clue, edge_states):
+        """Reset all edges to 'unknown', set face-0 edges to the given
+        states, and (optionally) set face 0's clue. clue=None leaves the
+        face unclued."""
+        for ekey in cube.edges():
+            cube.edge_attribute(ekey, 'guess', 'unknown')
+        for ekey, state in zip(TestApplyClueRules.FACE0_EDGES, edge_states):
+            cube.edge_attribute(ekey, 'guess', state)
+        if clue is not None:
+            cube.face_attribute(0, 'clue', clue)
+
+    def test_f_eq_n_rules_out_unknowns(self, cube):
+        # n=2, f=2, u=2 → both unknowns become ruledOut.
+        self._setup(cube, 2, [self.F, self.F, self.U, self.U])
+        ok, changed = apply_clue_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert cube.edge_attribute((2, 1), 'guess') == 'ruledOut'
+        assert cube.edge_attribute((1, 0), 'guess') == 'ruledOut'
+
+    def test_f_plus_u_eq_n_fills_unknowns(self, cube):
+        # n=3, f=2, u=1, r=1 → f+u == n with f < n; case 4 fires.
+        # (Note: if f == n, case 3 fires first and rules out the unknown
+        # instead — case 4 only applies when the face still needs fills.)
+        self._setup(cube, 3, [self.F, self.F, self.U, self.R])
+        ok, changed = apply_clue_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert cube.edge_attribute((2, 1), 'guess') == 'filledIn'
+
+    def test_clue_zero_rules_out_all(self, cube):
+        # n=0, f=0, u=4 → case 3 (f == n == 0) fills nothing, rules out all.
+        self._setup(cube, 0, [self.U, self.U, self.U, self.U])
+        ok, changed = apply_clue_rules(cube)
+        assert ok is True
+        assert changed is True
+        for ekey in self.FACE0_EDGES:
+            assert cube.edge_attribute(ekey, 'guess') == 'ruledOut'
+
+    def test_clue_d_fills_all(self, cube):
+        # n=4 (== d), f=0, u=4 → case 4 (f+u == n) fills everything.
+        self._setup(cube, 4, [self.U, self.U, self.U, self.U])
+        ok, changed = apply_clue_rules(cube)
+        assert ok is True
+        assert changed is True
+        for ekey in self.FACE0_EDGES:
+            assert cube.edge_attribute(ekey, 'guess') == 'filledIn'
+
+    def test_no_inference_between_extremes(self, cube):
+        # n=2, f=1, u=3 → 0 < n-f < u, nothing forced.
+        self._setup(cube, 2, [self.F, self.U, self.U, self.U])
+        ok, changed = apply_clue_rules(cube)
+        assert ok is True
+        assert changed is False
+        # The three unknowns stay unknown.
+        for ekey in self.FACE0_EDGES[1:]:
+            assert cube.edge_attribute(ekey, 'guess') == 'unknown'
+
+    def test_f_gt_n_contradiction(self, cube):
+        # n=1, f=2 → over the limit.
+        self._setup(cube, 1, [self.F, self.F, self.U, self.U])
+        ok, _ = apply_clue_rules(cube)
+        assert ok is False
+
+    def test_f_plus_u_lt_n_contradiction(self, cube):
+        # n=3, f=0, u=2, r=2 → can't reach 3.
+        self._setup(cube, 3, [self.R, self.R, self.U, self.U])
+        ok, _ = apply_clue_rules(cube)
+        assert ok is False
+
+    def test_satisfied_with_no_unknowns_no_change(self, cube):
+        # n=2, f=2, r=2, u=0 → already satisfied, the u >= 1 guards bite.
+        self._setup(cube, 2, [self.F, self.F, self.R, self.R])
+        ok, changed = apply_clue_rules(cube)
+        assert ok is True
+        assert changed is False
+
+    def test_unclued_face_is_ignored(self, cube):
+        # No clue → no rule, no contradiction even though n=2 here would fire.
+        self._setup(cube, None, [self.F, self.F, self.U, self.U])
+        ok, changed = apply_clue_rules(cube)
+        assert ok is True
+        assert changed is False
+        # Edges untouched.
+        assert cube.edge_attribute((2, 1), 'guess') == 'unknown'
+        assert cube.edge_attribute((1, 0), 'guess') == 'unknown'
+
+    def test_unclued_face_with_all_filled_is_not_a_contradiction(self, cube):
+        # Without a clue, "all 4 filled" is not over any limit. This guards
+        # against a future bug where someone might validate every face
+        # against an implicit limit.
+        self._setup(cube, None, [self.F, self.F, self.F, self.F])
+        ok, changed = apply_clue_rules(cube)
+        assert ok is True
+        assert changed is False
