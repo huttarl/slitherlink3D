@@ -241,10 +241,19 @@ The Python puzzle-generation pipeline (solver + generator) works end-to-end
 and is covered by the pytest suite, though so far it has only been exercised
 on small grids (cube, dodecahedron).
 
-Key incomplete features:
-- Puzzle loading from JSON data files
-- Win condition detection
-- Solution validation
-- Multiple polyhedron support beyond cube/dodecahedron
+On the JS side, the core play loop works: grid and puzzle JSON are loaded and
+validated at startup, clues are displayed, edge guesses are checked as you go
+(passive mode), and the "Check solution" button does a full win check
+(constraint violations, single complete loop) with a celebration on success.
 
-See `ideas/TODOs.md` for detailed development roadmap.
+Key incomplete features:
+- Grid and puzzle selection: the grid is hardcoded in `scene.js`
+  (`gridFilename = "D"`) and the puzzle index to 0 — any grid JSON loads,
+  but there's no UI to choose a grid/puzzle or advance to the next one,
+  and no catalogue of available grids.
+- User feedback on errors: several failure cases (clue violations,
+  incomplete or multiple loops) are detected but only logged to the
+  console, not yet shown to the user.
+- Undo and reset of edge guesses.
+
+See `ideas/TODOs.md` for the detailed development roadmap.
