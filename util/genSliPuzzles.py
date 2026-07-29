@@ -1,6 +1,6 @@
 """Generate Slitherlink3D puzzles (in JSON) for a given grid (input from JSON).
 Usage: python3 genSliPuzzles.py myGrid.json
-Output is written to stdout.
+Output is written to stdout; diagnostic/progress messages go to stderr.
 For JSON format specifications, see docs/json-format.md."""
 import itertools, json, random, sys, math
 
@@ -52,18 +52,26 @@ blue = "blue"
 opposite_color = {red: blue, blue: red}
 
 
+def log(*args, **kwargs):
+    """Print a diagnostic/progress message to stderr.
+
+    stdout is reserved for the generated puzzle JSON, so that output can
+    be piped or redirected cleanly; everything else goes through here."""
+    print(*args, file=sys.stderr, **kwargs)
+
+
 def require_properties(properties):
     """Ensure that all required properties are present in the grid JSON."""
     for prop in properties:
         if prop not in grid_json:
-            print(f"Error: Missing required property '{prop}' in grid JSON.")
+            log(f"Error: Missing required property '{prop}' in grid JSON.")
             sys.exit(1)
 
 
 def on_key_press(event):
     """Process key press events."""
-    print('User pressed ', event.key)
-    sys.stdout.flush()
+    log('User pressed ', event.key)
+    sys.stderr.flush()
     if event.key == 'x':
         update_display()
 
@@ -125,11 +133,11 @@ def log_mesh():
     """Log faces, edges of built mesh for debugging."""
     for (fkey) in mesh.faces():
         edges = ", ".join(str(ekey) for ekey in mesh.face_halfedges(fkey))
-        print(f"Face {fkey}: {edges}")
+        log(f"Face {fkey}: {edges}")
     for (ekey) in mesh.edges():
         # Which two faces are connected by this edge?
         (f1, f2) = mesh.edge_faces(ekey)
-        print(f"Edge {ekey}: f{f1} <-> f{f2}")
+        log(f"Edge {ekey}: f{f1} <-> f{f2}")
 
 
 
@@ -140,7 +148,7 @@ def build_graphs():
     #   the indices vertices. Because the game expects the solution to use those IDs.
     mesh = Mesh.from_vertices_and_faces(grid_vertices, grid_faces)
     # That was easy!
-    print(f"Built mesh. F: {mesh.number_of_faces()}, V: {mesh.number_of_vertices()}, E: {mesh.number_of_edges()}")
+    log(f"Built mesh. F: {mesh.number_of_faces()}, V: {mesh.number_of_vertices()}, E: {mesh.number_of_edges()}")
     # log_mesh()
     normalize_vertices()
 
@@ -153,7 +161,7 @@ def build_graphs():
         # The dual graph has an edge from each face to each of its neighbors.
         for nbr in mesh.face_neighbors(f):
             dualG.add_edge(f, nbr)
-    print(f"Built dual graph. V: {dualG.number_of_nodes()} nodes, E: {dualG.number_of_edges()} edges.")
+    log(f"Built dual graph. V: {dualG.number_of_nodes()} nodes, E: {dualG.number_of_edges()} edges.")
 
     # Debugging:
     # for vertex in mesh.vertices():
@@ -176,7 +184,7 @@ def normalize_vertices():
         mesh.set_vertex_point(v, p)
         # Squared distance from origin.
         max_distance = max(max_distance, length_vector(p))
-    print(f"Max distance from origin before normalizing: {max_distance}")
+    log(f"Max distance from origin before normalizing: {max_distance}")
 
     for v in mesh.vertices():
         mesh.set_vertex_point(v, mesh.vertex_point(v) / max_distance)
@@ -210,17 +218,17 @@ def load_grid_file():
     try:
         grid_json = json.load(open(sys.argv[1], "r"))
     except FileNotFoundError:
-        print(f"Error: File '{sys.argv[1]}' not found.")
+        log(f"Error: File '{sys.argv[1]}' not found.")
         sys.exit(1)
     except json.decoder.JSONDecodeError:
-        print(f"Error: File '{sys.argv[1]}' is not valid JSON.")
+        log(f"Error: File '{sys.argv[1]}' is not valid JSON.")
         sys.exit(1)
     process_grid_json()
 
 
 def usage():
     """Print usage message and exit."""
-    print("Usage: python3 genSliPuzzles.py myGrid.json [numPuzzles]")
+    log("Usage: python3 genSliPuzzles.py myGrid.json [numPuzzles]")
     sys.exit(1)
 
 
@@ -238,7 +246,7 @@ def paint_random_faces(color, how_many):
     Checks that the chosen faces weren't already that color.
     Adjusts totals, and updates dual graph and *_needs_check as needed."""
     global red_needs_check, blue_needs_check, total_red, total_blue
-    print(f"Painting {how_many} faces {color}.")
+    log(f"Painting {how_many} faces {color}.")
     for i in range(how_many):
         while True:
             fkey = random.choice(list(mesh.faces()))
@@ -293,7 +301,7 @@ def ensure_connected(color):
     """Check whether faces of the given color are connected.
     If not, add paint until they are.
     Return True if any faces were painted, False if the faces were already connected."""
-    print(f"Ensuring connectedness of {color} faces.")
+    log(f"Ensuring connectedness of {color} faces.")
     faces_painted = False
     while True:
         # Collect face nodes of the given color.
@@ -306,7 +314,7 @@ def ensure_connected(color):
         smallest_cc = min(nx.connected_components(subgraph), key=len)
         is_connected = (len(smallest_cc) == len(this_color_face_nodes))
 
-        print(f"Connectedness of {len(this_color_face_nodes)} {color}: {is_connected}.")
+        log(f"Connectedness of {len(this_color_face_nodes)} {color}: {is_connected}.")
         update_display()
 
         if is_connected:
@@ -330,9 +338,9 @@ def fix_boring_neighborhoods():
     for ekey in mesh.edges():
         # For every edge, get the two faces it connects.
         (f1, f2) = mesh.edge_faces(ekey)
-        print(f"Checking edge {ekey} (f{f1}, f{f2})...")
+        log(f"Checking edge {ekey} (f{f1}, f{f2})...")
         if (mesh.face_attribute(f1, "color") != mesh.face_attribute(f2, "color")):
-            print(f"Edge {ekey} has different colors on faces {f1} and {f2}.")
+            log(f"Edge {ekey} has different colors on faces {f1} and {f2}.")
             # Faces that have different-colored neighbors are not "boring".
             mesh.face_attribute(f1, "boring", False)
             mesh.face_attribute(f2, "boring", False)
@@ -341,17 +349,17 @@ def fix_boring_neighborhoods():
     num_boring_faces = 0
     for fkey in mesh.faces():
         if mesh.face_attribute(fkey, "boring"):
-            print(f"Boring face {fkey} is {mesh.face_attribute(fkey, 'color')}.")
+            log(f"Boring face {fkey} is {mesh.face_attribute(fkey, 'color')}.")
             num_boring_faces += 1
             # Check if any of the neighbors are also boring.
             for nbr in mesh.face_neighbors(fkey):
                 if mesh.face_attribute(nbr, "boring"):
                     # We have two adjacent boring faces.
-                    print(f"Boring face {fkey} has a boring neighbor {nbr}.")
+                    log(f"Boring face {fkey} has a boring neighbor {nbr}.")
                     # Paint one of them the opposite color.
                     f_to_color = random.choice([fkey, nbr])
                     old_color = mesh.face_attribute(f_to_color, "color")
-                    print(f"  Painting face {f_to_color} {opposite_color[old_color]}")
+                    log(f"  Painting face {f_to_color} {opposite_color[old_color]}")
                     paint_face(f_to_color, opposite_color[old_color])
                     # Now this face is no longer boring, nor are (most of?) its neighbors.
                     mesh.face_attribute(f_to_color, "boring", False)
@@ -383,7 +391,7 @@ def enumerate_solution():
     solution.append(start_vertex)
     solution.append(next_vertex)
     prev_vertex = start_vertex
-    print(f"Solution: {solution}...")
+    log(f"Solution: {solution}...")
     while next_vertex != start_vertex:
         # Get vertex neighbors of next_vertex
         neighbors = mesh.vertex_neighbors(next_vertex)
@@ -392,15 +400,15 @@ def enumerate_solution():
         for neighbor in neighbors:
             if neighbor == prev_vertex:
                 continue # Skip the previous vertex.
-            print(" trying neighbor", neighbor)
+            log(" trying neighbor", neighbor)
             ekey = (next_vertex, neighbor)
             if not is_edge_boring(ekey):
                 # Found an outgoing edge.
-                print(f"Found next edge! {ekey}")
+                log(f"Found next edge! {ekey}")
                 if neighbor == start_vertex:
                     return solution
                 solution.append(neighbor)
-                print(f"   {solution}...")
+                log(f"   {solution}...")
                 prev_vertex = next_vertex
                 next_vertex = neighbor
                 found_next = True
@@ -418,7 +426,7 @@ def random_face_ordering():
     # Make a list of (face, clue) pairs, and shuffle it.
     clues = [(fkey, mesh.face_attribute(fkey, 'num_walls')) for fkey in mesh.faces()]
     random.shuffle(clues)
-    print(f"Clue ordering: {clues}")
+    log(f"Clue ordering: {clues}")
     return clues
 
 
@@ -438,13 +446,13 @@ def populate_num_walls():
         mesh.face_attribute(fkey, 'num_walls', num_walls)
 
 
-def clues_by_face(clues_in, num_clues):
-    """Convert the first num_clues clues from [(face, num_walls)] to [num_walls] format.
+def clues_by_face(clues_in, num_clues_to_use):
+    """Convert the first num_clues_to_use clues from [(face, num_walls)] to [num_walls] format.
 
     In the returned list, the indices of the list correspond to face indices.
     So the list must be num_faces long, regardless of how few clues it contains."""
     clues_out = [-1] * num_faces
-    for fkey, num_walls in itertools.islice(clues_in, num_clues):
+    for fkey, num_walls in itertools.islice(clues_in, num_clues_to_use):
         clues_out[fkey] = num_walls
     return clues_out
 
@@ -511,7 +519,7 @@ def min_prefix_satisfying(predicate, n_total, initial_guess) -> int|None:
     # Clamp the initial guess into the search range.
     n = min(max(initial_guess, min_n), max_n)
     while True:
-        print(f"Trying n={n}. min={min_n} max={max_n}")
+        log(f"Trying n={n}. min={min_n} max={max_n}")
         if predicate(n):
             # n satisfies the predicate, so the answer is at most n.
             max_n = n
@@ -556,7 +564,7 @@ def generate_puzzle(i):
         generate_regions(i)
         solution = enumerate_solution()
         clues = generate_minimal_clueset()
-        print(f"Generating clues for puzzle {i} {'succeeded' if clues else 'failed'}")
+        log(f"Generating clues for puzzle {i} {'succeeded' if clues else 'failed'}")
         # If we couldn't generate proper clues for this puzzle, start over from scratch.
 
     puzzle = { "clues": clues, "solution": solution }
@@ -596,9 +604,9 @@ def generate_regions(i):
         fix_boring_neighborhoods()
         finished = not (blue_needs_check or red_needs_check)
         iterations += 1
-        print(f"{iterations} steps. Needs check: blue={blue_needs_check} red={red_needs_check}")
+        log(f"{iterations} steps. Needs check: blue={blue_needs_check} red={red_needs_check}")
 
-    print(f"Generated regions for puzzle {i + 1} with {total_red} red faces and {total_blue} blue faces, in {iterations} steps.")
+    log(f"Generated regions for puzzle {i + 1} with {total_red} red faces and {total_blue} blue faces, in {iterations} steps.")
     populate_num_walls()
 
 
@@ -626,6 +634,7 @@ def output_puzzles():
     global puzzles_output
     json.dump(puzzles_output, sys.stdout, indent=3)
     # Output a newline, or else zsh will display a confusing '%' character.
+    # (Deliberately print, not log: the newline terminates the JSON on stdout.)
     print()
 
 
