@@ -441,8 +441,9 @@ def populate_num_walls():
 def clues_by_face(clues_in, num_clues):
     """Convert the first num_clues clues from [(face, num_walls)] to [num_walls] format.
 
-    In the returned list, the indices of the list correspond to face indices."""
-    clues_out = [-1] * num_clues
+    In the returned list, the indices of the list correspond to face indices.
+    So the list must be num_faces long, regardless of how few clues it contains."""
+    clues_out = [-1] * num_faces
     for fkey, num_walls in itertools.islice(clues_in, num_clues):
         clues_out[fkey] = num_walls
     return clues_out
