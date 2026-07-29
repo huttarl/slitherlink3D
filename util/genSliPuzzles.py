@@ -465,16 +465,24 @@ def generate_minimal_clueset() -> list[int]:
     # We may need to iterate a bit over random orderings, before giving up...
     # but how would we know our set of clues was suboptimal?
     # Maybe try a few times and pick the best.
-    min_needed = num_faces
-    face_clues = None
+    # Track the BEST ordering separately so we don't return clues from
+    # the last iteration's ordering (which might not be the best).
+    min_needed = num_faces + 1   # sentinel: no successful ordering seen yet
+    best_face_clues = None
     # TODO: Start these in separate threads for parallelism, and cancel if they take too long.
     for i in range(5):
         face_clues = random_face_ordering()
         num_needed = cut_clues(face_clues)
-        if num_needed < min_needed:
+        # cut_clues returns None when no prefix of this ordering yields a
+        # unique solution; skip such orderings.
+        if num_needed is not None and num_needed < min_needed:
             min_needed = num_needed
+            best_face_clues = face_clues
 
-    return clues_by_face(face_clues, min_needed)
+    if best_face_clues is None:
+        return None   # No ordering produced a uniquely-solvable clue set.
+
+    return clues_by_face(best_face_clues, min_needed)
 
 
 def cut_clues(clues: list[tuple]) -> int:
@@ -508,7 +516,10 @@ def cut_clues(clues: list[tuple]) -> int:
             if min_clues > max_clues:
                 # Even with all clues filled in, we still don't have a unique solution.
                 return None
-        num_clues = round((min_clues + max_clues) / 2)
+        # Floor-divide rather than round() to avoid an infinite loop when
+        # min_clues=1 and max_clues=2: round(1.5) returns 2 (banker's rounding),
+        # so num_clues would never advance toward min_clues.
+        num_clues = (min_clues + max_clues) // 2
 
     return num_clues
 
