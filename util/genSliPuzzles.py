@@ -486,43 +486,64 @@ def generate_minimal_clueset() -> list[int]:
     return clues_by_face(best_face_clues, min_needed)
 
 
-def cut_clues(clues: list[tuple]) -> int:
+def min_prefix_satisfying(predicate, n_total, initial_guess) -> int|None:
+    """Binary-search for the smallest n in [1, n_total] such that predicate(n) is True.
+
+    Assumes the predicate is monotonic: if predicate(n) is True, then
+    predicate(m) is True for every m > n. (This holds for clue prefixes:
+    adding more clues can only narrow the set of possible solutions.)
+
+    This is a pure function (no module globals) so it can be unit-tested
+    with fake predicates.
+
+    Args:
+        predicate: Function taking an int n (1 <= n <= n_total), returning bool.
+        n_total: The largest n to consider.
+        initial_guess: Where to start probing; clamped into [1, n_total].
+
+    Returns the smallest satisfying n, or None if even predicate(n_total)
+    is False.
+    """
+    if n_total < 1:
+        return None
+    min_n = 1
+    max_n = n_total
+    # Clamp the initial guess into the search range.
+    n = min(max(initial_guess, min_n), max_n)
+    while True:
+        print(f"Trying n={n}. min={min_n} max={max_n}")
+        if predicate(n):
+            # n satisfies the predicate, so the answer is at most n.
+            max_n = n
+            if n == min_n:
+                # The range has closed in; n is the smallest satisfying value.
+                return n
+        else:
+            # n doesn't satisfy, so the answer must be larger.
+            min_n = n + 1
+            if min_n > max_n:
+                # Even n_total doesn't satisfy the predicate.
+                return None
+        # Floor-divide rather than round() to avoid an infinite loop when
+        # min_n=1 and max_n=2: round(1.5) returns 2 (banker's rounding),
+        # so n would never advance toward min_n.
+        n = (min_n + max_n) // 2
+
+
+def cut_clues(clues: list[tuple]) -> int|None:
     """Given a list of (face, clue) pairs, determine the minimum prefix needed to give a unique solution.
 
     If there is no such prefix, return None.
     """
     # We now have all the clues, in a random order. We just need to determine how many
     # of them are needed.
-    num_clues = round(num_faces * 0.3)
-    min_clues = 1
-    min_succeeded = float('inf')
-    max_clues = num_faces
-    max_succeeded = -1
-    finished = False
-    while not finished:
-        print(f"Trying {num_clues} clues. min={min_clues} max={max_clues} succeeded={min_succeeded} {max_succeeded}")
-        if slisolver.solution_is_unique(clues, num_clues, solution, mesh, dualG):
-            # We don't need any more clues than num_clues.
-            max_clues = num_clues
-            if num_clues > max_succeeded:
-                max_succeeded = num_clues
-            if num_clues < min_succeeded:
-                min_succeeded = num_clues
-            if num_clues == min_clues:
-                # We've found the minimum set of clues.
-                finished = True
-        else:
-            # We need more clues.
-            min_clues = num_clues + 1
-            if min_clues > max_clues:
-                # Even with all clues filled in, we still don't have a unique solution.
-                return None
-        # Floor-divide rather than round() to avoid an infinite loop when
-        # min_clues=1 and max_clues=2: round(1.5) returns 2 (banker's rounding),
-        # so num_clues would never advance toward min_clues.
-        num_clues = (min_clues + max_clues) // 2
+    def prefix_gives_unique_solution(num_clues):
+        return slisolver.solution_is_unique(clues, num_clues, solution, mesh, dualG)
 
-    return num_clues
+    # Start probing at about 30% of the faces; usually far fewer clues
+    # than num_faces are needed.
+    return min_prefix_satisfying(prefix_gives_unique_solution, num_faces,
+                                 round(num_faces * 0.3))
 
 
 def generate_puzzle(i):
