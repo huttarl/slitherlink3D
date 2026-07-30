@@ -98,6 +98,16 @@
             line-height: 1;
         }
 
+        /* Keep the polyhedron/puzzle pickers inside the panel: a select
+           sizes itself to its widest option, so cap it at the container
+           width and truncate the closed control's text with an ellipsis.
+           The opened dropdown list still shows the full names (native
+           browser behavior, independent of the control's width). */
+        #info select {
+            max-width: 100%;
+            text-overflow: ellipsis;
+        }
+
         .overlay {
             position: fixed;
             inset: 0;
