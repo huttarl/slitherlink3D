@@ -4,6 +4,8 @@ Note, some of these items may be already done even if they're not checked off.
     This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt
     One way to measure difficulty is: how many paths forward are available (inferences that can be made) at each step along the way,
     on average?
+- [ ] quick: add a link from the web UI to the github repo, and vice versa from the README to where the app is hosted online.
+    - requires uploading the code to our web site
 - [x] UI: implement an "undo" function, to undo edge guesses.
 - [x] UI: fix the "reset" function, to clear guesses. It may be partially implemented, but doesn't look like it works.
 - [ ] In JS code, why are we copying data from grid to puzzleGrid, instead of inheriting it?

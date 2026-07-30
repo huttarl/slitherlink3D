@@ -9,6 +9,11 @@ The JS side of the app runs directly in the browser with no build process:
 - **Run the application**: Open `main.html` in a web browser or serve via a local web server
 - **Local development server**: `python3 -m http.server 8000` (or any static file server)
 - **No build/lint commands** for the JS code — vanilla ES modules.
+- **Run JS unit tests**: `npm test` (equivalently `node --test "js/tests/*.test.js"`).
+  Uses Node's built-in test runner — no npm install, no dependencies. Covers the
+  headless game logic (Grid topology, solution checking, undo/redo history);
+  rendering and interaction are still verified manually in the browser.
+  Run these after changing game-logic files in `js/`.
 
 The Python utilities under `util/` have a pytest suite:
 
@@ -118,6 +123,8 @@ main.js
   - Configuration: `constants.js`
   - Data loading: `puzzleLoader.js` (puzzle JSON), plus
     `loadPolyhedronFromJSON()` in `geometry.js`
+  - Tests: `tests/` — headless unit tests for the game logic
+    (run with `npm test`; see Development Commands)
 - **data/** — grid (`*.json`) and puzzle (`*-puzzles.json`) files. Format
   spec in `docs/json-format.md`.
 - **docs/** — `json-format.md` (authoritative format reference),

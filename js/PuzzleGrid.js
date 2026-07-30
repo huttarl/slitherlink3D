@@ -506,7 +506,9 @@ export class PuzzleGrid extends Grid {
     highlightEdgeError(edgeMesh, clearedEdgeHighlights) {
         // console.log(`highlightEdgeError: edge ${edgeMesh.userData.edgeId}`);
         if (!clearedEdgeHighlights) this.clearEdgeHighlights();
-        edgeMesh.material.color = EDGE_COLORS.error;
+        if (edgeMesh) {  // null when running headless (e.g. unit tests): no meshes exist
+            edgeMesh.material.color = EDGE_COLORS.error;
+        }
         return true;
     }
 
