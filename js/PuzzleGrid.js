@@ -1,5 +1,6 @@
 import { Grid } from './Grid.js';
 import {EDGE_COLORS, EDGE_STATES} from './constants.js';
+import {checkSingleLoop, findClueViolations, findVertexViolations} from './solutionChecker.js';
 // NOTE: deliberately no imports of ui.js or GameState.js here. This class is
 // the puzzle model; reaching up into the UI/coordinator layer above it created
 // import cycles (PuzzleGrid -> GameState -> PuzzleGrid, and
@@ -325,18 +326,13 @@ export class PuzzleGrid extends Grid {
         }
     }
 
-    /** Count the number of elements in an iterable that satisfy a predicate. */
-    count(iter, pred) {
-        let n = 0;
-        for (const e of iter) if (pred(e)) n++;
-        return n;
-    }
-
     /**
      * Check whether the user's current guesses are a correct solution.
      * @param {boolean} isActiveMode - whether checking in active mode or not.
      * @param {THREE.Mesh|null} edgeMesh - mesh of edge whose state has been changed
      * @param {Edge|null} edge - edge whose state has been changed
+     * @returns {number} status: 0 = no problem found (but not solved),
+     *     1 = failed, 2 = solved
      *
      * Passive mode is less thorough, called in response to each new change of user's guesses,
      * and local to the latest change (edgeMesh).
@@ -346,6 +342,10 @@ export class PuzzleGrid extends Grid {
      * - highlight (in red) edges (or faces?) in violation of puzzle constraints
      * - "ok" message (so far so good)
      * - "solved" response (solution is complete and correct)
+     *
+     * The rule checks themselves are pure queries in solutionChecker.js;
+     * this method chooses their scope (local vs. global) and acts on their
+     * findings (highlighting, celebration).
      */
     checkUserSolution(isActiveMode, edgeMesh = null, edge = null) {
         if (!this.puzzleData) {
@@ -369,144 +369,60 @@ export class PuzzleGrid extends Grid {
         // Depends on: isActiveMode, autoFeedback
 
         // Does loop intersect itself?
-        // TODO: could extract each of these subsections into its own method.
         const vIDsToCheck = (edge && !isActiveMode ?
             // If edge is marked as filled in, check attached vertices.
             (edge.metadata.userGuess === 1 ? edge.vertexIDs : []) :
             // If global, check all vertices.
             this.vertices.keys());
-        for (const vId of vIDsToCheck) {
-            const vertex = this.vertices.get(vId);
-            const { numEdgesFilled, _numEdgesRuledOut } = this.countGuesses(vertex.edgeIDs);
-            // console.log(`checkUserSolution: v${vId} has ${numEdgesFilled} edges filled in`);
-            if (numEdgesFilled > 2) {
-                status = 1; // failed
-                console.log(`checkUserSolution: loop intersects itself at vertex ${vId}`);
-                // TODO: highlight offending edges in red only if appropriate to mode and settings.
-                if (edge) {
-                    if (edge.metadata.userGuess === 1) {
-                        // Highlight the just-clicked edge in red.
-                        clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
-                    }
-                } else {
-                    // Highlight all filled-in edges of the vertex in red.
-                    // console.log(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
-                    for (const edgeId of vertex.edgeIDs) {
-                        const edge = this.edges.get(edgeId);
-                        const edgeMesh = this.getEdgeMesh(edgeId);
-                        console.log(`   e${edgeId} has userGuess ${edge.metadata.userGuess}`);
-                        if (edge.metadata.userGuess === 1) {
-                            clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
-                        }
+        for (const vId of findVertexViolations(this, vIDsToCheck)) {
+            status = 1; // failed
+            console.log(`checkUserSolution: loop intersects itself at vertex ${vId}`);
+            // TODO: highlight offending edges in red only if appropriate to mode and settings.
+            if (edge) {
+                if (edge.metadata.userGuess === 1) {
+                    // Highlight the just-clicked edge in red.
+                    clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
+                }
+            } else {
+                // Highlight all filled-in edges of the vertex in red.
+                // console.log(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
+                const vertex = this.vertices.get(vId);
+                for (const vEdgeId of vertex.edgeIDs) {
+                    const vEdge = this.edges.get(vEdgeId);
+                    console.log(`   e${vEdgeId} has userGuess ${vEdge.metadata.userGuess}`);
+                    if (vEdge.metadata.userGuess === 1) {
+                        clearedEdgeHighlights = this.highlightEdgeError(this.getEdgeMesh(vEdgeId), clearedEdgeHighlights);
                     }
                 }
             }
         }
 
-        // Does each face a number of edges filled in / ruled out compatible with its clue?
+        // Does each face have a number of edges filled in / ruled out compatible with its clue?
         const faceIDsToCheck = (edge && !isActiveMode ? edge.faceIDs : this.faces.keys());
-        for (const faceId of faceIDsToCheck) {
-            const face = this.faces.get(faceId);
-
-            // If the face doesn't have a clue, there's nothing to check.
-            if (face.metadata.clue === -1) continue;
-
-            const numEdges = face.vertexIDs.length;
-            const { numEdgesFilled, numEdgesRuledOut } = this.countGuesses(face.edgeIDs);
-            if (isActiveMode && numEdgesFilled !== face.metadata.clue) {
-                // In active mode, clues must be exactly matched.
-                console.log(`checkUserSolution: face ${faceId} has ${numEdgesFilled} edges filled in but should have ${face.metadata.clue}`);
-                status = 1;
-                // TODO: highlight clue as error
-            } else if (numEdgesFilled > face.metadata.clue) {
-                console.log(`checkUserSolution: face ${faceId} has ${numEdgesFilled} edges filled in but should only have ${face.metadata.clue}`);
-                status = 1;
-                // TODO: highlight clue as error
-            } else if (numEdges - numEdgesRuledOut < face.metadata.clue) {
-                console.log(`checkUserSolution: face ${faceId} has ${numEdgesRuledOut} edges ruled out, but ${numEdges} - ${numEdgesRuledOut} < ${face.metadata.clue}`);
-                status = 1; // failed
-                // TODO: highlight clue as error
-            }
+        for (const violation of findClueViolations(this, faceIDsToCheck, isActiveMode)) {
+            status = 1; // failed
+            console.log(`checkUserSolution: face ${violation.faceId} ${violation.message}`);
+            // TODO: highlight clue as error
         }
 
         // Don't keep checking if we've already failed.
-        if (!isActiveMode || status === 1) return;
+        if (!isActiveMode || status === 1) return status;
 
-        /// Check: Is there a cycle?
-        // Find a place to start.
-        let startEdgeId = null, startEdge = null;
-        for (const [edgeId, edge] of this.edges) {
-            if (edge.metadata.userGuess === 1) {
-                startEdgeId = edgeId;
-                startEdge = edge;
-                break;
-            }
-        }
-        // If no edges are filled in, the puzzle is not solved.
-        if (startEdgeId == null) {
-            status = 1; // failed
-            console.log(`checkUserSolution: no edges are filled in`);
-            // TODO: given that we're in active mode, we probably need to tell the user something like
-            // "You haven't filled in any edges yet.  Please do so by clicking on the edges you want to fill in."
-            return;
-        }
-
-        let startVertexId = startEdge.vertexIDs[0], currentVertexId = startEdge.vertexIDs[1];
-        console.log(`checkUserSolution: tracing from v${startVertexId} along e${startEdgeId}`);
-        let currentVertex = this.vertices.get(currentVertexId);
-        let currentEdge = startEdge, currentEdgeId = startEdgeId;
-        let loopLength = 1;
-        // Trace the route
-        do {
-            console.log(`checkUserSolution: tracing to v${currentVertexId} via e${currentEdgeId}`);
-            // Find an edge of currentVertex besides currentEdge that is filled in.
-            let nextEdge = null, nextEdgeId = null;
-            for (const edgeId of currentVertex.edgeIDs) {
-                if (edgeId !== currentEdgeId) {
-                    let edge = this.edges.get(edgeId);
-                    if (edge.metadata.userGuess === 1) {
-                        nextEdgeId = edgeId;
-                        nextEdge = edge;
-                        break;
-                    }
-                }
-            }
-            // If no such edge exists, the puzzle is not solved.
-            if (nextEdge == null) {
-                status = 1;
-                console.log(`checkUserSolution: Incomplete loop.\n   No edge of v${currentVertexId} is filled in except e${currentEdgeId}.`);
-                // TODO: give appropriate feedback to the user.
-                return;
-            }
-
-            // Move to next vertex.
-            currentVertexId = (nextEdge.vertexIDs[0] === currentVertexId ? nextEdge.vertexIDs[1] : nextEdge.vertexIDs[0]);
-            currentVertex = this.vertices.get(currentVertexId);
-            currentEdgeId = nextEdgeId;
-            console.log(`checkUserSolution: got to vertex ${currentVertexId} via edge ${currentEdgeId}`);
-            currentEdge = nextEdge;
-            loopLength++; // Will this give us an off-by-one error?
-        } while (currentVertexId !== startVertexId);
-
-        console.log(`checkUserSolution: loop length ${loopLength}`);
-
-        /// Is there only one loop?
-        const numEdgesFilledTotal = this.count(this.edges,
-            (([_edgeId, edge]) => edge.metadata.userGuess === 1));
-        if (numEdgesFilledTotal > loopLength) {
-            status = 1;
-            console.log("checkUserSolution: More than a single loop.");
-            // TODO: give appropriate feedback to the user.
-            return;
+        // Do the filled-in edges form a single complete loop?
+        const loopCheck = checkSingleLoop(this);
+        if (!loopCheck.ok) {
+            // TODO: give appropriate feedback to the user, per loopCheck.reason.
+            // E.g. for 'noEdges': "You haven't filled in any edges yet. Please do
+            // so by clicking on the edges you want to fill in."
+            return 1;
         }
 
         // If we haven't failed yet, we passed!
-        if (status !== 1) {
-            // Success! Puzzle is solved!
-            console.log("checkUserSolution: Puzzle is solved!");
-            status = 2;
-            this.celebrateSolved();
-        }
+        // Success! Puzzle is solved!
+        console.log("checkUserSolution: Puzzle is solved!");
+        status = 2;
+        this.celebrateSolved();
+        return status;
     }
 
     /**
@@ -534,24 +450,6 @@ export class PuzzleGrid extends Grid {
         if (!clearedEdgeHighlights) this.clearEdgeHighlights();
         edgeMesh.material.color = EDGE_COLORS.error;
         return true;
-    }
-
-    /**
-     * Count how many of the given edge IDs are filled in or ruled out.
-     * @param {Set<number>} edgeIDs - Set of edge IDs to count
-     * @returns {{numEdgesFilled: number, numEdgesRuledOut: number}}
-     */
-    countGuesses(edgeIDs) {
-        // this.count(edgeIDs, (edgeId => this.edges.get(edgeId)?.metadata.userGuess === 1));
-        let numEdgesFilled = 0, numEdgesRuledOut = 0;
-        for (const edgeId of edgeIDs) {
-            const edge = this.edges.get(edgeId);
-            if (edge) {
-                if (edge.metadata.userGuess === 1) numEdgesFilled++;
-                if (edge.metadata.userGuess === 2) numEdgesRuledOut++;
-            }
-        }
-        return { numEdgesFilled, numEdgesRuledOut };
     }
 
     /**
