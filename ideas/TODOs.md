@@ -4,24 +4,24 @@ Note, some of these items may be already done even if they're not checked off.
     This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt
     One way to measure difficulty is: how many paths forward are available (inferences that can be made) at each step along the way,
     on average?
-- [ ] UI: implement an "undo" function, to undo edge guesses.
-- [ ] UI: fix the "reset" function, to clear guesses. It may be partially implemented, but doesn't look like it works.
+- [x] UI: implement an "undo" function, to undo edge guesses.
+- [x] UI: fix the "reset" function, to clear guesses. It may be partially implemented, but doesn't look like it works.
 - [ ] In JS code, why are we copying data from grid to puzzleGrid, instead of inheriting it?
-- [ ] UI: allow user to dismiss overlay using Esc and/or click on X.
+- [x] UI: allow user to dismiss overlay using Esc and/or click on X.
 - [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
   - [ ] similarly createPolyhedron().
 - [ ] vertex labels appear to be stretched wide for single-digit numbers.
 - [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
-- [ ] Add a "Done" button, at which point we check the user's guesses and
+- [~] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
   - [ ] highlight wrong guesses in red
   - [ ] tell them if they have failed to make a loop
-- [ ] Later on, add a "show solution" button, and maybe a "hint" button.
-- [ ] Eventually, we'll need a button to go on to the next puzzle, or select
+- [~] Later on, add a "show solution" button, and maybe a "hint" button.
+- [~] Eventually, we'll need a button to go on to the next puzzle, or select
   another puzzle.
   - [ ] when we do, we'll need to be careful to 'dispose()' of THREE.js objects,
     - and also remove bidirectional references.
-  - [ ] somehow we'll need to implement a catalogue of available grids.
+  - [x] somehow we'll need to implement a catalogue of available grids.
 - [ ] put in some aesthetic animation: smoothed zooming in on load, zooming out when solved,
     smoothed autorotate after load (while zooming), stops when mouse clicked.
 - [ ] maybe just for fun, add an option to use other numerals for clues:
@@ -55,8 +55,8 @@ Note, some of these items may be already done even if they're not checked off.
     to refer merely to the fact that a given edge is not part of the solution loop. I guess the same could be
     said of "ruled out," to a lesser degree. "Blank" may work, though it's not as clear. 
     
-- [ ] settle on a format for puzzles and solutions.
-    - [ ] What do we have so far?
+- [x] settle on a format for puzzles and solutions.
+    - [x] What do we have so far?
       - data/example.json shows a puzzle and solution for a polygon. This was an "old attempt"
             so I'm not sure if I had ever worked with this format. It encodes
         - "puzzles" property as an array of objects, in each of which we have 
@@ -69,7 +69,7 @@ Note, some of these items may be already done even if they're not checked off.
             each boolean corresponds to? There is no previous sequence of edges to refer to.
             I think it would be better to encode the solution as a list of vertex indices.
       - No other data file seems to have developed puzzle or solution encoding any further.
-    - [ ] So let's settle on a variation of the above:
+    - [x] So let's settle on a variation of the above:
       - "puzzles" property as an array of objects (each of which is a puzzle), in which
       - "clues" property as an array of clue numbers, corresponding to the faces in the
         same order as in the faces list. -1 means no clue shown. 
@@ -82,13 +82,13 @@ Note, some of these items may be already done even if they're not checked off.
         - the "solution" list must not contain any duplicates
         - adjacent vertices in the "solution" list (including the first and last)
           must appear adjacent in one or more faces
-    - [ ] So that gives us a JSON representation for puzzles and solutions. In regard to the grids, I guess
+    - [x] So that gives us a JSON representation for puzzles and solutions. In regard to the grids, I guess
       we're good with the JSON format emitted by obj2json.py, although it calls faces "cells,"
       which is inconsistent with our usage elsewhere.
       In one sense, "cell" is more consistent with 2D Slitherlink puzzles. I guess we'll leave it as is.
 - Handle errors more gracefully, e.g. in loadPolyhedronFromJSON().
-- [ ] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
-    - [ ] Is this encoded in the JSON?
+- [~] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
+    - [x] Is this encoded in the JSON?
     - [ ] maybe associate a color (scheme) with each polyhedron, and category, for more atmosphere?
 - [ ] figure out data flow for grids, puzzles and solutions
     - [x] what formats do we already have
@@ -132,9 +132,9 @@ Note, some of these items may be already done even if they're not checked off.
                   Yes, this is puzzle generator code that I adapted from Krazydad. How far did I get with it in converting
                     to 3D? Shall I adapt it more or write my own? What format does it output?
         - [ ] programs that take data input (e.g. grids and/or puzzles)
-            - [ ] existing code to load from the files (in the web app and/or in other programs)
+            - [x] existing code to load from the files (in the web app and/or in other programs)
             - The web app may take JSON? Does my old code use this?
-                - [ ] If the web app does this, it will need to convert it to the Grid data structure (enriching as needed).
+                - [x] If the web app does this, it will need to convert it to the Grid data structure (enriching as needed).
                 - [ ] OK, in slitherlink3D-2018/js/sl3D.js, a data file like data/phe-T.json is loaded, and in
                     importData(), we can see how the JSON properties are used. Not sure how complete that was...
             - Python puzzle generator?
@@ -149,11 +149,11 @@ Note, some of these items may be already done even if they're not checked off.
         - The web app won't generate new puzzles (for now)
         - The conclusion regarding formats & data flow is, the web app doesn't need to accept data from users at all.
     - [ ] ** Having decided that we'll continue using JSON and OBJ, document the formats in an easy-to-find place.
-        - [ ] JSON
-            - [ ] metadata such as name, category, acknowledgements/source, comments
-            - [ ] board/grid data
-            - [ ] puzzle (and solution) data
-            - [ ] sources and sinks of this format
+        - [x] JSON
+            - [x] metadata such as name, category, acknowledgements/source, comments
+            - [x] board/grid data
+            - [x] puzzle (and solution) data
+            - [x] sources and sinks of this format
         - [ ] OBJ
             - [ ] metadata such as name, category, acknowledgements/source, comments
             - [ ] board/grid data
@@ -162,8 +162,8 @@ Note, some of these items may be already done even if they're not checked off.
 
 
 
-- It would be good if we can use a URL, possibly including parameters, to specify a particular grid and puzzle.
-    But we don't want the web page to have to reload when switching grids or puzzles.
+- [~] It would be good if we can use a URL, possibly including parameters, to specify a particular grid and puzzle.
+    - [ ] But we don't want the web page to have to reload when switching grids or puzzles. Currently it does reload, but for better polish, we'll fix that.
 
 - implement loading from files of:
     - grids
