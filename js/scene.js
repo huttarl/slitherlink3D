@@ -2,7 +2,7 @@ import * as THREE from './three/three.module.min.js';
 import { addSkybox } from "./skybox.js";
 import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
-import {EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
+import {DEFAULT_GRID, EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
 import {createClueTexts, createEdgeLabels, createVertexLabels} from "./textRenderer.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
@@ -23,8 +23,10 @@ export async function createGameState() {
     const scene = sceneManager.initializeScene();
     addSkybox(scene, 'underwater');
 
-    // Load geometry and puzzle data in parallel for better performance
-    const gridFilename = "I"; // Try cube, T, D, I
+    // Load geometry and puzzle data in parallel for better performance.
+    // The grid is chosen by the ?grid= query parameter (a data/ filename
+    // stem; the picker in ui.js offers the ones listed in data/grids.json).
+    const gridFilename = new URLSearchParams(window.location.search).get('grid') || DEFAULT_GRID;
     const [polyhedronData, puzzleData] = await Promise.all([
         loadPolyhedronFromJSON(`data/${gridFilename}.json`),
         loadPuzzleData(`data/${gridFilename}-puzzles.json`)

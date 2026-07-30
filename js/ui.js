@@ -3,6 +3,7 @@
  */
 import {makeInteraction} from "./interaction.js";
 import {GameState} from "./GameState.js";
+import {DEFAULT_GRID} from "./constants.js";
 
 /**
  * Sets up the UI event listeners for the game.
@@ -11,6 +12,12 @@ import {GameState} from "./GameState.js";
 export function setupUI(gameState) {
     // Set up interaction - pass GameState directly
     gameState.setInteraction(makeInteraction(gameState));
+
+    // Populate the grid picker in the background; the rest of the UI
+    // doesn't depend on it.
+    setupGridSelector().catch(err => {
+        console.error('Could not set up the grid selector:', err);
+    });
 
     // Wire up checkbox toggles and buttons
     const showIDsToggle = document.getElementById('showIDs');
@@ -67,6 +74,39 @@ export function setupUI(gameState) {
             gameState.getPuzzleGrid().redo();
         }
     })
+}
+
+/**
+ * Populates the grid (polyhedron) picker from the data/grids.json catalogue
+ * (regenerate that file with util/build_catalogue.py when data/ changes).
+ * Selecting a grid reloads the page with ?grid=<file stem>, which
+ * createGameState() reads -- a page load gives us scene teardown for free,
+ * avoiding manual disposal of THREE.js objects. Fine for playtesting;
+ * an in-place scene swap can replace it later.
+ */
+async function setupGridSelector() {
+    const response = await fetch('data/grids.json');
+    if (!response.ok) {
+        throw new Error(`Failed to load data/grids.json: ${response.statusText}`);
+    }
+    const catalogue = await response.json();
+
+    const select = document.getElementById('gridSelect');
+    const currentGrid = new URLSearchParams(window.location.search).get('grid') || DEFAULT_GRID;
+    for (const grid of catalogue.grids) {
+        const option = document.createElement('option');
+        option.value = grid.file;
+        option.textContent = `${grid.gridName} (${grid.faces} faces)`;
+        option.selected = (grid.file === currentGrid);
+        select.appendChild(option);
+    }
+
+    select.addEventListener('change', () => {
+        // Reload the page with the chosen grid.
+        const params = new URLSearchParams(window.location.search);
+        params.set('grid', select.value);
+        window.location.search = params.toString();
+    });
 }
 
 /**
