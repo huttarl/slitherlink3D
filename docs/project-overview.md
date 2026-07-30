@@ -236,7 +236,7 @@ random and not seeded from the command line, so runs are not reproducible.
 
 ## Key Implementation Details
 
-- **Three.js version**: r170 (vendored locally at `js/three/three.module.min.js`
+- **Three.js version**: r185 (vendored locally at `js/three/three.module.min.js`
   and `js/three/OrbitControls.js`; imported via relative ES module paths —
   no CDN, no importmap). To upgrade it — occasional and deliberate — see
   [upgrading-THREE.md](upgrading-THREE.md).

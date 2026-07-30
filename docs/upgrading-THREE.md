@@ -44,8 +44,13 @@ mismatched pairs break in confusing ways:
   points here.
 
 You never build these yourself: the npm package `three` is THREE.js's
-canonical prebuilt distribution. Version numbering: three.js release rNNN =
-npm version 0.NNN.0 (e.g. r170 = 0.170.0).
+canonical prebuilt distribution. Version numbering: three.js release rNNN is
+published to npm as version 0.NNN.P — the middle number is the release
+number, and the patch number P is usually 0 but nonzero when a hotfix was
+republished after the release (e.g. npm 0.185.1 is three.js r185 plus a bug
+fix; there is no "r185.1" in three.js's own naming). Use the release number
+(r185) when reading the migration guide, and the full npm version string
+(0.185.1) when downloading.
 
 ## Upgrade procedure
 
@@ -63,11 +68,13 @@ npm version 0.NNN.0 (e.g. r170 = 0.170.0).
    jumping: https://github.com/mrdoob/three.js/wiki/Migration-Guide
 
 3. Download the official npm artifact (a plain tarball; no npm project
-   needed):
+   needed), using the exact version string from step 1:
 
    ```bash
-   curl -LO https://registry.npmjs.org/three/-/three-0.NNN.0.tgz
+   curl -LO https://registry.npmjs.org/three/-/three-0.NNN.P.tgz
    ```
+
+   (e.g. `three-0.185.1.tgz`)
 
 4. From the tarball, copy into `js/three/`:
    - `package/build/three.module.min.js`
