@@ -1,4 +1,5 @@
 import * as THREE from './three/three.module.min.js';
+import { findFaceMinRadius } from './geometry.js';
 
 /**
  * Creates ID labels for vertices, edges, or faces.
@@ -325,8 +326,12 @@ function createTextMeshForFace(faceId, face, grid, material) {
 
     const normal = findFaceNormal(faceVertices);
 
-    // Create plane geometry for text
-    const planeGeometry = new THREE.PlaneGeometry(0.4, 0.4);
+    // Create plane geometry for text, sized to the face: a square of side
+    // s fits in a circle of radius r when s = r*sqrt(2), and the digit
+    // glyph fills only ~70% of its canvas, so this keeps the digit inside
+    // the face's inscribed circle (and thus off the edges) even on small faces.
+    const size = Math.SQRT2 * findFaceMinRadius(grid, face);
+    const planeGeometry = new THREE.PlaneGeometry(size, size);
     const textMesh = new THREE.Mesh(planeGeometry, material);
     
     // Position the mesh slightly above the face center
