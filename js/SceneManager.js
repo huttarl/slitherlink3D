@@ -15,7 +15,13 @@ export class SceneManager {
         this.renderer = null;
         this.camera = null;
         this.controls = null;
-        this.clock = new THREE.Clock();
+        // Timekeeping for the render loop and the solve timer. (THREE.Timer,
+        // successor of the deprecated THREE.Clock.) connect(document) hooks
+        // the Page Visibility API, so time doesn't accumulate while the tab
+        // is hidden: no giant delta on return, and the solve timer doesn't
+        // count time the player spends in other tabs.
+        this.timer = new THREE.Timer();
+        this.timer.connect(document);
         
         // Geometry and meshes
         this.polyhedronMesh = null;
@@ -39,7 +45,12 @@ export class SceneManager {
      */
     initializeScene() {
         this.scene = new THREE.Scene();
-        this.clock.start();
+        // Re-baseline the timer's delta computation so the first frame's
+        // delta doesn't span construction-to-now. (Timer.reset() does not
+        // zero the elapsed count -- but nothing has accumulated yet anyway,
+        // since elapsed time only advances via update() calls in the
+        // render loop, and only while the tab is visible.)
+        this.timer.reset();
         return this.scene;
     }
 
@@ -198,5 +209,7 @@ export class SceneManager {
         if (this.controls) {
             this.controls.dispose();
         }
+        // Disconnects the timer's Page Visibility listener.
+        this.timer.dispose();
     }
 }

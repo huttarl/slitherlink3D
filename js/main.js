@@ -19,8 +19,13 @@ async function main() {
         // Update text visibility based on camera position
         updateTextVisibility(gameState);
 
+        // Advance the timer once per frame; consumers then read
+        // getDelta()/getElapsed() (Timer separates advancing from reading,
+        // unlike the old THREE.Clock).
+        sceneManager.timer.update();
+
         // OrbitControls update is required if autorotating.
-        sceneManager.controls.update(sceneManager.clock.getDelta());
+        sceneManager.controls.update(sceneManager.timer.getDelta());
 
         // Render the scene
         gameState.render();

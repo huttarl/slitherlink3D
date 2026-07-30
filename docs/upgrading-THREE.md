@@ -107,10 +107,13 @@ fix; there is no "r185.1" in three.js's own naming). Use the release number
 - **r170 → r185 migration-guide skim** (July 2026): nothing in this range breaks the API
   slice we use (geometry, materials, sprites, raycasting, renderer). One
   deprecation to plan for: **`Clock` was deprecated in r182** in favor of
-  `Timer` (in the core `THREE` namespace since r179). We use `Clock` in
+  `Timer` (in the core `THREE` namespace since r179). We used `Clock` in
   SceneManager (created/started), main.js (`getDelta()` for controls), and
   ui.js (`getElapsedTime()` for the solve time). Note `Timer` doesn't pause
-  on tab-hide unless you call `timer.connect(document)`. Also, r175 changed
+  on tab-hide unless you call `timer.connect(document)`. *(Migrated to
+  `Timer` right after this upgrade, July 2026 — with `connect(document)`,
+  so the solve timer no longer counts time while the tab is hidden.)*
+  Also, r175 changed
   `Controls.connect()` to require a DOM element — irrelevant to us as long
   as we construct `OrbitControls(camera, domElement)` and never call
   `connect()` directly.

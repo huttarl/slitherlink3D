@@ -58,7 +58,7 @@ The Python utilities under `util/` have a pytest suite:
   and the `interaction` handler. Top-level coordinator for setup, toggles
   (show IDs, show solution), resize, render, dispose.
 - **SceneManager** (`js/SceneManager.js`) — owns all THREE.js objects: scene,
-  camera, renderer, OrbitControls, clock, lights, polyhedron mesh,
+  camera, renderer, OrbitControls, timer, lights, polyhedron mesh,
   edge meshes, vertex group, text/label groups.
 - **Grid** (`js/Grid.js`) — pure topology: `Map`s of `Vertex`, `Edge`, `Face`
   by ID, plus a `vertexPairToEdge` hash for O(1) edge lookup. Also stores

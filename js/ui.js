@@ -252,7 +252,7 @@ function celebrateSolved(gameState) {
     controls.autoRotate = true;
 
     const name = gameState.getPuzzleGrid().gridName;
-    const elapsedTimeSec = Math.round(gameState.sceneManager.clock.getElapsedTime());
+    const elapsedTimeSec = Math.round(gameState.sceneManager.timer.getElapsed());
     const min = Math.floor(elapsedTimeSec / 60), sec = elapsedTimeSec % 60;
 
     // TODO: add HTML markup to body, and name of grid, time taken, etc.
