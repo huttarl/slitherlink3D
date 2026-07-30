@@ -13,6 +13,16 @@ export function setupUI(gameState) {
     // Set up interaction - pass GameState directly
     gameState.setInteraction(makeInteraction(gameState));
 
+    // Register this layer's observers on the puzzle grid. PuzzleGrid reports
+    // events but knows nothing about the DOM or GameState, so the wiring
+    // happens here (see the note atop PuzzleGrid.js).
+    const puzzleGrid = gameState.getPuzzleGrid();
+    puzzleGrid.onHistoryChanged = () => updateUndoRedoButtons(puzzleGrid);
+    puzzleGrid.onSolved = () => celebrateSolved(gameState);
+    // Sync the buttons now: setupScene already loaded a puzzle (and so reset
+    // the history) before these observers existed.
+    updateUndoRedoButtons(puzzleGrid);
+
     // Populate the grid and puzzle pickers in the background; the rest of
     // the UI doesn't depend on them.
     setupSelectors().catch(err => {
@@ -150,6 +160,25 @@ async function setupSelectors() {
 export function updateUndoRedoButtons(puzzleGrid) {
     document.getElementById('undoMove').disabled = (puzzleGrid.undoStack.length === 0);
     document.getElementById('redoMove').disabled = (puzzleGrid.redoStack.length === 0);
+}
+
+/**
+ * Celebrates the user's success in solving the puzzle: spins the camera and
+ * shows a congratulation overlay. Called via PuzzleGrid's onSolved observer.
+ * @param {GameState} gameState
+ */
+function celebrateSolved(gameState) {
+    const controls = gameState.sceneManager.controls;
+    controls.autoRotateSpeed = 10.0;
+    controls.autoRotate = true;
+
+    const name = gameState.getPuzzleGrid().gridName;
+    const elapsedTimeSec = Math.round(gameState.sceneManager.clock.getElapsedTime());
+    const min = Math.floor(elapsedTimeSec / 60), sec = elapsedTimeSec % 60;
+
+    // TODO: add HTML markup to body, and name of grid, time taken, etc.
+    displayOverlay("Congratulations!", `You solved this ${name} puzzle in ${min}m ${sec}s!`);
+    // TODO: give appropriate feedback to the user. special effects.
 }
 
 /**

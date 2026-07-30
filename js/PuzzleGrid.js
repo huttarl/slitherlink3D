@@ -1,7 +1,10 @@
 import { Grid } from './Grid.js';
 import {EDGE_COLORS, EDGE_STATES} from './constants.js';
-import {displayOverlay, updateUndoRedoButtons} from "./ui.js";
-import {GameState} from "./GameState.js";
+// NOTE: deliberately no imports of ui.js or GameState.js here. This class is
+// the puzzle model; reaching up into the UI/coordinator layer above it created
+// import cycles (PuzzleGrid -> GameState -> PuzzleGrid, and
+// PuzzleGrid -> ui -> GameState -> PuzzleGrid). Instead, the UI layer
+// registers the observer callbacks declared in the constructor below.
 
 /**
  * Extended Grid class that includes puzzle data and cross-references to THREE.js objects.
@@ -26,6 +29,20 @@ export class PuzzleGrid extends Grid {
         // reset undoes in a single step.
         this.undoStack = [];
         this.redoStack = [];
+
+        // Observer callbacks, registered by the UI layer (see setupUI in
+        // ui.js). They stay null-safe so this class works headless, e.g. in
+        // tests, and so events that fire during scene setup -- before the UI
+        // is wired up -- are simply ignored.
+        //   onHistoryChanged() - the undo/redo history changed
+        //   onSolved()         - the user's guesses form a correct solution
+        this.onHistoryChanged = null;
+        this.onSolved = null;
+    }
+
+    /** Notify the UI layer (if any) that the undo/redo history changed. */
+    historyChanged() {
+        if (this.onHistoryChanged) this.onHistoryChanged();
     }
 
     /**
@@ -62,7 +79,7 @@ export class PuzzleGrid extends Grid {
         // A different puzzle means a fresh undo history.
         this.undoStack.length = 0;
         this.redoStack.length = 0;
-        updateUndoRedoButtons(this);
+        this.historyChanged();
     }
 
     /**
@@ -213,7 +230,7 @@ export class PuzzleGrid extends Grid {
         }
         // Remove any error highlighting left over from before the reset.
         this.clearEdgeHighlights();
-        updateUndoRedoButtons(this);
+        this.historyChanged();
     }
 
     /**
@@ -251,7 +268,7 @@ export class PuzzleGrid extends Grid {
         // A new move invalidates any previously-undone moves.
         this.redoStack.length = 0;
         this.applyEdgeState(edgeId, newState);
-        updateUndoRedoButtons(this);
+        this.historyChanged();
     }
 
     /**
@@ -271,7 +288,7 @@ export class PuzzleGrid extends Grid {
             this.applyEdgeState(move[i].edgeId, move[i].prevState);
         }
         this.refreshFeedback(move);
-        updateUndoRedoButtons(this);
+        this.historyChanged();
         return true;
     }
 
@@ -290,7 +307,7 @@ export class PuzzleGrid extends Grid {
             this.applyEdgeState(delta.edgeId, delta.newState);
         }
         this.refreshFeedback(move);
-        updateUndoRedoButtons(this);
+        this.historyChanged();
         return true;
     }
 
@@ -539,19 +556,12 @@ export class PuzzleGrid extends Grid {
 
     /**
      * Celebrates the user's success in solving the puzzle.
+     *
+     * The celebration itself (overlay message, camera animation) belongs to
+     * the UI/view layer, so it lives in celebrateSolved() in ui.js; this
+     * just reports the event to whoever registered onSolved.
      */
     celebrateSolved() {
-        const gameState = GameState.getInstance();
-        const controls = gameState.sceneManager.controls;
-        controls.autoRotateSpeed = 10.0;
-        controls.autoRotate = true;
-
-        const name = this.gridName;
-        const elapsedTimeSec = Math.round(gameState.sceneManager.clock.getElapsedTime());
-        const min = Math.floor(elapsedTimeSec / 60), sec = elapsedTimeSec % 60;
-
-        // TODO: add HTML markup to body, and name of grid, time taken, etc.
-        displayOverlay("Congratulations!", `You solved this ${name} puzzle in ${min}m ${sec}s!`);
-        // TODO: give appropriate feedback to the user. special effects.
+        if (this.onSolved) this.onSolved();
     }
 }
