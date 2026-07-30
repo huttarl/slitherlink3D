@@ -13,6 +13,9 @@ The JS side of the app runs directly in the browser with no build process:
 The Python utilities under `util/` have a pytest suite:
 
 - **Run Python tests**: `pytest util/tests` from the repo root.
+  Thorough-but-slow tests (e.g. the data/ puzzle-uniqueness sweep) are
+  skipped by default; `pytest --all util/tests` runs everything, and
+  `pytest -m slow util/tests` runs only the slow ones.
 - Python deps used by `util/`: `compas`, `networkx`, `matplotlib`, `pytest`
   (plus `numpy` and `scipy` for `genRandomPolyh.py`).
 - Run the suite after changing any file in `util/`.
