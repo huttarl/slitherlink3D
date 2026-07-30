@@ -1,3 +1,8 @@
+// NOTE: vendored copy of three.js's OrbitControls (examples/jsm/controls/
+// OrbitControls.js in the npm 'three' package), with ONE local edit: the
+// import below reads './three.module.min.js' instead of the bare specifier
+// 'three'. When upgrading three.js, replace this file and re-apply that
+// edit — full procedure in docs/upgrading-THREE.md.
 import {
 	Controls,
 	MOUSE,

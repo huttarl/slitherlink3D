@@ -128,7 +128,8 @@ main.js
 - **data/** — grid (`*.json`) and puzzle (`*-puzzles.json`) files. Format
   spec in `docs/json-format.md`.
 - **docs/** — `json-format.md` (authoritative format reference),
-  `project-overview.md` (this file).
+  `project-overview.md` (this file), `upgrading-THREE.md` (how and when to
+  upgrade the vendored THREE.js).
 - **ideas/** — `TODOs.md` and design notes (e.g. `graph-cycles.txt`).
 - **util/** — Python utilities:
   - `obj2json.py` — converts polyHédronisme OBJ → grid JSON.
@@ -237,7 +238,8 @@ random and not seeded from the command line, so runs are not reproducible.
 
 - **Three.js version**: r170 (vendored locally at `js/three/three.module.min.js`
   and `js/three/OrbitControls.js`; imported via relative ES module paths —
-  no CDN, no importmap).
+  no CDN, no importmap). To upgrade it — occasional and deliberate — see
+  [upgrading-THREE.md](upgrading-THREE.md).
 - **Coordinate system**: Right-handed with Z-up orientation
 - **Edge interaction**: Click edges to cycle through unknown→filledIn→ruledOut→unknown
 - **Face interaction**: Click faces to highlight them (debugging feature)
