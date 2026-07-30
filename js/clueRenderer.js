@@ -7,7 +7,7 @@
  * debugging ID labels -- now lives in idLabels.js.)
  */
 import * as THREE from './three/three.module.min.js';
-import { findFaceMinRadius } from './geometry.js';
+import { findCentroid, findFaceMinRadius, findFaceNormal } from './geometryUtils.js';
 
 /**
  * Creates text meshes that are "painted" onto polyhedron faces
@@ -81,22 +81,6 @@ export function createClueTexts(gameState) {
     return textGroup;
 }
 
-/** Calculate face normal vector.
- *
- * @param { Vertex[] } faceVertices
- * @returns { THREE.Vector3 } unit normal vector.
- */
-function findFaceNormal(faceVertices) {
-    const v1 = faceVertices[0].position;
-    const v2 = faceVertices[1].position;
-    const v3 = faceVertices[2].position;
-    // Compute edge vectors by subtracting one vertex from another.
-    const edge1 = new THREE.Vector3().subVectors(v2, v1);
-    const edge2 = new THREE.Vector3().subVectors(v3, v1);
-    // Then cross edge vectors to find perpendicular vector, and normalize length.
-    return new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-}
-
 /**
  * Creates a text mesh positioned and oriented on a specific face
  *
@@ -111,12 +95,7 @@ function createTextMeshForFace(faceId, face, grid, material) {
     if (faceVertices.length < 3) return null;
 
     // Calculate face center and normal
-    const center = new THREE.Vector3();
-    for (const vertex of faceVertices) {
-        center.add(vertex.position);
-    }
-    center.divideScalar(faceVertices.length);
-
+    const center = findCentroid(faceVertices);
     const normal = findFaceNormal(faceVertices);
 
     // Create plane geometry for text, sized to the face: a square of side

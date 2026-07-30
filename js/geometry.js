@@ -1,58 +1,19 @@
+/**
+ * Polyhedron construction: loads grid JSON and builds the THREE geometry,
+ * Grid topology, and picking/coloring cross-references, plus the edge
+ * cylinder meshes.
+ *
+ * Pure vector-math helpers (centroids, distances, normals, normalization)
+ * live in geometryUtils.js.
+ *
+ * (The old hardcoded createCube()/createDodecahedron() builders were
+ * removed July 2026: superseded by data/cube.json and data/D.json, and no
+ * longer called anywhere. They remain in git history if ever needed.)
+ */
 import * as THREE from './three/three.module.min.js';
 import { Grid } from './Grid.js';
 import { EDGE_RADIUS, EDGE_COLORS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES } from './constants.js';
-
-/** Create geometry and topology of a dodecahedron.
- *
- * @returns {{geometry: THREE.BufferGeometry, grid: Grid,
- *      faceMap: Map<any, any>, faceVertexRanges: Map<any, any>}}
- */
-export function createDodecahedron() {
-    const phi = (1 + Math.sqrt(5)) / 2;
-    const a = 1;
-    const b = 1 / phi;
-    const c = 2 - phi; // reserved if needed later
-
-    const vertices = [
-        new THREE.Vector3(a, a, a),
-        new THREE.Vector3(a, a, -a),
-        new THREE.Vector3(a, -a, a),
-        new THREE.Vector3(a, -a, -a),
-        new THREE.Vector3(-a, a, a),
-        new THREE.Vector3(-a, a, -a),
-        new THREE.Vector3(-a, -a, a),
-        new THREE.Vector3(-a, -a, -a),
-        new THREE.Vector3(0, b, phi),
-        new THREE.Vector3(0, b, -phi),
-        new THREE.Vector3(0, -b, phi),
-        new THREE.Vector3(0, -b, -phi),
-        new THREE.Vector3(b, phi, 0),
-        new THREE.Vector3(b, -phi, 0),
-        new THREE.Vector3(-b, phi, 0),
-        new THREE.Vector3(-b, -phi, 0),
-        new THREE.Vector3(phi, 0, b),
-        new THREE.Vector3(phi, 0, -b),
-        new THREE.Vector3(-phi, 0, b),
-        new THREE.Vector3(-phi, 0, -b)
-    ];
-
-    const faceIndices = [
-        [0, 8, 10, 2, 16],
-        [0, 16, 17, 1, 12],
-        [0, 12, 14, 4, 8],
-        [1, 17, 3, 11, 9],
-        [1, 9, 5, 14, 12],
-        [2, 10, 6, 15, 13],
-        [2, 13, 3, 17, 16],
-        [3, 13, 15, 7, 11],
-        [4, 14, 5, 19, 18],
-        [4, 18, 6, 10, 8],
-        [5, 9, 11, 7, 19],
-        [6, 18, 19, 7, 15]
-    ];
-
-    return createPolyhedron(vertices, faceIndices);
-}
+import { findCentroid, normalizeVertices } from './geometryUtils.js';
 
 /**
  * Creates a 3D polyhedron geometry with associated grid topology.
@@ -138,7 +99,7 @@ function createPolyhedron(vertices, faces) {
                 faceMap.set(indices.length - 3 + j, faceId);
             }
         }
-        // console.log(`minRadius(${faceId}): `, findFaceMinRadius(grid, face));
+        // console.log(`minRadius(${faceId}): `, findFaceMinRadius(grid, face));  // (now in geometryUtils.js)
         // TODO maybe: output a ratio of minRadius to max face radius, or polyhedron average radius, or ...?
     }
 
@@ -148,36 +109,6 @@ function createPolyhedron(vertices, faces) {
     geometry.computeVertexNormals();
 
     return {geometry, grid, faceMap, faceVertexRanges};
-}
-
-/** Create geometry and topology of a cube.
- *
- * @returns {{geometry: THREE.BufferGeometry, grid: Grid, faceMap: Map<any, any>, faceVertexRanges: Map<any, any>}}
- */
-export function createCube() {
-    const a = 1;
-
-    const vertices = [
-        new THREE.Vector3(a, a, a),
-        new THREE.Vector3(a, a, -a),
-        new THREE.Vector3(a, -a, a),
-        new THREE.Vector3(a, -a, -a),
-        new THREE.Vector3(-a, a, a),
-        new THREE.Vector3(-a, a, -a),
-        new THREE.Vector3(-a, -a, a),
-        new THREE.Vector3(-a, -a, -a),
-    ];
-
-    const faceIndices = [
-        [0, 2, 3, 1],
-        [0, 1, 5, 4],
-        [0, 4, 6, 2],
-        [1, 3, 7, 5],
-        [2, 6, 7, 3],
-        [4, 5, 7, 6],
-    ];
-
-    return createPolyhedron(vertices, faceIndices);
 }
 
 /**
@@ -263,96 +194,4 @@ export function createEdgeGeometry(grid) {
         edge.metadata.mesh = mesh;
     }
     return edgeMeshes;
-}
-
-/**
- * Finds the minimum "radius" of a face.
- * This approximates the radius of an inscribed circle. We will use this to estimate what size text label will
- * fit on the face. We compute it by taking the minimum distance from the centroid of the face, to each vertex.
- *
- * @param {Grid} grid - The grid containing topology data
- * @param {Face} face - The face object
- * @returns {number} The minimum radius of the face
- */
-export function findFaceMinRadius(grid, face) {
-    const vertices = grid.getFaceVertices(face);
-    const nVertices = vertices.length;
-    const centerVertex = findCentroid(vertices);
-    let minDistance = -1;
-    // console.log("fFMR: ", nVertices);
-    // For each vertex v1 and its following neighbor v2
-    for (let v1 = 0; v1 < nVertices; v1++) {
-        let v2 = (v1 + 1) % nVertices;
-        // Find the shortest distance from centerVertex to the line from v1 to v2.
-        let closestDistance = findDistancePointToLine(centerVertex, vertices[v1].position, vertices[v2].position);
-        // console.log("  closestDistance: ", closestDistance);
-        if (minDistance < 0 || minDistance > closestDistance) minDistance = closestDistance;
-    }
-    return minDistance;
-}
-
-/**
- * Find the center-ish of a polygon, by averaging its vertices.
- *
- * @param faceVertices an iterable of vertex objects
- * @returns {THREE.Vector3} the centroid
- */
-function findCentroid(faceVertices) {
-    let centerVertex = new THREE.Vector3();
-    for (const vertex of faceVertices) {
-        centerVertex.add(vertex.position);
-    }
-    centerVertex.divideScalar(faceVertices.length);
-    return centerVertex;
-}
-
-/**
- * Find the shortest distance from a point to a line.
- *
- * @param {THREE.Vector3} p - the point
- * @param {THREE.Vector3} v1 - one point on the line
- * @param {THREE.Vector3} v2 - another point on the line
- * @returns {Float} - the perpendicular distance
- */
-function findDistancePointToLine(p, v1, v2) {
-    // Following the variable names at https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Vector_formulation
-    // dist = ||(a - p) - ((a - p) ⋅ n) n||
-    // console.log("findDistancePointToLine", p, v1, v2);
-    const a = v1
-    let n = new THREE.Vector3().subVectors(v2, v1).normalize();
-    let aMinusP = new THREE.Vector3().subVectors(a, p);
-    const b = n.multiplyScalar(aMinusP.dot(n)); // This changes n, but it's ok because we won't use n again.
-    return aMinusP.sub(b).length();
-}
-
-/**
- * Normalize the vertices of a polyhedron so that they're centered about the origin,
- * and the maximum distance from the origin is 1.
- *
- * @param {THREE.Vector3[]} vertices - Array of vertex positions
- * @returns {void}
- */
-function normalizeVertices(vertices) {
-    // Add up all the vertex vectors.
-    const totalPosition = vertices.reduce(
-        (sum, v) => sum.add(v),
-        new THREE.Vector3()
-    );
-    // Find the average position.
-    const center = totalPosition.divideScalar(vertices.length); // destructively modify totalPosition
-    console.debug("polyhedron centroid: ", center);
-    // Move each vertex so that the average is at the origin, and compute max distance from origin.
-    const maxDistance = vertices.reduce((max, v) => {
-        v.sub(center); // modify vector in-place
-        // Find max distance from origin.
-        const length = v.length();
-        return length > max ? length : max;
-    }, 0);
-    console.debug("max distance to vertex: ", maxDistance);
-    if (maxDistance > 0) {
-        // Scale all vertices so that the max distance is 1.
-        vertices.forEach(v => v.divideScalar(maxDistance));
-    } else {
-        console.error("Vertices are all lumped together! This polyhedron won't work well.");
-    }
 }

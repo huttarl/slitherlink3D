@@ -1,6 +1,6 @@
 import * as THREE from './three/three.module.min.js';
 import { addSkybox } from "./skybox.js";
-import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
+import { createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
 import {DEFAULT_GRID, EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
 import {createClueTexts} from "./clueRenderer.js";
