@@ -113,7 +113,7 @@
       {
          "file": "J47",
          "gridId": "J47",
-         "gridName": "Johnson solid J47",
+         "gridName": "Gyroelongated pentagonal cupolarotunda (J47)",
          "categories": [
             "Johnson solid"
          ],
@@ -137,7 +137,7 @@
       {
          "file": "J48",
          "gridId": "J48",
-         "gridName": "Johnson solid J48",
+         "gridName": "Gyroelongated pentagonal birotunda (J48)",
          "categories": [
             "Johnson solid"
          ],
@@ -149,7 +149,7 @@
       {
          "file": "J75",
          "gridId": "J75",
-         "gridName": "Johnson solid J75",
+         "gridName": "Trigyrate rhombicosidodecahedron (J75)",
          "categories": [
             "Johnson solid"
          ],
