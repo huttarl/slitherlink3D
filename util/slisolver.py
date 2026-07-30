@@ -1,9 +1,10 @@
 """Slitherlink puzzle solver."""
 import itertools
+import time
 # import networkx as nx
 # from compas.datastructures import Mesh
 
-def solution_is_unique(clues, num_clues, solution, mesh, dualG):
+def solution_is_unique(clues, num_clues, solution, mesh, dualG, time_budget=None):
     """Return True if given solution is the only possible one for given clues.
 
     Args:
@@ -12,10 +13,22 @@ def solution_is_unique(clues, num_clues, solution, mesh, dualG):
         solution: The known solution (list of vertex indices forming a loop)
         mesh: COMPAS Mesh representing the grid
         dualG: NetworkX dual graph with nodes for faces (may not be needed)
+        time_budget: Optional maximum number of seconds to spend searching.
+            If the search exceeds it, give up and return False ("not proven
+            unique"). Search times have a heavy tail — a rare pathological
+            clue set can take minutes where most take milliseconds — and
+            this bounds them. Giving up is conservative for puzzle
+            generation: a False can only make the generator use more clues
+            (or discard the region); uniqueness is never claimed without a
+            completed search.
 
     Returns:
-        True if there is exactly one solution, False if multiple solutions exist
+        True if there is exactly one solution; False if multiple solutions
+        exist, or if the time budget ran out before uniqueness was proven.
     """
+    deadline = None if time_budget is None else time.monotonic() + time_budget
+    budget_exhausted = [False]  # mutable so dfs_search can set it
+
     # Initialize edge states
     for ekey in mesh.edges():
         mesh.edge_attribute(ekey, 'guess', 'unknown')
@@ -30,8 +43,12 @@ def solution_is_unique(clues, num_clues, solution, mesh, dualG):
         """Depth-first search for solutions with constraint propagation.
 
         Returns True if search should continue, False if we should abort
-        (because we've found multiple solutions).
+        (because we've found multiple solutions, or ran out of time).
         """
+        if deadline is not None and time.monotonic() > deadline:
+            budget_exhausted[0] = True
+            return False  # Abort the entire search.
+
         # Apply deterministic inference rules until no more progress
         contradiction = not propagate_constraints(mesh, clues, num_clues)
 
@@ -82,8 +99,10 @@ def solution_is_unique(clues, num_clues, solution, mesh, dualG):
     # Start the search
     dfs_search()
 
-    # Return True if exactly one solution was found
-    return solutions_found[0] == 1
+    # Return True if exactly one solution was found. An exhausted time
+    # budget means the search was incomplete, so uniqueness is unproven
+    # even if one solution was found before time ran out.
+    return solutions_found[0] == 1 and not budget_exhausted[0]
 
 
 def apply_clues(clues, num_clues, mesh):
@@ -311,13 +330,26 @@ def is_valid_loop(mesh):
 
 
 def select_edge_for_branching(mesh):
-    """Select the most constrained unknown edge for branching.
+    """Select an unknown edge for branching: the first one, in mesh order.
 
-    Good heuristics:
+    Heuristics one might expect to beat this:
     - Choose edges adjacent to faces with clues
     - Choose edges where one choice would immediately cause propagation
     - Choose edges in high-degree vertices
     - Choose edges that continue the existing loop
+
+    NOTE (July 2026): two such heuristics were implemented and benchmarked
+    against this naive version on the snub dodecahedron (92 faces, 150
+    edges) over 12 clue-set instances (4 clue counts x 3 orderings, 20s
+    cap): (a) a weighted score (+20 per dangling-loop-end endpoint, +1 per
+    determined incident edge, +4/+1/+6 for adjacent clued faces by
+    tightness), and (b) chain-following (absolute priority to extending a
+    dangling loop end). Naive won 8 of 12 pairwise against (a), which won
+    2, with 3 timeouts each (naive 80.8s total vs 82.7s); (b) was worst
+    (96.6s, 4 timeouts). The per-call scoring overhead outweighed any
+    search-tree reduction, and no selector helped the pathological
+    instances, which dominate total time. Those are bounded instead by
+    solution_is_unique's time_budget. So we keep the cheap naive pick.
 
     Returns an edge key or None if no unknown edges exist.
     """

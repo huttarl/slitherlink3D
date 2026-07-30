@@ -786,6 +786,26 @@ class TestSolutionIsUnique:
         result = solution_is_unique(clues, len(clues), solution, cube, None)
         assert result is False
 
+    def test_exhausted_time_budget_returns_false(self, cube):
+        # This puzzle is unique (see test_unique_solution_one_face_loop),
+        # but with a zero time budget the search can't complete, so
+        # uniqueness must NOT be claimed. (A False here is conservative:
+        # the generator just uses more clues.)
+        clues = [(0, 4), (1, 0)]
+        solution = [0, 3, 2, 1]
+        result = solution_is_unique(clues, len(clues), solution, cube, None,
+                                    time_budget=0)
+        assert result is False
+
+    def test_generous_time_budget_does_not_change_result(self, cube):
+        # A budget large enough for the search to finish must behave
+        # exactly like no budget at all.
+        clues = [(0, 4), (1, 0)]
+        solution = [0, 3, 2, 1]
+        result = solution_is_unique(clues, len(clues), solution, cube, None,
+                                    time_budget=30)
+        assert result is True
+
     def test_no_clues_admits_multiple_solutions(self, cube):
         # No clues → many valid loops exist on the cube (face cycles,
         # hex slices, Hamiltonian cycles). Solver should find ≥2 and

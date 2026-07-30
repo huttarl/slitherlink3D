@@ -51,6 +51,13 @@ red = "red"
 blue = "blue"
 opposite_color = {red: blue, blue: red}
 
+# Give up on a single uniqueness check after this many seconds, treating the
+# clue set as not proven unique. Solver search times have a heavy tail (a rare
+# pathological clue set can take minutes where most take milliseconds); this
+# bounds them. The cost is occasionally using more clues than strictly
+# minimal, or discarding a region — never an unverified puzzle.
+SOLVER_TIME_BUDGET = 20.0
+
 
 def log(*args, **kwargs):
     """Print a diagnostic/progress message to stderr.
@@ -546,7 +553,8 @@ def cut_clues(clues: list[tuple]) -> int|None:
     # We now have all the clues, in a random order. We just need to determine how many
     # of them are needed.
     def prefix_gives_unique_solution(num_clues):
-        return slisolver.solution_is_unique(clues, num_clues, solution, mesh, dualG)
+        return slisolver.solution_is_unique(clues, num_clues, solution, mesh, dualG,
+                                            time_budget=SOLVER_TIME_BUDGET)
 
     # Start probing at about 30% of the faces; usually far fewer clues
     # than num_faces are needed.
@@ -643,7 +651,14 @@ def main():
     load_grid_file()
     setup_display()
     # random.seed() # Uncomment once we're finished debugging.
-    generate_puzzles()
+    try:
+        generate_puzzles()
+    except KeyboardInterrupt:
+        # Interrupted (e.g. Ctrl+C, or run_gen.py's timeout sending SIGINT).
+        # Fall through and output the puzzles completed so far, rather than
+        # losing them. (Only whole puzzles are ever in puzzles_output.)
+        log(f"\nInterrupted; outputting the "
+            f"{len(puzzles_output['puzzles'])} puzzle(s) completed so far.")
     output_puzzles()
 
 

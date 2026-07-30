@@ -13,16 +13,26 @@ Usage:
 
 Defaults: num_puzzles=1, timeout_seconds=60.
 
+On timeout, the generator is first sent SIGINT so it can output any
+puzzles that were already completed (it catches KeyboardInterrupt and
+dumps its results); only if it doesn't exit within a grace period is it
+killed outright.
+
 Exit status: the generator's own exit status; 124 on timeout
-(mirroring the GNU `timeout` convention).
+(mirroring the GNU `timeout` convention), even if partial results
+were output.
 """
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
 
 DEFAULT_NUM_PUZZLES = "1"
 DEFAULT_TIMEOUT_SECONDS = 60
+# How long to wait, after SIGINT, for the generator to output completed
+# puzzles and exit on its own.
+GRACE_SECONDS = 15
 
 
 def usage():
@@ -45,13 +55,24 @@ def main():
     # so the generator gets the same one.
     cmd = [sys.executable, str(generator), grid_file, num_puzzles]
 
+    proc = subprocess.Popen(cmd, env=env)
     try:
-        # subprocess.run kills the child process if the timeout expires.
-        result = subprocess.run(cmd, env=env, timeout=timeout)
+        returncode = proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
-        print(f"\nrun_gen.py: generator timed out after {timeout}s", file=sys.stderr)
+        # Ask the generator to wrap up: SIGINT raises KeyboardInterrupt in
+        # it, and it responds by outputting the puzzles completed so far.
+        print(f"\nrun_gen.py: generator timed out after {timeout}s; "
+              f"interrupting it to salvage completed puzzles", file=sys.stderr)
+        proc.send_signal(signal.SIGINT)
+        try:
+            proc.wait(timeout=GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            print(f"run_gen.py: generator didn't exit within {GRACE_SECONDS}s "
+                  f"of SIGINT; killing it", file=sys.stderr)
+            proc.kill()
+            proc.wait()
         sys.exit(124)
-    sys.exit(result.returncode)
+    sys.exit(returncode)
 
 
 if __name__ == "__main__":
