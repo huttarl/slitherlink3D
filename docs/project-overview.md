@@ -38,13 +38,16 @@ The Python utilities under `util/` have a pytest suite:
 2. Asks `SceneManager` to create the THREE.Scene; adds the underwater skybox.
 3. Loads the polyhedron and puzzle JSON in parallel
    (`loadPolyhedronFromJSON()` from `geometry.js`, `loadPuzzleData()` from `puzzleLoader.js`).
-   Currently the grid filename is hardcoded in `scene.js` (e.g. `"D"`).
+   The grid and puzzle are chosen by the `?grid=` and `?puzzle=` URL
+   parameters (default in `constants.js`); the pickers in the panel reload
+   the page with new parameters.
 4. Hands the loaded data to `GameState.setupScene()`, which copies grid topology
    into the `PuzzleGrid`, applies clues, and validates the solution.
-5. Builds edge cylinders (`createEdgeGeometry()`), vertex spheres, and
-   clue/label sprites.
-6. `setupUI(gameState)` (in `ui.js`) wires DOM buttons and constructs the
-   `interaction` object.
+5. Builds edge cylinders (`createEdgeGeometry()`), vertex spheres, clue
+   digits (`clueRenderer.js`), and debugging ID labels (`idLabels.js`).
+6. `setupUI(gameState)` (in `ui.js`) registers PuzzleGrid's UI observers,
+   populates the grid/puzzle pickers, wires the DOM buttons, and constructs
+   the `interaction` object.
 
 `main.js` then drives `requestAnimationFrame` → `updateTextVisibility()` →
 `controls.update()` → `gameState.render()`.
@@ -63,7 +66,17 @@ The Python utilities under `util/` have a pytest suite:
   `edgeMeshMap`).
 - **PuzzleGrid extends Grid** (`js/PuzzleGrid.js`) — adds puzzle data, clue
   application, solution validation/highlighting, user-guess checking
-  (`checkUserSolution`), and the "solved" celebration.
+  (`checkUserSolution`, whose pure rule/solution queries live in
+  `solutionChecker.js`), the undo/redo history (each move is an array of
+  edge-state deltas, so Reset and Clear-errors are single compound moves),
+  and `clearErrors()`. Deliberately imports nothing from the UI/GameState
+  layers (that once formed an import cycle): it exposes null-safe observer
+  callbacks (`onHistoryChanged`, `onSolved`) that `ui.js` registers, and it
+  runs headless in the JS unit tests.
+- **solutionChecker** (`js/solutionChecker.js`) — pure queries mirroring the
+  Python solver's rule structure: vertex violations, clue violations, the
+  single-loop check, and solution mismatches (spoiler data: report counts,
+  not locations).
 - **Vertex / Edge / Face** (`js/Vertex.js`, `Edge.js`, `Face.js`) — small data
   classes. Each carries a `metadata` object: e.g. `Edge.metadata.userGuess`
   (0=unknown, 1=filled, 2=ruled out), `Face.metadata.clue`, `.index`,
@@ -71,13 +84,19 @@ The Python utilities under `util/` have a pytest suite:
 
 ### Geometry & rendering
 
-- `geometry.js` — defines hardcoded cube and dodecahedron, plus
-  `loadPolyhedronFromJSON()`; `createPolyhedron()` builds the THREE
-  `BufferGeometry` with one fan per face (centroid + ring of vertices) so
-  faces can be color-highlighted; `createEdgeGeometry()` makes a cylinder per
-  edge; `normalizeVertices()` re-centers and rescales to unit radius.
-- `textRenderer.js` — sprite-based labels: face clues, vertex IDs, edge IDs.
-  Uses `Intl.NumberFormat(gameState.numberLocale)` for clue digits.
+- `geometry.js` — `loadPolyhedronFromJSON()` loads a grid JSON file;
+  `createPolyhedron()` builds the THREE `BufferGeometry` with one fan per
+  face (centroid + ring of vertices) so faces can be color-highlighted;
+  `createEdgeGeometry()` makes a cylinder per edge.
+- `geometryUtils.js` — pure vector math (centroids, point-to-line distance,
+  face inscribed radius, face normals, vertex normalization); no Grid or
+  scene dependencies, unit-tested headless.
+- `clueRenderer.js` — gameplay clue digits, drawn on canvas textures and
+  "painted" onto faces, each sized to its face's inscribed circle; plus
+  per-frame culling of clues on faces turned away from the camera.
+  Uses `Intl.NumberFormat(gameState.numberLocale)` for the digits.
+- `idLabels.js` — sprite-based debugging ID labels for vertices and edges
+  (the "Show IDs" checkbox).
 - `skybox.js` — procedural underwater backdrop (canvas gradient + caustics).
 
 ### Input & UI
@@ -85,9 +104,13 @@ The Python utilities under `util/` have a pytest suite:
 - `interaction.js::makeInteraction(gameState)` — raycasts on click to either
   cycle an edge state or toggle a face highlight; uses OrbitControls
   start/change to suppress click-on-drag.
-- `ui.js::setupUI(gameState)` — wires the "show IDs" / "show solution" /
-  "check solution" controls and the dismissable overlay; defines
-  `displayOverlay(title, message)`.
+- `ui.js::setupUI(gameState)` — registers PuzzleGrid's observers
+  (undo/redo button states; the solved celebration), populates the
+  polyhedron/puzzle pickers from `data/grids.json`, and wires the controls:
+  Check solution (status line + contextual Clear-errors button), Undo/Redo
+  (with Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y shortcuts), Reset, the
+  "Auto-highlight mistakes" checkbox, the debug toggles, and the
+  dismissable overlay (`displayOverlay(title, message)`).
 - `constants.js` — colors, radii, zoom limits, `EDGE_STATES` array.
 
 ### Cross-reference structures (interaction critical)
@@ -105,20 +128,26 @@ main.js
 └── scene.js (createGameState)
     ├── GameState ── SceneManager
     │             └── PuzzleGrid (extends Grid → Edge/Face/Vertex)
-    ├── geometry.js (loadPolyhedronFromJSON, createEdgeGeometry, …)
+    │                           └── solutionChecker.js
+    ├── geometry.js (loadPolyhedronFromJSON, createEdgeGeometry)
+    │   └── geometryUtils.js
     ├── puzzleLoader.js (loadPuzzleData)
     ├── skybox.js
-    ├── textRenderer.js
-    └── ui.js (setupUI → interaction.js)
+    ├── clueRenderer.js ── geometryUtils.js
+    ├── idLabels.js
+    └── ui.js (setupUI → interaction.js; registers PuzzleGrid's observers)
 ```
+
+The graph is acyclic: PuzzleGrid never imports upward (GameState/ui);
+those layers subscribe to its observer callbacks instead.
 
 ## File organization
 
 - **js/** — all ES6 modules; Three.js vendored under `js/three/`.
-  - Core game logic: `Grid.js`, `PuzzleGrid.js`, `Face.js`, `Edge.js`,
-    `Vertex.js`, `GameState.js`
-  - Rendering: `SceneManager.js`, `scene.js`, `geometry.js`, `skybox.js`,
-    `textRenderer.js`
+  - Core game logic: `Grid.js`, `PuzzleGrid.js`, `solutionChecker.js`,
+    `Face.js`, `Edge.js`, `Vertex.js`, `GameState.js`
+  - Rendering: `SceneManager.js`, `scene.js`, `geometry.js`,
+    `geometryUtils.js`, `clueRenderer.js`, `idLabels.js`, `skybox.js`
   - Input/UI: `interaction.js`, `ui.js`
   - Configuration: `constants.js`
   - Data loading: `puzzleLoader.js` (puzzle JSON), plus
@@ -236,9 +265,10 @@ random and not seeded from the command line, so runs are not reproducible.
 
 ## Key Implementation Details
 
-- **Three.js version**: r185 (vendored locally at `js/three/three.module.min.js`
-  and `js/three/OrbitControls.js`; imported via relative ES module paths —
-  no CDN, no importmap). To upgrade it — occasional and deliberate — see
+- **Three.js version**: r185 (npm 0.185.1), vendored locally under `js/three/`
+  (`three.module.min.js`, its required companion `three.core.min.js`, and
+  `OrbitControls.js`); imported via relative ES module paths —
+  no CDN, no importmap. To upgrade it — occasional and deliberate — see
   [upgrading-THREE.md](upgrading-THREE.md).
 - **Coordinate system**: Right-handed with Z-up orientation
 - **Edge interaction**: Click edges to cycle through unknown→filledIn→ruledOut→unknown
