@@ -113,6 +113,13 @@ export class GameState {
         
         // Set up puzzle data
         this.puzzleGrid.setPuzzleData(puzzleData, gridId);
+        // Clamp the requested puzzle index to the available range, so that
+        // e.g. a stale ?puzzle= URL parameter (carried over from a grid
+        // with more puzzles) degrades gracefully instead of throwing.
+        if (this.currentPuzzleIndex >= puzzleData.puzzles.length) {
+            console.warn(`Puzzle index ${this.currentPuzzleIndex} out of range; using the last puzzle.`);
+            this.currentPuzzleIndex = puzzleData.puzzles.length - 1;
+        }
         this.puzzleGrid.setCurrentPuzzle(this.currentPuzzleIndex);
         
         // Apply puzzle clues and validate

@@ -13,10 +13,10 @@ export function setupUI(gameState) {
     // Set up interaction - pass GameState directly
     gameState.setInteraction(makeInteraction(gameState));
 
-    // Populate the grid picker in the background; the rest of the UI
-    // doesn't depend on it.
-    setupGridSelector().catch(err => {
-        console.error('Could not set up the grid selector:', err);
+    // Populate the grid and puzzle pickers in the background; the rest of
+    // the UI doesn't depend on them.
+    setupSelectors().catch(err => {
+        console.error('Could not set up the grid/puzzle selectors:', err);
     });
 
     // Wire up checkbox toggles and buttons
@@ -77,35 +77,67 @@ export function setupUI(gameState) {
 }
 
 /**
- * Populates the grid (polyhedron) picker from the data/grids.json catalogue
- * (regenerate that file with util/build_catalogue.py when data/ changes).
- * Selecting a grid reloads the page with ?grid=<file stem>, which
- * createGameState() reads -- a page load gives us scene teardown for free,
- * avoiding manual disposal of THREE.js objects. Fine for playtesting;
- * an in-place scene swap can replace it later.
+ * Populates the grid (polyhedron) and puzzle pickers from the
+ * data/grids.json catalogue (regenerate that file with
+ * util/build_catalogue.py when data/ changes).
+ * Selecting a grid or puzzle reloads the page with ?grid=<file stem> and
+ * ?puzzle=<1-based number>, which createGameState() reads -- a page load
+ * gives us scene teardown for free, avoiding manual disposal of THREE.js
+ * objects. Fine for playtesting; an in-place scene swap can replace it later.
  */
-async function setupGridSelector() {
+async function setupSelectors() {
     const response = await fetch('data/grids.json');
     if (!response.ok) {
         throw new Error(`Failed to load data/grids.json: ${response.statusText}`);
     }
     const catalogue = await response.json();
+    const params = new URLSearchParams(window.location.search);
+    const currentGrid = params.get('grid') || DEFAULT_GRID;
 
-    const select = document.getElementById('gridSelect');
-    const currentGrid = new URLSearchParams(window.location.search).get('grid') || DEFAULT_GRID;
+    // Grid picker.
+    const gridSelect = document.getElementById('gridSelect');
     for (const grid of catalogue.grids) {
         const option = document.createElement('option');
         option.value = grid.file;
         option.textContent = `${grid.gridName} (${grid.faces} faces)`;
         option.selected = (grid.file === currentGrid);
-        select.appendChild(option);
+        gridSelect.appendChild(option);
     }
+    gridSelect.addEventListener('change', () => {
+        // Reload the page with the chosen grid. Drop the puzzle number:
+        // it referred to the previous grid's puzzle list.
+        const newParams = new URLSearchParams(window.location.search);
+        newParams.set('grid', gridSelect.value);
+        newParams.delete('puzzle');
+        window.location.search = newParams.toString();
+    });
 
-    select.addEventListener('change', () => {
-        // Reload the page with the chosen grid.
-        const params = new URLSearchParams(window.location.search);
-        params.set('grid', select.value);
-        window.location.search = params.toString();
+    // Puzzle picker: one entry per puzzle of the current grid.
+    const puzzleSelect = document.getElementById('puzzleSelect');
+    const currentGridEntry = catalogue.grids.find(g => g.file === currentGrid);
+    const numPuzzles = currentGridEntry ? currentGridEntry.numPuzzles : 0;
+    if (numPuzzles === 0) {
+        // Not in the catalogue, or a grid without puzzles.
+        const option = document.createElement('option');
+        option.textContent = '(no puzzles)';
+        puzzleSelect.appendChild(option);
+        puzzleSelect.disabled = true;
+        return;
+    }
+    // The same clamping as GameState.setupScene: an out-of-range ?puzzle=
+    // means the last puzzle gets loaded, so show that one as selected.
+    const currentPuzzle = Math.min(parseInt(params.get('puzzle'), 10) || 1, numPuzzles);
+    for (let n = 1; n <= numPuzzles; n++) {
+        const option = document.createElement('option');
+        option.value = String(n);
+        option.textContent = `Puzzle ${n}`;
+        option.selected = (n === currentPuzzle);
+        puzzleSelect.appendChild(option);
+    }
+    puzzleSelect.addEventListener('change', () => {
+        const newParams = new URLSearchParams(window.location.search);
+        newParams.set('puzzle', puzzleSelect.value);
+        window.location.search = newParams.toString();
     });
 }
 

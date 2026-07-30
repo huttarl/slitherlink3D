@@ -15,6 +15,30 @@
          "numPuzzles": 1
       },
       {
+         "file": "J1",
+         "gridId": "J1",
+         "gridName": "Square pyramid (J1)",
+         "categories": [
+            "Johnson solid"
+         ],
+         "faces": 5,
+         "edges": 8,
+         "vertices": 5,
+         "numPuzzles": 3
+      },
+      {
+         "file": "J2",
+         "gridId": "J2",
+         "gridName": "Pentagonal pyramid (J2)",
+         "categories": [
+            "Johnson solid"
+         ],
+         "faces": 6,
+         "edges": 10,
+         "vertices": 6,
+         "numPuzzles": 3
+      },
+      {
          "file": "cube",
          "gridId": "C",
          "gridName": "Cube",
@@ -25,6 +49,30 @@
          "edges": 12,
          "vertices": 8,
          "numPuzzles": 1
+      },
+      {
+         "file": "J3",
+         "gridId": "J3",
+         "gridName": "Triangular cupola (J3)",
+         "categories": [
+            "Johnson solid"
+         ],
+         "faces": 8,
+         "edges": 15,
+         "vertices": 9,
+         "numPuzzles": 3
+      },
+      {
+         "file": "J10",
+         "gridId": "J10",
+         "gridName": "Gyroelongated square pyramid (J10)",
+         "categories": [
+            "Johnson solid"
+         ],
+         "faces": 13,
+         "edges": 20,
+         "vertices": 9,
+         "numPuzzles": 3
       },
       {
          "file": "D",
@@ -51,6 +99,30 @@
          "numPuzzles": 5
       },
       {
+         "file": "J37",
+         "gridId": "J37",
+         "gridName": "Elongated square gyrobicupola (J37)",
+         "categories": [
+            "Johnson solid"
+         ],
+         "faces": 26,
+         "edges": 48,
+         "vertices": 24,
+         "numPuzzles": 3
+      },
+      {
+         "file": "J47",
+         "gridId": "J47",
+         "gridName": "Johnson solid J47",
+         "categories": [
+            "Johnson solid"
+         ],
+         "faces": 47,
+         "edges": 80,
+         "vertices": 35,
+         "numPuzzles": 3
+      },
+      {
          "file": "tI",
          "gridId": "tI",
          "gridName": "Truncated icosahedron",
@@ -61,6 +133,30 @@
          "edges": 90,
          "vertices": 60,
          "numPuzzles": 5
+      },
+      {
+         "file": "J48",
+         "gridId": "J48",
+         "gridName": "Johnson solid J48",
+         "categories": [
+            "Johnson solid"
+         ],
+         "faces": 52,
+         "edges": 90,
+         "vertices": 40,
+         "numPuzzles": 3
+      },
+      {
+         "file": "J75",
+         "gridId": "J75",
+         "gridName": "Johnson solid J75",
+         "categories": [
+            "Johnson solid"
+         ],
+         "faces": 62,
+         "edges": 120,
+         "vertices": 60,
+         "numPuzzles": 3
       },
       {
          "file": "sD",

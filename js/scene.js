@@ -14,9 +14,15 @@ import { GameState } from "./GameState.js";
  * @returns {Promise<GameState>} A fully configured GameState instance
  */
 export async function createGameState() {
+    // The grid and puzzle are chosen by URL query parameters (see the
+    // pickers in ui.js). ?puzzle= is 1-based for human readability;
+    // internally puzzle indices are 0-based.
+    const urlParams = new URLSearchParams(window.location.search);
+    const puzzleIndex = Math.max(0, (parseInt(urlParams.get('puzzle'), 10) || 1) - 1);
+
     // Initialize the game state
     const gameState = GameState.getInstance();
-    await gameState.initialize({ puzzleIndex: 0 });
+    await gameState.initialize({ puzzleIndex });
 
     // Get the scene manager and initialize the scene
     const sceneManager = gameState.getSceneManager();
@@ -26,7 +32,7 @@ export async function createGameState() {
     // Load geometry and puzzle data in parallel for better performance.
     // The grid is chosen by the ?grid= query parameter (a data/ filename
     // stem; the picker in ui.js offers the ones listed in data/grids.json).
-    const gridFilename = new URLSearchParams(window.location.search).get('grid') || DEFAULT_GRID;
+    const gridFilename = urlParams.get('grid') || DEFAULT_GRID;
     const [polyhedronData, puzzleData] = await Promise.all([
         loadPolyhedronFromJSON(`data/${gridFilename}.json`),
         loadPuzzleData(`data/${gridFilename}-puzzles.json`)
