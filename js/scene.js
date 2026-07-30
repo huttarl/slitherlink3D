@@ -3,7 +3,8 @@ import { addSkybox } from "./skybox.js";
 import { createCube, createDodecahedron, createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
 import {DEFAULT_GRID, EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
-import {createClueTexts, createEdgeLabels, createVertexLabels} from "./textRenderer.js";
+import {createClueTexts} from "./clueRenderer.js";
+import {createEdgeLabels, createVertexLabels} from "./idLabels.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
 

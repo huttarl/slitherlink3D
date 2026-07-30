@@ -1,4 +1,4 @@
-import {updateTextVisibility} from './textRenderer.js';
+import {updateTextVisibility} from './clueRenderer.js';
 import {createGameState} from "./scene.js";
 import {setupUI} from "./ui.js";
 
