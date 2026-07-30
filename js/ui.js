@@ -17,7 +17,11 @@ export function setupUI(gameState) {
     // events but knows nothing about the DOM or GameState, so the wiring
     // happens here (see the note atop PuzzleGrid.js).
     const puzzleGrid = gameState.getPuzzleGrid();
-    puzzleGrid.onHistoryChanged = () => updateUndoRedoButtons(puzzleGrid);
+    puzzleGrid.onHistoryChanged = () => {
+        updateUndoRedoButtons(puzzleGrid);
+        // Any board change makes the last check's feedback stale.
+        hideCheckFeedback();
+    };
     puzzleGrid.onSolved = () => celebrateSolved(gameState);
     // Sync the buttons now: setupScene already loaded a puzzle (and so reset
     // the history) before these observers existed.
@@ -40,9 +44,29 @@ export function setupUI(gameState) {
         gameState.toggleShowSolution(e.target.checked);
     });
 
+    // Player setting: passive red highlighting of rule violations.
+    const highlightToggle = document.getElementById('highlightViolations');
+    puzzleGrid.highlightRuleViolations = highlightToggle.checked;
+    highlightToggle.addEventListener('change', (e) => {
+        puzzleGrid.highlightRuleViolations = e.target.checked;
+        if (!e.target.checked) {
+            // Remove any red marks already on the board.
+            puzzleGrid.clearEdgeHighlights();
+        }
+    });
+
     const checkSolutionButton = document.getElementById('checkSolution');
     checkSolutionButton.addEventListener('click', () => {
-        gameState.getPuzzleGrid().checkUserSolution(true);
+        const result = gameState.getPuzzleGrid().checkUserSolution(true);
+        showCheckResults(result);
+    });
+
+    const clearErrorsButton = document.getElementById('clearErrors');
+    clearErrorsButton.addEventListener('click', () => {
+        const numCleared = gameState.getPuzzleGrid().clearErrors();
+        // clearErrors fires onHistoryChanged, which hides the feedback area;
+        // confirm the action afterward. (Recovery hint, since it's one move.)
+        setCheckStatus(`Cleared ${numCleared} wrong ${numCleared === 1 ? 'mark' : 'marks'}. Undo restores them.`);
     });
 
     const undoButton = document.getElementById('undoMove');
@@ -149,6 +173,61 @@ async function setupSelectors() {
         newParams.set('puzzle', puzzleSelect.value);
         window.location.search = newParams.toString();
     });
+}
+
+/**
+ * Presents the outcome of an explicit "Check solution" to the player, in
+ * the status line under the buttons.
+ *
+ * Spoiler policy: solution mismatches are reported only as a COUNT (with
+ * the Clear-errors button offered); their locations are never highlighted.
+ * Rule violations (self-crossings) are objective and deducible, so those
+ * ARE highlighted -- that happened in checkUserSolution itself.
+ *
+ * @param {Object} result - return value of checkUserSolution(true)
+ */
+function showCheckResults(result) {
+    const clearButton = document.getElementById('clearErrors');
+    clearButton.classList.add('hidden');
+    const numErrors = result.mismatchedEdgeIds ? result.mismatchedEdgeIds.length : 0;
+
+    if (result.status === 2) {
+        // The celebration overlay also appears, via the onSolved observer.
+        setCheckStatus('Solved!');
+    } else if (numErrors > 0) {
+        let message = `${numErrors} of your marks ${numErrors === 1 ? "doesn't" : "don't"} match the solution.`;
+        if (result.vertexViolations.length > 0) {
+            message += ' Self-crossings are highlighted in red.';
+        }
+        setCheckStatus(message);
+        clearButton.classList.remove('hidden');
+    } else {
+        // No wrong marks: report why the puzzle nevertheless isn't solved.
+        let message;
+        if (result.clueViolations.length > 0) {
+            message = 'No wrong marks so far, but not every clue is satisfied yet.';
+        } else {
+            const reasons = {
+                noEdges: "You haven't filled in any edges yet.",
+                incomplete: 'No wrong marks so far, but the loop is not complete.',
+                multipleLoops: 'No wrong marks so far, but there is more than one loop.',
+            };
+            message = reasons[result.loopCheck?.reason] ?? 'Not solved yet.';
+        }
+        setCheckStatus(message);
+    }
+}
+
+/** Shows the given message in the check-feedback status line. */
+function setCheckStatus(message) {
+    document.getElementById('checkFeedback').classList.remove('hidden');
+    document.getElementById('checkStatus').textContent = message;
+}
+
+/** Hides the check-feedback area (status line and Clear-errors button). */
+function hideCheckFeedback() {
+    document.getElementById('checkFeedback').classList.add('hidden');
+    document.getElementById('clearErrors').classList.add('hidden');
 }
 
 /**

@@ -99,6 +99,41 @@ export function findClueViolations(grid, faceIds, requireExact) {
 }
 
 /**
+ * Find the user's marks that contradict the puzzle's known solution:
+ * edges filled in that aren't part of the solution loop, or ruled out
+ * although they are part of it. Unknown edges are never mismatches.
+ *
+ * NOTE: unlike the rule-violation queries above, this one peeks at the
+ * stored solution, so its findings are SPOILERS. UI code should report
+ * how many mismatches there are (and offer to clear them), but not
+ * reveal their locations unless the player explicitly asks
+ * (see the "show errors" idea in ideas/TODOs.md).
+ *
+ * @param {Grid} grid - the grid to check
+ * @param {number[]} solutionVertexIds - the solution loop as a vertex ID list
+ * @returns {number[]} IDs of edges whose guess contradicts the solution
+ */
+export function findSolutionMismatches(grid, solutionVertexIds) {
+    // Collect the IDs of the edges on the solution loop.
+    const solutionEdges = new Set();
+    const n = solutionVertexIds.length;
+    for (let i = 0; i < n; i++) {
+        solutionEdges.add(grid.findEdgeByVertices(
+            solutionVertexIds[i], solutionVertexIds[(i + 1) % n]));
+    }
+
+    const mismatches = [];
+    for (const [edgeId, edge] of grid.edges) {
+        const guess = edge.metadata.userGuess;
+        const inSolution = solutionEdges.has(edgeId);
+        if ((guess === 1 && !inSolution) || (guess === 2 && inSolution)) {
+            mismatches.push(edgeId);
+        }
+    }
+    return mismatches;
+}
+
+/**
  * Check whether the filled-in edges form a single complete loop.
  *
  * Assumes vertex violations have already been ruled out (every vertex has

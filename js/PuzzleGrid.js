@@ -1,6 +1,6 @@
 import { Grid } from './Grid.js';
 import {EDGE_COLORS, EDGE_STATES} from './constants.js';
-import {checkSingleLoop, findClueViolations, findVertexViolations} from './solutionChecker.js';
+import {checkSingleLoop, findClueViolations, findSolutionMismatches, findVertexViolations} from './solutionChecker.js';
 // NOTE: deliberately no imports of ui.js or GameState.js here. This class is
 // the puzzle model; reaching up into the UI/coordinator layer above it created
 // import cycles (PuzzleGrid -> GameState -> PuzzleGrid, and
@@ -39,6 +39,11 @@ export class PuzzleGrid extends Grid {
         //   onSolved()         - the user's guesses form a correct solution
         this.onHistoryChanged = null;
         this.onSolved = null;
+
+        // Player setting (a checkbox in the panel, wired up by ui.js):
+        // whether passive checks highlight rule violations in red as the
+        // player clicks. Explicit "Check solution" requests always highlight.
+        this.highlightRuleViolations = true;
     }
 
     /** Notify the UI layer (if any) that the undo/redo history changed. */
@@ -331,21 +336,26 @@ export class PuzzleGrid extends Grid {
      * @param {boolean} isActiveMode - whether checking in active mode or not.
      * @param {THREE.Mesh|null} edgeMesh - mesh of edge whose state has been changed
      * @param {Edge|null} edge - edge whose state has been changed
-     * @returns {number} status: 0 = no problem found (but not solved),
-     *     1 = failed, 2 = solved
+     * @returns {{status: number, vertexViolations: number[],
+     *     clueViolations: {faceId: number, message: string}[],
+     *     loopCheck: object|null, mismatchedEdgeIds: number[]|null}}
+     *     status: 0 = no problem found (but not solved), 1 = failed, 2 = solved.
+     *     loopCheck (active mode only) is checkSingleLoop's result.
+     *     mismatchedEdgeIds (active mode only) lists guesses contradicting
+     *     the stored solution -- SPOILER data: the UI should present only
+     *     its count, not the locations.
      *
      * Passive mode is less thorough, called in response to each new change of user's guesses,
      * and local to the latest change (edgeMesh).
      * Active mode is called when user has explicitly asked for a solution check, and is global.
      *
-     * Possible outcomes:
-     * - highlight (in red) edges (or faces?) in violation of puzzle constraints
-     * - "ok" message (so far so good)
-     * - "solved" response (solution is complete and correct)
+     * Rule violations are highlighted in red: always in active mode, but
+     * passively only if the highlightRuleViolations setting is on.
      *
      * The rule checks themselves are pure queries in solutionChecker.js;
      * this method chooses their scope (local vs. global) and acts on their
-     * findings (highlighting, celebration).
+     * findings (highlighting, celebration). Reporting to the player is up
+     * to the caller (see showCheckResults in ui.js).
      */
     checkUserSolution(isActiveMode, edgeMesh = null, edge = null) {
         if (!this.puzzleData) {
@@ -355,10 +365,16 @@ export class PuzzleGrid extends Grid {
         const edgeId = edgeMesh?.userData.edgeId;
         console.log(`checkUserSolution, activeMode ${isActiveMode} edgeId ${edgeId}`);
 
+        const result = {
+            status: 0, // 0 = unknown, 1 = failed, 2 = solved
+            vertexViolations: [],
+            clueViolations: [],
+            loopCheck: null,
+            mismatchedEdgeIds: null,
+        };
+
         // Keep track of whether we've already reset highlighting on edges and faces.
         let clearedEdgeHighlights = false, clearedFaceHighlights = false;
-        // Status: 0 = unknown, 1 = failed, 2 = solved
-        let status = 0;
 
         // Things to check:
         // - loop doesn't intersect self (no vertex has > 2 edges filled in)
@@ -366,7 +382,6 @@ export class PuzzleGrid extends Grid {
         // To check in activeMode:
         // - Loop is a cycle
         // - only one loop
-        // Depends on: isActiveMode, autoFeedback
 
         // Does loop intersect itself?
         const vIDsToCheck = (edge && !isActiveMode ?
@@ -374,10 +389,13 @@ export class PuzzleGrid extends Grid {
             (edge.metadata.userGuess === 1 ? edge.vertexIDs : []) :
             // If global, check all vertices.
             this.vertices.keys());
-        for (const vId of findVertexViolations(this, vIDsToCheck)) {
-            status = 1; // failed
+        result.vertexViolations = findVertexViolations(this, vIDsToCheck);
+        for (const vId of result.vertexViolations) {
+            result.status = 1; // failed
             console.log(`checkUserSolution: loop intersects itself at vertex ${vId}`);
-            // TODO: highlight offending edges in red only if appropriate to mode and settings.
+            if (!isActiveMode && !this.highlightRuleViolations) {
+                continue; // The player has passive highlighting turned off.
+            }
             if (edge) {
                 if (edge.metadata.userGuess === 1) {
                     // Highlight the just-clicked edge in red.
@@ -399,30 +417,70 @@ export class PuzzleGrid extends Grid {
 
         // Does each face have a number of edges filled in / ruled out compatible with its clue?
         const faceIDsToCheck = (edge && !isActiveMode ? edge.faceIDs : this.faces.keys());
-        for (const violation of findClueViolations(this, faceIDsToCheck, isActiveMode)) {
-            status = 1; // failed
+        result.clueViolations = findClueViolations(this, faceIDsToCheck, isActiveMode);
+        for (const violation of result.clueViolations) {
+            result.status = 1; // failed
             console.log(`checkUserSolution: face ${violation.faceId} ${violation.message}`);
             // TODO: highlight clue as error
         }
 
+        // Passive checks stop here.
+        if (!isActiveMode) return result;
+
+        // Active mode: count the guesses that contradict the stored solution.
+        // (Every rule violation involves at least one such mismatch, so this
+        // is THE error count to report; but mind that the edge IDs are
+        // spoilers -- see the @returns doc.)
+        result.mismatchedEdgeIds = findSolutionMismatches(this, this.getCurrentPuzzle().solution);
+
         // Don't keep checking if we've already failed.
-        if (!isActiveMode || status === 1) return status;
+        if (result.status === 1) return result;
 
         // Do the filled-in edges form a single complete loop?
-        const loopCheck = checkSingleLoop(this);
-        if (!loopCheck.ok) {
-            // TODO: give appropriate feedback to the user, per loopCheck.reason.
-            // E.g. for 'noEdges': "You haven't filled in any edges yet. Please do
-            // so by clicking on the edges you want to fill in."
-            return 1;
+        result.loopCheck = checkSingleLoop(this);
+        if (!result.loopCheck.ok) {
+            result.status = 1;
+            return result;
         }
 
         // If we haven't failed yet, we passed!
         // Success! Puzzle is solved!
         console.log("checkUserSolution: Puzzle is solved!");
-        status = 2;
+        result.status = 2;
         this.celebrateSolved();
-        return status;
+        return result;
+    }
+
+    /**
+     * Clears (sets back to unknown) every guess that contradicts the
+     * puzzle's stored solution, as ONE undoable compound move -- so an
+     * unwanted "clear errors" is recovered with a single Undo.
+     *
+     * This is player assistance: it consults the stored solution, but only
+     * reveals wrong guesses by removing them. Correct guesses stay put.
+     *
+     * @returns {number} how many guesses were cleared
+     */
+    clearErrors() {
+        const mismatchedEdgeIds = findSolutionMismatches(this, this.getCurrentPuzzle().solution);
+        if (mismatchedEdgeIds.length === 0) {
+            return 0; // Nothing to clear; don't record an empty move.
+        }
+        const deltas = mismatchedEdgeIds.map(edgeId => ({
+            edgeId,
+            prevState: this.edges.get(edgeId).metadata.userGuess,
+            newState: 0,  // 0 = unknown
+        }));
+        this.undoStack.push(deltas);
+        this.redoStack.length = 0;
+        for (const delta of deltas) {
+            this.applyEdgeState(delta.edgeId, 0);
+        }
+        // Every rule violation involves a mismatched edge, so any red error
+        // highlights are now stale; remove them.
+        this.clearEdgeHighlights();
+        this.historyChanged();
+        return deltas.length;
     }
 
     /**

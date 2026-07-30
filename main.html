@@ -161,6 +161,16 @@
             <button id="redoMove" style="margin-top: 1ex" title="Redo (Ctrl+Shift+Z or Ctrl+Y)"
                     aria-label="Redo" disabled>&#x21BB;</button>
             <button id="resetPuzzle" style="margin-top: 1ex">Reset</button>
+            <div style="margin-top: 1ex; font-size: 14px">
+                <label title="Mark edges in red when they clearly break the rules, as you play">
+                    <input type="checkbox" id="highlightViolations" checked>
+                    Auto-highlight mistakes</label>
+            </div>
+            <div id="checkFeedback" style="margin-top: 1ex; font-size: 14px" class="hidden">
+                <span id="checkStatus"></span>
+                <button id="clearErrors" class="hidden" style="margin-top: 0.5ex"
+                        title="Clear the marks that don't match the solution (undoable)">Clear errors</button>
+            </div>
         </div>
         <div class="debugging">
             <details>

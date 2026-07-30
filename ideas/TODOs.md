@@ -14,16 +14,28 @@ Note, some of these items may be already done even if they're not checked off.
 - [ ] Debugging mode could show face IDs, or at least log them when you click on a face.
 - [~] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
-  - [ ] highlight wrong guesses in red
-  - [ ] tell them if they have failed to make a loop
-  - [ ] as a player, I would really like to have a button to "remove errors", so I can get back to
+  - [~] highlight wrong guesses in red — done for clear RULE violations (self-crossings),
+    highlighted passively, toggleable via the "Auto-highlight mistakes" checkbox.
+    Solution mismatches that don't break a rule are deliberately NOT highlighted
+    (that would spoil the puzzle); "Check solution" reports only their count.
+    - [ ] maybe later: a "show errors" button that highlights solution mismatches
+      on request — a stronger, spoiler-level hint that some players like.
+  - [x] tell them if they have failed to make a loop
+  - [x] as a player, I would really like to have a button to "remove errors", so I can get back to
   a state where I can move forward, without having to start from scratch.
-- [~] Later on, add a "show solution" button, and maybe a "hint" button.
+    (The "Clear errors" button appears when "Check solution" finds wrong marks;
+    clearing is one compound move, so a single Undo restores the cleared marks.)
+- [~] Add a "show solution" button
+    - [ ] This is available in the debug panel. Is that sufficient?
+- [ ] maybe add a "hint" button.
 - [~] Eventually, we'll need a button to go on to the next puzzle, or select
   another puzzle.
   - [ ] when we do, we'll need to be careful to 'dispose()' of THREE.js objects,
     - and also remove bidirectional references.
   - [x] somehow we'll need to implement a catalogue of available grids.
+- [ ] Add the ability to "color" faces to reflect "inside" vs. "outside". User selects a
+    "color" and then can click on a face to tint it that color. Implementation would have to
+    make sure it interacted OK with clue numerals. Colors must be light enough to contrast well.
 - [ ] put in some aesthetic animation: smoothed zooming in on load, zooming out when solved,
     smoothed autorotate after load (while zooming), stops when mouse clicked.
 - [ ] maybe just for fun, add an option to use other numerals for clues:
