@@ -16,6 +16,8 @@ Note, some of these items may be already done even if they're not checked off.
     give feedback on whether they were correct.
   - [ ] highlight wrong guesses in red
   - [ ] tell them if they have failed to make a loop
+  - [ ] as a player, I would really like to have a button to "remove errors", so I can get back to
+  a state where I can move forward, without having to start from scratch.
 - [~] Later on, add a "show solution" button, and maybe a "hint" button.
 - [~] Eventually, we'll need a button to go on to the next puzzle, or select
   another puzzle.
