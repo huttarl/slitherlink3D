@@ -1,6 +1,6 @@
 # Project Overview
 
-Slitherlink3D is an interactive 3D puzzle game that brings the classic Slitherlink puzzle to polyhedral surfaces. Players solve puzzles by drawing loops on the edges of 3D polyhedra (dodecahedrons, cubes) following traditional Slitherlink rules. The project uses Three.js for 3D rendering and is structured as a client-side web application. Python scripts are used to generate polyhedra and puzzles to be played on them.
+Slitherlink3D is an interactive 3D puzzle game that brings the classic Slitherlink puzzle to polyhedral surfaces. Players solve puzzles by drawing loops on the edges of 3D polyhedra (Platonic, Archimedean, and Johnson solids, among others) following traditional Slitherlink rules. The project uses Three.js for 3D rendering and is structured as a client-side web application. Python scripts are used to generate polyhedra and puzzles to be played on them.
 
 ## Development Commands
 
@@ -26,6 +26,8 @@ The Python utilities under `util/` have a pytest suite:
 - Run the suite after changing any file in `util/`.
 - **Generate puzzles**: `util/run_gen.py data/<id>.json` — see
   "Generating polyhedra and puzzles" below.
+- **Rebuild the grid catalogue** (`data/grids.json`, which the app's pickers
+  read) after adding or removing data files: `python3 util/build_catalogue.py`.
 
 ## Architecture overview
 
@@ -50,7 +52,7 @@ The Python utilities under `util/` have a pytest suite:
    the `interaction` object.
 
 `main.js` then drives `requestAnimationFrame` → `updateTextVisibility()` →
-`controls.update()` → `gameState.render()`.
+`timer.update()` → `controls.update()` → `gameState.render()`.
 
 ### Central objects
 
@@ -154,8 +156,9 @@ those layers subscribe to its observer callbacks instead.
     `loadPolyhedronFromJSON()` in `geometry.js`
   - Tests: `tests/` — headless unit tests for the game logic
     (run with `npm test`; see Development Commands)
-- **data/** — grid (`*.json`) and puzzle (`*-puzzles.json`) files. Format
-  spec in `docs/json-format.md`.
+- **data/** — grid (`*.json`) and puzzle (`*-puzzles.json`) files (format
+  spec in `docs/json-format.md`), plus `grids.json`, the generated catalogue
+  the app's pickers read (rebuild with `util/build_catalogue.py`).
 - **docs/** — `json-format.md` (authoritative format reference),
   `project-overview.md` (this file), `upgrading-THREE.md` (how and when to
   upgrade the vendored THREE.js).
@@ -171,8 +174,10 @@ those layers subscribe to its observer callbacks instead.
     (`slisolver_old.py` is a retired earlier draft, kept for reference.)
   - `run_gen.py` — wrapper that runs `genSliPuzzles.py` headlessly with a
     timeout (see "Generating polyhedra and puzzles").
-  - `tests/` — pytest suite covering `slisolver.py` and the
-    clue-minimization workflow in `genSliPuzzles.py`.
+  - `build_catalogue.py` — regenerates `data/grids.json` from the data files.
+  - `tests/` — pytest suite covering `slisolver.py`, the clue-minimization
+    workflow in `genSliPuzzles.py`, and (slow, non-default) a uniqueness
+    sweep of every puzzle in `data/`.
 - **main.html** — single page; loads `js/main.js` as an ES module.
 
 ## Data formats
@@ -263,6 +268,21 @@ util/run_gen.py data/myGrid.json > data/myGrid-puzzles.json
 (Add `2>/dev/null` to hide the progress chatter.) Note that generation is
 random and not seeded from the command line, so runs are not reproducible.
 
+### Step 3: Rebuild the grid catalogue
+
+The app's polyhedron/puzzle pickers can't scan `data/` at runtime (a static
+site can't list a directory over HTTP); they read `data/grids.json`. After
+adding, removing, or regenerating grid or puzzle files, rebuild it:
+
+```
+python3 util/build_catalogue.py
+```
+
+This scans `data/`, pairs each grid file with its `-puzzles.json`, counts
+faces/edges/puzzles, and writes the catalogue sorted by size (edges, then
+faces) — the order the picker presents, intended eventually as the player's
+progression order. A new grid won't appear in the picker until this has run.
+
 ## Key Implementation Details
 
 - **Three.js version**: r185 (npm 0.185.1), vendored locally under `js/three/`
@@ -279,23 +299,29 @@ random and not seeded from the command line, so runs are not reproducible.
 
 The project is in active development.
 
-The Python puzzle-generation pipeline (solver + generator) works end-to-end
-and is covered by the pytest suite, though so far it has only been exercised
-on small grids (cube, dodecahedron).
+The Python puzzle-generation pipeline (solver + generator) works end-to-end.
+`data/` currently holds 14 grids — Platonic, Archimedean, and Johnson solids,
+up to the 92-face snub dodecahedron — each with generated puzzles whose
+uniqueness was verified by the solver (and can be re-verified any time via
+the slow-marked pytest sweep). Uniqueness checks are time-budgeted, so
+generation stays bounded even where the solver's search would blow up;
+around 150 edges (snub dodecahedron) a puzzle takes a few minutes to
+generate, making that the current practical ceiling.
 
-On the JS side, the core play loop works: grid and puzzle JSON are loaded and
-validated at startup, clues are displayed, edge guesses are checked as you go
-(passive mode), and the "Check solution" button does a full win check
-(constraint violations, single complete loop) with a celebration on success.
+On the JS side, the core play loop works end-to-end: pick a polyhedron and
+puzzle (dropdowns backed by `?grid=`/`?puzzle=` URL parameters), mark edges
+with undo/redo and reset, get mistake feedback (passive red highlighting of
+rule violations, toggleable; solution-mismatch counts with an undoable
+"Clear errors" after an explicit check), and a celebration on solving.
+The game logic is covered by the headless JS unit tests.
 
-Key incomplete features:
-- Grid and puzzle selection: the grid is hardcoded in `scene.js`
-  (`gridFilename = "D"`) and the puzzle index to 0 — any grid JSON loads,
-  but there's no UI to choose a grid/puzzle or advance to the next one,
-  and no catalogue of available grids.
-- User feedback on errors: several failure cases (clue violations,
-  incomplete or multiple loops) are detected but only logged to the
-  console, not yet shown to the user.
-- Undo and reset of edge guesses.
-
-See `ideas/TODOs.md` for the detailed development roadmap.
+Bigger items still open (see `ideas/TODOs.md` for the full roadmap):
+- Puzzle quality: measuring whether generated puzzles are *fun* — not just
+  uniquely solvable — e.g. trivially propagatable vs. deep trial-and-error.
+- A guided progression: a "next puzzle" button walking the catalogue order,
+  rather than manual selection only.
+- Switching grids/puzzles without a full page reload (needs careful THREE.js
+  disposal; the reload approach deliberately sidesteps that for now).
+- Player-facing polish: grid name/category on screen, face coloring to aid
+  inside/outside reasoning, aesthetic animations, a "show errors" hint
+  button.
