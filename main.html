@@ -91,6 +91,13 @@
             background: #bbc;
         }
 
+        /* Undo/redo arrow glyphs (&#x21BA;/&#x21BB;) need a slightly larger
+           font to read clearly at button size. */
+        #undoMove, #redoMove {
+            font-size: 16px;
+            line-height: 1;
+        }
+
         .overlay {
             position: fixed;
             inset: 0;
@@ -141,8 +148,10 @@
                 </div>
             </details>
             <button id="checkSolution" style="margin-top: 1ex">Check solution</button>
-            <button id="undoMove" style="margin-top: 1ex" title="Ctrl+Z / Cmd+Z" disabled>Undo</button>
-            <button id="redoMove" style="margin-top: 1ex" title="Ctrl+Shift+Z or Ctrl+Y" disabled>Redo</button>
+            <button id="undoMove" style="margin-top: 1ex" title="Undo (Ctrl+Z / Cmd+Z)"
+                    aria-label="Undo" disabled>&#x21BA;</button>
+            <button id="redoMove" style="margin-top: 1ex" title="Redo (Ctrl+Shift+Z or Ctrl+Y)"
+                    aria-label="Redo" disabled>&#x21BB;</button>
             <button id="resetPuzzle" style="margin-top: 1ex">Reset</button>
         </div>
         <div class="debugging">
