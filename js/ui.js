@@ -63,6 +63,17 @@ export function setupUI(gameState) {
 }
 
 /**
+ * Enables/disables the Undo and Redo buttons to reflect whether there is
+ * currently anything to undo or redo. Called by PuzzleGrid whenever the
+ * undo/redo history changes.
+ * @param {PuzzleGrid} puzzleGrid
+ */
+export function updateUndoRedoButtons(puzzleGrid) {
+    document.getElementById('undoMove').disabled = (puzzleGrid.undoStack.length === 0);
+    document.getElementById('redoMove').disabled = (puzzleGrid.redoStack.length === 0);
+}
+
+/**
  * Displays an overlay message on the screen. Can be dismissed with a click.
  * @param {string} title - Title of the message
  * @param {string} message - Message body (can contain HTML tags)

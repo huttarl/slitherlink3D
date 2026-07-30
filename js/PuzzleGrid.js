@@ -1,6 +1,6 @@
 import { Grid } from './Grid.js';
 import {EDGE_COLORS, EDGE_STATES} from './constants.js';
-import {displayOverlay} from "./ui.js";
+import {displayOverlay, updateUndoRedoButtons} from "./ui.js";
 import {GameState} from "./GameState.js";
 
 /**
@@ -59,6 +59,7 @@ export class PuzzleGrid extends Grid {
         // A different puzzle means a fresh undo history.
         this.undoStack.length = 0;
         this.redoStack.length = 0;
+        updateUndoRedoButtons(this);
     }
 
     /**
@@ -200,6 +201,7 @@ export class PuzzleGrid extends Grid {
         // making the reset itself undoable.)
         this.undoStack.length = 0;
         this.redoStack.length = 0;
+        updateUndoRedoButtons(this);
     }
 
     /**
@@ -227,6 +229,10 @@ export class PuzzleGrid extends Grid {
         if (edgeMesh) {
             edgeMesh.material.color = EDGE_COLORS[EDGE_STATES[newState]];
         }
+        // Reflect the history state in the UI. (undo/redo adjust the stacks
+        // before calling setEdgeState, so the stacks are current here on
+        // every path that changes an edge.)
+        updateUndoRedoButtons(this);
     }
 
     /**
