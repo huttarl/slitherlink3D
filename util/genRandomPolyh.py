@@ -338,37 +338,6 @@ def order_quad_vertices(tri1, tri2, points):
     return quad
 
 
-def is_quad_convex(quad, points):
-    """
-    Check if a quad is convex by verifying all cross products point outward.
-    
-    Args:
-        quad: array of 4 vertex indices
-        points: vertex coordinates
-    
-    Returns:
-        True if the quad is convex
-    """
-    # Get the 4 vertices
-    v = points[quad]
-    
-    # Compute normal at each vertex using cross product of adjacent edges
-    normals = []
-    for i in range(4):
-        v1 = v[(i + 1) % 4] - v[i]
-        v2 = v[(i - 1) % 4] - v[i]
-        normal = np.cross(v1, v2)
-        normals.append(normal)
-    
-    # Check if all normals point in roughly the same direction
-    reference = normals[0]
-    for normal in normals[1:]:
-        if np.dot(reference, normal) < 0:
-            return False
-    
-    return True
-
-
 def project_quad_to_plane(quad_indices, points):
     """
     Adjust quad vertices to make them exactly coplanar by projecting onto best-fit plane.
@@ -441,6 +410,39 @@ def is_quad_convex(quad, points):
     return True
 
 
+def orient_face_outward(face, points):
+    """Return the face's vertex indices wound counterclockwise as seen from
+    outside the solid — i.e., so the right-hand-rule normal points outward.
+
+    Assumes the solid is convex and contains the origin, which holds for our
+    hulls of points on the unit sphere: then a face is correctly wound iff
+    its normal points away from the origin (has positive dot product with
+    the face centroid). If the winding is already outward the face is
+    returned unchanged, otherwise reversed.
+
+    Why this matters: scipy's ConvexHull.simplices do NOT have consistent
+    orientation, and the quad-merge step inherits that arbitrary winding.
+    Mixed winding breaks halfedge-based mesh libraries downstream — e.g.,
+    COMPAS (used by genSliPuzzles.py) returns empty face_neighbors() for
+    inconsistently wound faces, crashing puzzle generation.
+
+    Args:
+        face: sequence of vertex indices (triangle or near-planar quad)
+        points: vertex coordinates array
+
+    Returns:
+        List of the vertex indices, in outward-wound order.
+    """
+    verts = points[np.array(face)]
+    centroid = verts.mean(axis=0)
+    # For a triangle or near-planar convex quad, the cross product of the
+    # first two edges is a good-enough face normal.
+    normal = np.cross(verts[1] - verts[0], verts[2] - verts[0])
+    if np.dot(normal, centroid) < 0:
+        return list(reversed(list(face)))
+    return list(face)
+
+
 def merge_coplanar_triangles_to_quads(hull, points, angle_threshold_deg=5.0, adjust_vertices=False):
     """
     Merge coplanar adjacent triangles into quadrilateral faces.
@@ -478,15 +480,15 @@ def merge_coplanar_triangles_to_quads(hull, points, angle_threshold_deg=5.0, adj
         quad = order_quad_vertices(tri1, tri2, points)
         
         if quad is not None:
-            faces.append(list(quad))
+            faces.append(orient_face_outward(quad, points))
             merged.add(face_i)
             merged.add(face_j)
             quads_created.append(quad)
-    
+
     # Add remaining triangles that weren't merged
     for i, simplex in enumerate(hull.simplices):
         if i not in merged:
-            faces.append(list(simplex))
+            faces.append(orient_face_outward(simplex, points))
     
     # Optionally adjust vertices to make quads exactly coplanar
     if adjust_vertices and quads_created:
@@ -715,8 +717,11 @@ def export_to_obj(points, hull, filename='polyhedron.obj'):
         # Write all faces (triangles from convex hull)
         # Note: OBJ format uses 1-based indexing, so add 1 to each index
         for simplex in hull.simplices:
-            # Each simplex is a triangle with 3 vertex indices
-            f.write(f"f {simplex[0] + 1} {simplex[1] + 1} {simplex[2] + 1}\n")
+            # Each simplex is a triangle with 3 vertex indices.
+            # Orient consistently outward -- hull.simplices alone are not
+            # consistently wound (see orient_face_outward).
+            (a, b, c) = orient_face_outward(simplex, points)
+            f.write(f"f {a + 1} {b + 1} {c + 1}\n")
 
     print(f"Exported convex hull to {filename}")
     print(f"  Vertices: {len(points)}")
