@@ -38,6 +38,13 @@ export function setupUI(gameState) {
         gameState.getPuzzleGrid().redo();
     });
 
+    // No confirmation dialog for Reset: it's recorded as a single undoable
+    // move, so an accidental reset is recovered with one Undo.
+    const resetButton = document.getElementById('resetPuzzle');
+    resetButton.addEventListener('click', () => {
+        gameState.getPuzzleGrid().resetPuzzle();
+    });
+
     const overlay = document.getElementById('overlayMessage');
     overlay.addEventListener('click', e => {
         hideOverlay();
