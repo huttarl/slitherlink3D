@@ -27,16 +27,18 @@ releases.
 
 ## The vendored files
 
-Both live in `js/three/` and MUST come from the same THREE version —
-mismatched pairs break in confusing ways:
+All live in `js/three/` and MUST come from the same THREE version —
+mismatched files break in confusing ways:
 
-- **`three.module.min.js`** — the THREE library itself: the ES-module build
+- **`three.module.min.js`** — the THREE library's ES-module build entry
   ("module" = uses `import`/`export`, which is how all our code imports it),
   minified ("min"). The npm package also contains an unminified
   `three.module.js`, handy temporarily when debugging into THREE itself.
-  (The old `three.min.js` — a UMD build creating a global `THREE` variable
-  for classic `<script>` tags — was deprecated around r150 and no longer
-  ships; the module build is the right and only choice for this codebase.)
+- **`three.core.min.js`** — required companion: `three.module.min.js`
+  imports the bulk of the library from it. Forgetting this file fails fast
+  with `ERR_MODULE_NOT_FOUND ... three.core.min.js`. In general, check the
+  top of the new `three.module.min.js` for relative imports to see which
+  companion files that release needs.
 - **`OrbitControls.js`** — the camera controls, from `examples/jsm/controls/`
   in the npm package, **with one local edit**: its import of the bare
   specifier `'three'` (which would need an importmap) is changed to
@@ -78,7 +80,11 @@ fix; there is no "r185.1" in three.js's own naming). Use the release number
 
 4. From the tarball, copy into `js/three/`:
    - `package/build/three.module.min.js`
+   - `package/build/three.core.min.js`
    - `package/examples/jsm/controls/OrbitControls.js`
+
+   (And check the top of the new `three.module.min.js` for any other
+   relative imports the release may have added.)
 
 5. Re-apply the local edit to the fresh `OrbitControls.js`: change
    `from 'three'` to `from './three.module.min.js'`, and restore the
@@ -87,3 +93,24 @@ fix; there is no "r185.1" in three.js's own naming). Use the release number
 6. Update the version number in `docs/project-overview.md` (Key
    Implementation Details), run `npm test`, and browser-smoke a few grids:
    load them, click edges, rotate/zoom, and Check solution.
+
+## Notes from past upgrades
+
+- **r170 → r185 upgrade** (July 2026): this range included the module-build
+  split (~r171): `three.module.min.js` stopped being self-contained and now
+  imports the bulk of the library from `./three.core.min.js` (the core is
+  shared with the WebGPU build), so `three.core.min.js` became a newly
+  vendored file. Historical context on build flavors: the old `three.min.js`
+  — a UMD build creating a global `THREE` variable for classic `<script>`
+  tags — was deprecated around r150 and no longer ships; the ES-module build
+  is the right and only choice for this codebase's `import`-based code.
+- **r170 → r185 migration-guide skim** (July 2026): nothing in this range breaks the API
+  slice we use (geometry, materials, sprites, raycasting, renderer). One
+  deprecation to plan for: **`Clock` was deprecated in r182** in favor of
+  `Timer` (in the core `THREE` namespace since r179). We use `Clock` in
+  SceneManager (created/started), main.js (`getDelta()` for controls), and
+  ui.js (`getElapsedTime()` for the solve time). Note `Timer` doesn't pause
+  on tab-hide unless you call `timer.connect(document)`. Also, r175 changed
+  `Controls.connect()` to require a DOM element — irrelevant to us as long
+  as we construct `OrbitControls(camera, domElement)` and never call
+  `connect()` directly.
