@@ -1,4 +1,9 @@
 Note, some of these items may be already done even if they're not checked off.
+- [ ] puzzle generation: try to make sure that puzzles are fun, not just uniquely solvable.
+    Can we measure whether they're trivially propagatable or require deep trial and error?
+    This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt
+    One way to measure difficulty is: how many paths forward are available (inferences that can be made) at each step along the way,
+    on average?
 - [ ] UI: implement an "undo" function, to undo edge guesses.
 - [ ] UI: fix the "reset" function, to clear guesses. It may be partially implemented, but doesn't look like it works.
 - [ ] In JS code, why are we copying data from grid to puzzleGrid, instead of inheriting it?

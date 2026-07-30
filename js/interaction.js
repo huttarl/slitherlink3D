@@ -5,7 +5,7 @@
  */
 
 import * as THREE from './three/three.module.min.js';
-import { FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_COLORS, EDGE_STATES } from './constants.js';
+import { FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES } from './constants.js';
 
 /**
  * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
@@ -55,14 +55,13 @@ export function makeInteraction(gameState) {
     function cycleEdgeState(edgeMesh, reverse = false) {
         const edgeId = edgeMesh.userData.edgeId;
         const edge = puzzleGrid.edges.get(edgeId);
-        if (reverse) {
-            edge.metadata.userGuess = (edge.metadata.userGuess - 1 + EDGE_STATES.length) % EDGE_STATES.length;
-        } else {
-            edge.metadata.userGuess = (edge.metadata.userGuess + 1) % EDGE_STATES.length;
-        }
-        // console.log(`cycleEdgeState: userGuess = ${edge.metadata.userGuess}`);
-        const stateName = EDGE_STATES[edge.metadata.userGuess];
-        edgeMesh.material.color = EDGE_COLORS[stateName];
+        // Stepping backward by 1 == stepping forward by (length - 1),
+        // and avoids a negative operand to %.
+        const step = reverse ? EDGE_STATES.length - 1 : 1;
+        const newState = (edge.metadata.userGuess + step) % EDGE_STATES.length;
+        // console.log(`cycleEdgeState: userGuess = ${newState}`);
+        // setEdgeState updates the mesh color and records the move for undo.
+        puzzleGrid.setEdgeState(edgeId, newState);
 
         // Check whether new guess has resulted a need to give feedback.
         puzzleGrid.checkUserSolution(false, edgeMesh, edge);

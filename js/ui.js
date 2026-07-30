@@ -28,6 +28,16 @@ export function setupUI(gameState) {
         gameState.getPuzzleGrid().checkUserSolution(true);
     });
 
+    const undoButton = document.getElementById('undoMove');
+    undoButton.addEventListener('click', () => {
+        gameState.getPuzzleGrid().undo();
+    });
+
+    const redoButton = document.getElementById('redoMove');
+    redoButton.addEventListener('click', () => {
+        gameState.getPuzzleGrid().redo();
+    });
+
     const overlay = document.getElementById('overlayMessage');
     overlay.addEventListener('click', e => {
         hideOverlay();
@@ -35,6 +45,20 @@ export function setupUI(gameState) {
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') hideOverlay();
+
+        // Undo/redo keyboard shortcuts: Ctrl+Z (Cmd+Z on Mac) to undo;
+        // add Shift, or use Ctrl+Y, to redo.
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+            e.preventDefault(); // Don't let the browser attempt its own undo.
+            if (e.shiftKey) {
+                gameState.getPuzzleGrid().redo();
+            } else {
+                gameState.getPuzzleGrid().undo();
+            }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+            e.preventDefault();
+            gameState.getPuzzleGrid().redo();
+        }
     })
 }
 

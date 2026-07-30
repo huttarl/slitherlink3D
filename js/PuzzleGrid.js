@@ -18,6 +18,11 @@ export class PuzzleGrid extends Grid {
         this.puzzleData = null;
         this.currentPuzzleIndex = 0;
         this.gridId = null;
+
+        // Undo/redo history of the user's edge-guess changes.
+        // Each move is {edgeId, prevState, newState}.
+        this.undoStack = [];
+        this.redoStack = [];
     }
 
     /**
@@ -50,6 +55,10 @@ export class PuzzleGrid extends Grid {
         }
         
         this.currentPuzzleIndex = puzzleIndex;
+
+        // A different puzzle means a fresh undo history.
+        this.undoStack.length = 0;
+        this.redoStack.length = 0;
     }
 
     /**
@@ -184,6 +193,84 @@ export class PuzzleGrid extends Grid {
         for (const [_edgeId, edge] of this.edges) {
             edge.metadata.userGuess = 0; // 0 = unknown
         }
+        // Recolor the edge meshes to match the reset states.
+        this.clearEdgeHighlights();
+        // The history no longer corresponds to the board, so drop it.
+        // (Alternative for later: record the reset as one compound move,
+        // making the reset itself undoable.)
+        this.undoStack.length = 0;
+        this.redoStack.length = 0;
+    }
+
+    /**
+     * Sets an edge's guess state and updates its mesh color, optionally
+     * recording the change in the undo history.
+     *
+     * This is the single choke point for changing user guesses: route all
+     * guess mutations through here so the undo history stays complete.
+     *
+     * @param {number} edgeId - ID of the edge to change
+     * @param {number} newState - New state, an index into EDGE_STATES
+     *     (0 = unknown, 1 = filled in, 2 = ruled out)
+     * @param {boolean} [recordHistory=true] - false when called from
+     *     undo/redo, which must not re-record the move
+     */
+    setEdgeState(edgeId, newState, recordHistory = true) {
+        const edge = this.edges.get(edgeId);
+        if (recordHistory) {
+            this.undoStack.push({ edgeId, prevState: edge.metadata.userGuess, newState });
+            // A new move invalidates any previously-undone moves.
+            this.redoStack.length = 0;
+        }
+        edge.metadata.userGuess = newState;
+        const edgeMesh = this.getEdgeMesh(edgeId);
+        if (edgeMesh) {
+            edgeMesh.material.color = EDGE_COLORS[EDGE_STATES[newState]];
+        }
+    }
+
+    /**
+     * Undoes the user's most recent edge-guess change, if any.
+     * @returns {boolean} true if a move was undone, false if history was empty
+     */
+    undo() {
+        const move = this.undoStack.pop();
+        if (!move) {
+            console.log('undo: nothing to undo');
+            return false;
+        }
+        this.redoStack.push(move);
+        this.setEdgeState(move.edgeId, move.prevState, false);
+        this.refreshFeedback(move.edgeId);
+        return true;
+    }
+
+    /**
+     * Redoes the most recently undone change, if any.
+     * @returns {boolean} true if a move was redone, false if none was available
+     */
+    redo() {
+        const move = this.redoStack.pop();
+        if (!move) {
+            console.log('redo: nothing to redo');
+            return false;
+        }
+        this.undoStack.push(move);
+        this.setEdgeState(move.edgeId, move.newState, false);
+        this.refreshFeedback(move.edgeId);
+        return true;
+    }
+
+    /**
+     * Recomputes error feedback after an undo/redo: clears any stale error
+     * highlights, then reruns the passive check on the changed edge --
+     * mirroring what a direct click on that edge does.
+     * @param {number} edgeId - the edge whose state was just restored
+     */
+    refreshFeedback(edgeId) {
+        this.clearEdgeHighlights();
+        const edge = this.edges.get(edgeId);
+        this.checkUserSolution(false, this.getEdgeMesh(edgeId), edge);
     }
 
     /** Count the number of elements in an iterable that satisfy a predicate. */
