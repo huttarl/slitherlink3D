@@ -4,6 +4,8 @@ Note, some of these items may be already done even if they're not checked off.
     This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt
     One way to measure difficulty is: how many paths forward are available (inferences that can be made) at each step along the way,
     on average?
+    - [ ] Also, it would be nice to be able to verify that no two puzzles for the same grid
+      are the same -- or the same under rotation & reflection.
 - [ ] quick: add a link from the web UI to the github repo, and vice versa from the README to where the app is hosted online.
     - requires uploading the code to our web site
 - [x] UI: implement an "undo" function, to undo edge guesses.
@@ -20,6 +22,13 @@ Note, some of these items may be already done even if they're not checked off.
     highlighted passively, toggleable via the "Auto-highlight mistakes" checkbox.
     Solution mismatches that don't break a rule are deliberately NOT highlighted
     (that would spoil the puzzle); "Check solution" reports only their count.
+    - [ ] Maybe instead of coloring *edges* red when there are too many filled-in edges to a vertex,
+      color the *vertex* red in that case. Because it's not one edge rather than the others that is the problem.
+      Or similarly in the case when a vertex has exactly one filled-in edge
+      and no edges remaining that could later be marked filled-in. The mistake is specific to the vertex.
+    - [ ] When a face has too many filled-in edges for its clue, or can't get enough walls, highlight the face red.
+    - [ ] Persist these passive highlights, so that the next mistake doesn't remove highlights for
+      the previous one.
     - [ ] maybe later: a "show errors" button that highlights solution mismatches
       on request — a stronger, spoiler-level hint that some players like.
   - [x] tell them if they have failed to make a loop

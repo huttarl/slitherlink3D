@@ -5,7 +5,7 @@
  */
 
 import * as THREE from './three/three.module.min.js';
-import { FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES } from './constants.js';
+import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES } from './constants.js';
 
 /**
  * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
@@ -25,8 +25,22 @@ export function makeInteraction(gameState) {
     let highlightedFace = null;
     let selectedEdge = null;
 
-    // Track if user is dragging, to distinguish from clicks.
-    let didDrag = false;
+    // To distinguish a click from a drag, we track how far the pointer moves
+    // while the button is held: more than DRAG_THRESHOLD_PIXELS means the
+    // user was rotating the camera, not picking an edge.
+    //
+    // We deliberately do NOT use OrbitControls' 'start'/'change' events for
+    // this, as an earlier version did. Their event objects carry nothing but
+    // the event type, and with damping enabled 'change' keeps firing for many
+    // frames after the pointer stops (update() decays the rotation delta
+    // geometrically and dispatches 'change' until the camera moves less than
+    // 1e-6 per frame). A click landing during that settling tail therefore
+    // looked like a drag and was silently swallowed. Pixel distance also has
+    // the advantage of being independent of frame rate, zoom level, and
+    // dampingFactor.
+    let pointerDownX = 0, pointerDownY = 0;
+    // Farthest the pointer has strayed from its starting point in this gesture.
+    let maxPointerMovement = 0;
 
     /** Updates the visual highlight state of a face.
      *
@@ -135,11 +149,16 @@ export function makeInteraction(gameState) {
      * @param {MouseEvent} event - The mouse event
      */
     function onMouseClick(event) {
-        // Suppress click if a drag occurred just before mouseup
-        if (didDrag) {
-            didDrag = false;
-            return;
-        }
+        // Only clicks on the 3D canvas pick things in the scene. Without this
+        // guard, clicking a button or checkbox in the info panel would also
+        // raycast, and could toggle an edge that happens to lie behind the
+        // panel (visible when zoomed in).
+        if (event.target !== sceneManager.renderer.domElement) return;
+
+        // Suppress the click if the pointer moved far enough during this
+        // gesture to count as a drag (i.e. a camera rotation).
+        if (maxPointerMovement > DRAG_THRESHOLD_PIXELS) return;
+
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, sceneManager.camera);
@@ -172,29 +191,45 @@ export function makeInteraction(gameState) {
         sceneManager.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    // Use OrbitControls events to detect dragging
-    function onControlsStart() {
-        didDrag = false;
+    /** Starts tracking a pointer gesture (mouse, touch, or pen).
+     * @private
+     * @param {PointerEvent} event
+     */
+    function onPointerDown(event) {
+        pointerDownX = event.clientX;
+        pointerDownY = event.clientY;
+        maxPointerMovement = 0;
     }
 
-    function onControlsChange() {
-        didDrag = true;
+    /** Tracks how far the pointer strays from where the gesture began.
+     * We keep the maximum rather than just comparing the final position, so
+     * that dragging away and back to the starting pixel still counts as a drag.
+     * @private
+     * @param {PointerEvent} event
+     */
+    function onPointerMove(event) {
+        // Ignore plain hovering: event.buttons is 0 when no button is held
+        // (and 1 while a finger is in contact, for touch).
+        if (event.buttons === 0) return;
+        const movement = Math.hypot(event.clientX - pointerDownX,
+                                    event.clientY - pointerDownY);
+        maxPointerMovement = Math.max(maxPointerMovement, movement);
     }
 
     // Set up event listeners
     window.addEventListener('click', onMouseClick);
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('resize', onWindowResize);
-    sceneManager.controls.addEventListener('start', onControlsStart);
-    sceneManager.controls.addEventListener('change', onControlsChange);
 
     // Return cleanup function
     return {
         // Remove all event listeners when the interaction handler is no longer needed.
         dispose: () => {
             window.removeEventListener('click', onMouseClick);
+            window.removeEventListener('pointerdown', onPointerDown);
+            window.removeEventListener('pointermove', onPointerMove);
             window.removeEventListener('resize', onWindowResize);
-            sceneManager.controls.removeEventListener('start', onControlsStart);
-            sceneManager.controls.removeEventListener('change', onControlsChange);
         }
     };
 }
