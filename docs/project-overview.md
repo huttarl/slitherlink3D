@@ -22,7 +22,7 @@ The Python utilities under `util/` have a pytest suite:
   skipped by default; `pytest --all util/tests` runs everything, and
   `pytest -m slow util/tests` runs only the slow ones.
 - Python deps used by `util/`: `compas`, `networkx`, `matplotlib`, `pytest`
-  (plus `numpy` and `scipy` for `genRandomPolyh.py`).
+  (plus `numpy` and `scipy` for `genRandomPolyh.py` and `genUniformPolyh.py`).
 - Run the suite after changing any file in `util/`.
 - **Generate puzzles**: `util/run_gen.py data/<id>.json` — see
   "Generating polyhedra and puzzles" below.
@@ -164,6 +164,8 @@ those layers subscribe to its observer callbacks instead.
   upgrade the vendored THREE.js).
 - **ideas/** — `TODOs.md` and design notes (e.g. `graph-cycles.txt`).
 - **util/** — Python utilities:
+  - `genUniformPolyh.py` — generates Platonic/Archimedean grid JSON from exact
+    coordinates, verifying uniformity before writing.
   - `obj2json.py` — converts polyHédronisme OBJ → grid JSON.
   - `genRandomPolyh.py` — random polyhedron generator.
   - `genSliPuzzles.py` — puzzle generator: paints faces red/blue, ensures each
@@ -202,9 +204,36 @@ default `python3` may not have them.
 
 ### Step 1: Obtain a grid (polyhedron)
 
-Two sources:
+Three sources:
 
-- **polyHédronisme** (http://levskaya.github.io/polyhedronisme/): construct a
+- **`genUniformPolyh.py`**: for a Platonic or Archimedean solid, whose exact
+  vertex coordinates are known, this is the best source — it writes the grid
+  JSON directly, with no OBJ step:
+
+  ```
+  python3 util/genUniformPolyh.py            # list the solids it knows
+  python3 util/genUniformPolyh.py tO         # write data/tO.json
+  python3 util/genUniformPolyh.py --all      # all of them
+  python3 util/genUniformPolyh.py tO --check # verify without writing
+  ```
+
+  It hulls a vertex list, merges the hull's coplanar triangles back into the
+  real polygonal faces (hexagons, octagons, ...), orders each face's vertices,
+  and winds them outward. Truncations are derived from their Platonic seeds
+  using the cut fraction that keeps the result uniform.
+
+  Every solid is verified before being written — equal edge lengths, equal
+  vertex radii, planar faces, the expected face census, Euler's formula, and
+  consistent winding — and one that fails is *not* written. Requires `numpy`
+  and `scipy`.
+
+  Generating beats importing where it's possible, for a reason worth knowing:
+  the rhombicuboctahedron and rhombicosidodecahedron have Johnson-solid twins
+  with identical face censuses (J37 and J75, both in `data/`), so an OBJ of the
+  wrong one would be nearly impossible to spot by counting faces.
+
+- **polyHédronisme** (http://levskaya.github.io/polyhedronisme/): for anything
+  `genUniformPolyh.py` doesn't cover (Johnson solids, exotica), construct the
   polyhedron interactively, export it as OBJ, then convert:
 
   ```
@@ -300,13 +329,20 @@ progression order. A new grid won't appear in the picker until this has run.
 The project is in active development.
 
 The Python puzzle-generation pipeline (solver + generator) works end-to-end.
-`data/` currently holds 14 grids — Platonic, Archimedean, and Johnson solids,
-up to the 92-face snub dodecahedron — each with generated puzzles whose
-uniqueness was verified by the solver (and can be re-verified any time via
-the slow-marked pytest sweep). Uniqueness checks are time-budgeted, so
-generation stays bounded even where the solver's search would blow up;
-around 150 edges (snub dodecahedron) a puzzle takes a few minutes to
-generate, making that the current practical ceiling.
+`data/` currently holds **26 grids with 72 puzzles**: all 5 Platonic solids,
+all 13 Archimedean solids, and 8 Johnson solids, ranging from the tetrahedron
+(4 faces, 6 edges) to the truncated icosidodecahedron (62 faces, 180 edges).
+Every puzzle's uniqueness was verified by the solver, and can be re-verified
+any time via the slow-marked pytest sweep.
+
+Uniqueness checks are time-budgeted, so generation stays bounded even where
+the solver's search would blow up. Generating a couple of puzzles takes
+seconds on small grids and about 9 minutes at 180 edges, which is roughly the
+practical ceiling today. Notably, cost tracks face composition as much as
+size: the 72-edge truncated cuboctahedron generated ~17x faster than the
+90-edge truncated dodecahedron, whose 20 triangles admit only clues 0-3 and so
+give propagation less to work with (see the difficulty discussion in
+`ideas/TODOs.md`).
 
 On the JS side, the core play loop works end-to-end: pick a polyhedron and
 puzzle (dropdowns backed by `?grid=`/`?puzzle=` URL parameters), mark edges
