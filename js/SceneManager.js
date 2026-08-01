@@ -1,7 +1,8 @@
 import * as THREE from './three/three.module.min.js';
 import { OrbitControls } from './three/OrbitControls.js';
 import { TrackballControls } from './three/TrackballControls.js';
-import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CELEBRATION_SPIN_DEGREES_PER_SEC} from "./constants.js";
+import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CELEBRATION_SPIN_DEGREES_PER_SEC,
+        LEVEL_CAMERA_SECONDS, TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED} from "./constants.js";
 
 // Axis the celebration spin turns about, and the direction levelCamera()
 // restores as "up". Module-level so it isn't rebuilt every frame.
@@ -24,6 +25,9 @@ export class SceneManager {
         // (We spin the camera ourselves rather than using OrbitControls'
         // autoRotate, since TrackballControls has no equivalent.)
         this.isCelebrationSpinning = false;
+        // True while the "Right side up" button's animation is running;
+        // see levelCamera() and updateLevelling().
+        this.isLevelling = false;
         // Timekeeping for the render loop and the solve timer. (THREE.Timer,
         // successor of the deprecated THREE.Clock.) connect(document) hooks
         // the Page Visibility API, so time doesn't accumulate while the tab
@@ -140,12 +144,13 @@ export class SceneManager {
         if (this.controlsStyle === 'trackball') {
             this.controls = new TrackballControls(this.camera, this.renderer.domElement);
             // staticMoving = false gives inertia, the counterpart of
-            // OrbitControls' damping; the factor is how quickly it settles
-            // (higher = settles sooner), so it's roughly the inverse of
-            // OrbitControls' dampingFactor.
+            // OrbitControls' damping -- but note the factor works the opposite
+            // way round: here it's the fraction of the remaining rotation
+            // applied per frame, so HIGHER means the camera keeps up with the
+            // pointer better. See the constants for tuning.
             this.controls.staticMoving = false;
-            this.controls.dynamicDampingFactor = 0.2;
-            this.controls.rotateSpeed = 2.0;
+            this.controls.dynamicDampingFactor = TRACKBALL_DAMPING;
+            this.controls.rotateSpeed = TRACKBALL_ROTATE_SPEED;
         } else {
             this.controls = new OrbitControls(this.camera, this.renderer.domElement);
             this.controls.enableDamping = true;
@@ -174,15 +179,54 @@ export class SceneManager {
 
     /**
      * Restores the view to "right side up": keeps the camera where it is, but
-     * removes any roll, so world up is up on screen again.
+     * rotates away any roll, so world up is up on screen again.
+     *
+     * Animated over LEVEL_CAMERA_SECONDS rather than snapping, because an
+     * instant reorientation is disorienting -- the point of the button is to
+     * recover your bearings, so you need to see which way the view turned.
      *
      * Only meaningful with trackball controls, since OrbitControls never lets
      * the view roll in the first place (there it's harmless but does nothing).
      */
     levelCamera() {
+        // Work out the target orientation by momentarily applying it, then
+        // rewind: slerping quaternions avoids any chance of the interpolated
+        // 'up' passing through the view direction, where lookAt degenerates.
+        const startQuaternion = this.camera.quaternion.clone();
+        const startUp = this.camera.up.clone();
         this.camera.up.set(0, 1, 0);
         this.camera.lookAt(this.controls.target);
-        this.controls.update();
+        this._levelToQuaternion = this.camera.quaternion.clone();
+        this.camera.quaternion.copy(startQuaternion);
+        this.camera.up.copy(startUp);
+
+        this._levelFromQuaternion = startQuaternion;
+        this._levelProgress = 0;
+        this.isLevelling = true;
+    }
+
+    /**
+     * Advances the "right side up" animation, if one is running. Called once
+     * per frame from the render loop, which skips the controls' own update()
+     * while this is in progress -- their lookAt() would otherwise overwrite
+     * the orientation we're interpolating.
+     * @param {number} deltaSeconds - time since the previous frame
+     */
+    updateLevelling(deltaSeconds) {
+        if (!this.isLevelling) return;
+
+        this._levelProgress = Math.min(1, this._levelProgress + deltaSeconds / LEVEL_CAMERA_SECONDS);
+        // Ease in and out, so the turn starts and finishes gently.
+        const t = this._levelProgress * this._levelProgress * (3 - 2 * this._levelProgress);
+        this.camera.quaternion.slerpQuaternions(this._levelFromQuaternion,
+                                                this._levelToQuaternion, t);
+
+        if (this._levelProgress >= 1) {
+            this.isLevelling = false;
+            // Hand a level 'up' back to the controls, so they carry on from
+            // the orientation we just settled into.
+            this.camera.up.set(0, 1, 0);
+        }
     }
 
     /**

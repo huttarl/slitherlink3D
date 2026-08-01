@@ -111,9 +111,9 @@
             background: #bbc;
         }
 
-        /* Undo/redo arrow glyphs (&#x21BA;/&#x21BB;) need a slightly larger
-           font to read clearly at button size. */
-        #undoMove, #redoMove {
+        /* Glyph-only buttons -- undo/redo (&#x21BA;/&#x21BB;) and right-side-up
+           (&#x21E7;) -- need a slightly larger font to read clearly. */
+        #undoMove, #redoMove, #levelCamera {
             font-size: 16px;
             line-height: 1;
         }
@@ -205,7 +205,8 @@
             <!-- Shown by ui.js only with ?controls=trackball, where the view
                  can end up rolled; orbit controls never roll. -->
             <button id="levelCamera" class="hidden" style="margin-top: 1ex"
-                    title="Remove any tilt, so world up is up on screen again">Right side up</button>
+                    title="Right side up: turn the view upright again"
+                    aria-label="Right side up">&#x21E7;</button>
             <div style="margin-top: 1ex; font-size: 14px">
                 <label title="Mark edges in red when they clearly break the rules, as you play">
                     <input type="checkbox" id="highlightViolations" checked>
