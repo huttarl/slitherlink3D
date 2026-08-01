@@ -33,6 +33,26 @@
         }
         #info h3 {
             margin-top: 0;
+            /* Put the title and the repo link on one line, with the link
+               pushed out to the panel's right edge. Baseline alignment keeps
+               the small link sitting on the title's baseline. */
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.6em;
+        }
+
+        /* Repo link on the title line: small and subdued so it doesn't compete
+           with the app name, and costs no vertical space of its own. */
+        #info h3 a {
+            font-size: 12px;
+            font-weight: normal;
+            opacity: 0.75;
+            white-space: nowrap;
+        }
+
+        #info h3 a:hover, #info h3 a:focus {
+            opacity: 1;
         }
         /*.highlight {*/
         /*    background: rgba(255, 255, 255, 0.1);*/
@@ -144,7 +164,10 @@
 <body>
     <div id="canvas-container">
         <div id="info">
-            <h3>Slitherlink 3D</h3>
+            <!-- &#x2197; (north-east arrow) is the conventional hint that a
+                 link opens outside the app. -->
+            <h3>Slitherlink 3D<a target="_blank" rel="noopener noreferrer"
+                    href="https://github.com/huttarl/slitherlink3D">source code &#x2197;</a></h3>
             <!-- Collapsible Instructions -->
             <details>
                 <summary style="cursor: pointer; color: #88ccff; margin-top: 8px;">

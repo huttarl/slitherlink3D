@@ -16,7 +16,9 @@ Note, some of these items may be already done even if they're not checked off.
     on average?
     - [ ] Also, it would be nice to be able to verify that no two puzzles for the same grid
       are the same -- or the same under rotation & reflection.
-- [ ] quick: add a link from the web UI to the github repo, and vice versa from the README to where the app is hosted online.
+- [~] quick: add a link from the web UI to the github repo, and vice versa from the README to where the app is hosted online.
+    - [x] UI -> repo: "source code" link on the panel's title line.
+    - [ ] README -> hosted app: still needs a URL.
     - requires uploading the code to our web site
 - [x] UI: implement an "undo" function, to undo edge guesses.
 - [x] UI: fix the "reset" function, to clear guesses. It may be partially implemented, but doesn't look like it works.
