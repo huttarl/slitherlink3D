@@ -13,7 +13,9 @@
  * TODO: Degrade more gracefully if the file isn't valid.
  */
 export async function loadPuzzleData(relPath) {
-    const response = await fetch(relPath);
+    // no-cache: revalidate rather than trusting a cached copy, since puzzle
+    // files get regenerated during development (see the note in ui.js).
+    const response = await fetch(relPath, {cache: 'no-cache'});
     if (!response.ok) {
         throw new Error(`Failed to load puzzle from ${relPath}: ${response.statusText}`);
     }

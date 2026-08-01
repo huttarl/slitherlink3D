@@ -133,7 +133,13 @@ export function setupUI(gameState) {
  * objects. Fine for playtesting; an in-place scene swap can replace it later.
  */
 async function setupSelectors(puzzleGrid) {
-    const response = await fetch('data/grids.json');
+    // cache: 'no-cache' forces a conditional request rather than trusting a
+    // cached copy. Static servers (including python -m http.server) send no
+    // Cache-Control for data files, so browsers guess a freshness lifetime and
+    // can serve a stale catalogue for a long time -- and because this fetch
+    // happens after page load, even a hard reload doesn't necessarily bypass
+    // it. The server answers 304 when nothing changed, so this stays cheap.
+    const response = await fetch('data/grids.json', {cache: 'no-cache'});
     if (!response.ok) {
         throw new Error(`Failed to load data/grids.json: ${response.statusText}`);
     }

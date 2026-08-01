@@ -123,7 +123,9 @@ function createPolyhedron(vertices, faces) {
  * Note: Grid vertex and face IDs correspond to their array indices in the JSON file
  */
 export async function loadPolyhedronFromJSON(filePath) {
-    const response = await fetch(filePath);
+    // no-cache: revalidate rather than trusting a cached copy, since grid
+    // files get regenerated during development (see the note in ui.js).
+    const response = await fetch(filePath, {cache: 'no-cache'});
     if (!response.ok) {
         throw new Error(`Failed to load polyhedron from ${filePath}: ${response.statusText}`);
     }
