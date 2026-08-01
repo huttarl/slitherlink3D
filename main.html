@@ -164,6 +164,8 @@
             <div style="margin-top: 1ex">
                 <label for="puzzleSelect">Puzzle:</label>
                 <select id="puzzleSelect" title="Choose a puzzle for this polyhedron"></select>
+                <button id="nextPuzzle" style="margin-top: 0"
+                        title="Go on to the next puzzle" disabled>Next &#x25B8;</button>
             </div>
             <button id="checkSolution" style="margin-top: 1ex">Check solution</button>
             <button id="undoMove" style="margin-top: 1ex" title="Undo (Ctrl+Z / Cmd+Z)"
@@ -200,6 +202,11 @@
                 <h2 id="messageTitle">Congratulations!</h2>
                 <p id="messageBody">You solved this <b>Dodecahedron</b>
                     Slitherlink puzzle in <b>1m 42s</b>!</p>
+                <!-- Shown only when the celebration has somewhere to go next;
+                     see setupSelectors() and celebrateSolved() in ui.js. -->
+                <button id="overlayNextPuzzle" class="hidden">Next puzzle &#x25B8;</button>
+                <p id="overlayEndNote" class="hidden">You've solved your way to the
+                    end of the available puzzles!</p>
             </div>
         </div>
     </div>

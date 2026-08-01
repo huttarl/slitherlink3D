@@ -4,6 +4,11 @@
 import {makeInteraction} from "./interaction.js";
 import {GameState} from "./GameState.js";
 import {DEFAULT_GRID} from "./constants.js";
+import {nextPuzzleLocation} from "./catalogue.js";
+
+// Set true once the current puzzle has been solved, so that navigating away
+// from it doesn't pointlessly ask whether to discard the player's marks.
+let currentPuzzleSolved = false;
 
 /**
  * Sets up the UI event listeners for the game.
@@ -22,14 +27,17 @@ export function setupUI(gameState) {
         // Any board change makes the last check's feedback stale.
         hideCheckFeedback();
     };
-    puzzleGrid.onSolved = () => celebrateSolved(gameState);
+    puzzleGrid.onSolved = () => {
+        currentPuzzleSolved = true;
+        celebrateSolved(gameState);
+    };
     // Sync the buttons now: setupScene already loaded a puzzle (and so reset
     // the history) before these observers existed.
     updateUndoRedoButtons(puzzleGrid);
 
-    // Populate the grid and puzzle pickers in the background; the rest of
-    // the UI doesn't depend on them.
-    setupSelectors().catch(err => {
+    // Populate the grid and puzzle pickers, and wire the "Next puzzle"
+    // buttons, in the background; the rest of the UI doesn't depend on them.
+    setupSelectors(puzzleGrid).catch(err => {
         console.error('Could not set up the grid/puzzle selectors:', err);
     });
 
@@ -119,7 +127,7 @@ export function setupUI(gameState) {
  * gives us scene teardown for free, avoiding manual disposal of THREE.js
  * objects. Fine for playtesting; an in-place scene swap can replace it later.
  */
-async function setupSelectors() {
+async function setupSelectors(puzzleGrid) {
     const response = await fetch('data/grids.json');
     if (!response.ok) {
         throw new Error(`Failed to load data/grids.json: ${response.statusText}`);
@@ -138,12 +146,13 @@ async function setupSelectors() {
         gridSelect.appendChild(option);
     }
     gridSelect.addEventListener('change', () => {
+        if (!confirmLeavingPuzzle(puzzleGrid)) {
+            gridSelect.value = currentGrid; // Undo the visible selection.
+            return;
+        }
         // Reload the page with the chosen grid. Drop the puzzle number:
         // it referred to the previous grid's puzzle list.
-        const newParams = new URLSearchParams(window.location.search);
-        newParams.set('grid', gridSelect.value);
-        newParams.delete('puzzle');
-        window.location.search = newParams.toString();
+        goToPuzzle(gridSelect.value, null);
     });
 
     // Puzzle picker: one entry per puzzle of the current grid.
@@ -169,10 +178,76 @@ async function setupSelectors() {
         puzzleSelect.appendChild(option);
     }
     puzzleSelect.addEventListener('change', () => {
-        const newParams = new URLSearchParams(window.location.search);
-        newParams.set('puzzle', puzzleSelect.value);
-        window.location.search = newParams.toString();
+        if (!confirmLeavingPuzzle(puzzleGrid)) {
+            puzzleSelect.value = String(currentPuzzle); // Undo the selection.
+            return;
+        }
+        goToPuzzle(currentGrid, Number(puzzleSelect.value));
     });
+
+    // "Next puzzle": one button in the panel (to skip ahead mid-solve) and
+    // one in the celebration overlay (the natural "what's next?" moment).
+    // Both walk the catalogue's progression order.
+    const next = nextPuzzleLocation(catalogue, currentGrid, currentPuzzle);
+    const panelNextButton = document.getElementById('nextPuzzle');
+    const overlayNextButton = document.getElementById('overlayNextPuzzle');
+    if (next === null) {
+        // End of the catalogue: leave the panel button disabled, and let the
+        // overlay say so rather than offering a button that does nothing.
+        document.getElementById('overlayEndNote').classList.remove('hidden');
+        return;
+    }
+    panelNextButton.disabled = false;
+    panelNextButton.addEventListener('click', () => {
+        if (!confirmLeavingPuzzle(puzzleGrid)) return;
+        goToPuzzle(next.file, next.puzzle);
+    });
+    overlayNextButton.classList.remove('hidden');
+    overlayNextButton.addEventListener('click', (event) => {
+        // Don't let the click also reach the overlay's dismiss handler.
+        event.stopPropagation();
+        goToPuzzle(next.file, next.puzzle);
+    });
+}
+
+/**
+ * Navigates to a puzzle by reloading with new URL parameters (see the note
+ * on setupSelectors for why a reload).
+ * @param {string} file - grid file stem, e.g. 'cube'
+ * @param {number|null} puzzleNumber - 1-based puzzle number, or null to drop
+ *     the parameter (so the new grid starts at its first puzzle)
+ */
+function goToPuzzle(file, puzzleNumber) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('grid', file);
+    if (puzzleNumber === null) {
+        params.delete('puzzle');
+    } else {
+        params.set('puzzle', String(puzzleNumber));
+    }
+    window.location.search = params.toString();
+}
+
+/**
+ * Asks the player before abandoning a partly-worked puzzle, since navigating
+ * reloads the page and the undo history goes with it. Silent when there's
+ * nothing to lose: an untouched board, or one already solved.
+ *
+ * A non-empty undo history is our test for "has done something here". It only
+ * ever grows from player actions (edge clicks, Reset, Clear errors), so it
+ * can't produce false alarms, and it's O(1) rather than a scan of every edge.
+ * It's also the more accurate question to ask, since it's the history itself
+ * that a page reload destroys: after a Reset the board looks untouched, yet
+ * one Undo would bring the player's work back -- so that IS worth asking about.
+ *
+ * @param {PuzzleGrid} puzzleGrid
+ * @returns {boolean} true if it's OK to navigate away
+ */
+function confirmLeavingPuzzle(puzzleGrid) {
+    if (currentPuzzleSolved) return true;
+    if (puzzleGrid.undoStack.length === 0) return true;
+    return window.confirm(
+        'Leave this puzzle? Your marks on it will be lost.');
 }
 
 /**
@@ -205,12 +280,12 @@ function showCheckResults(result) {
         // No wrong marks: report why the puzzle nevertheless isn't solved.
         let message;
         if (result.clueViolations.length > 0) {
-            message = 'No wrong marks so far, but not every clue is satisfied yet.';
+            message = 'Looks good so far! (Some clues remain unsatisfied.)';
         } else {
             const reasons = {
                 noEdges: "You haven't filled in any edges yet.",
-                incomplete: 'No wrong marks so far, but the loop is not complete.',
-                multipleLoops: 'No wrong marks so far, but there is more than one loop.',
+                incomplete: 'Looks good so far! (But the loop is not yet complete.)',
+                multipleLoops: 'There is more than one loop!',
             };
             message = reasons[result.loopCheck?.reason] ?? 'Not solved yet.';
         }

@@ -1,4 +1,14 @@
 Note, some of these items may be already done even if they're not checked off.
+- [ ] Make the info about the polyhedra and their categories more front-and-center.
+    Each grid file already includes categories (many-to-many), but we don't show them yet.
+    Include a link to info about each polyhedron, and each category. Wikipedia would be a
+    defensible standard, but I don't really want to support that anymore. What to use instead?
+    - [ ] A serious geometer would even want to browse or filter by category, e.g. Johnson solids.
+- [ ] quick: fix "black" to "dark blue" in instructions.
+- [ ] At some point, it would be good to save persistent state about which puzzles the user
+    has solved. Then completionists can make sure they've done all of them. The dropdown
+    pickers could reflect which grids and puzzles are done, and the panel could show that state
+    for the current puzzle. (Maybe even "Solved in 4m55s.")
 - [ ] puzzle generation: try to make sure that puzzles are fun, not just uniquely solvable.
     Can we measure whether they're trivially propagatable or require deep trial and error?
     This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt
@@ -39,10 +49,14 @@ Note, some of these items may be already done even if they're not checked off.
 - [~] Add a "show solution" button
     - [ ] This is available in the debug panel. Is that sufficient?
 - [ ] maybe add a "hint" button.
-- [~] Eventually, we'll need a button to go on to the next puzzle, or select
+- [x] Eventually, we'll need a button to go on to the next puzzle, or select
   another puzzle.
+    ("Next" appears both in the panel and in the solved-celebration overlay; it
+    walks the catalogue order. Leaving a partly-worked puzzle asks first.)
   - [ ] when we do, we'll need to be careful to 'dispose()' of THREE.js objects,
     - and also remove bidirectional references.
+    - (Sidestepped for now: changing grid/puzzle reloads the page, which
+      disposes everything for free.)
   - [x] somehow we'll need to implement a catalogue of available grids.
 - [ ] Add the ability to "color" faces to reflect "inside" vs. "outside". User selects a
     "color" and then can click on a face to tint it that color. Implementation would have to
