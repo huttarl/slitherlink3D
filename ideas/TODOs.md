@@ -14,12 +14,33 @@ Note, some of these items may be already done even if they're not checked off.
     This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt
     One way to measure difficulty is: how many paths forward are available (inferences that can be made) at each step along the way,
     on average?
+    - Data point (Aug 2026, from generating the Archimedean solids): our solver's own
+      running time is already a rough proxy for "how much search this puzzle needs,"
+      and it does NOT track grid size closely. Generating 2 puzzles took:
+        truncated cuboctahedron (72 edges): 4 sec
+        truncated dodecahedron (90 edges): 68 sec
+        rhombicosidodecahedron (120 edges): 150 sec
+        truncated icosidodecahedron (180 edges): 560 sec
+      So bC, though smaller, was 17x faster than tD. The likely reason is face
+      composition rather than size: tD has 20 triangles, whose clues can only be 0-3,
+      whereas bC's squares/hexagons/octagons admit higher, more informative clues that
+      propagate further. If that's right, then propagation-vs-search really is a
+      property we can measure, and clue *informativeness* (a function of face degree)
+      is a lever for tuning difficulty -- possibly per face, when choosing which
+      clues to keep in genSliPuzzles' Phase B.
+      Caveat: solver time conflates "hard for a human" with "hard for our particular
+      solver," and it's measured over whole generation runs (many uniqueness checks
+      on random clue orderings), not per puzzle. Worth measuring deliberately rather
+      than inferring from these numbers.
     - [ ] Also, it would be nice to be able to verify that no two puzzles for the same grid
       are the same -- or the same under rotation & reflection.
 - [~] quick: add a link from the web UI to the github repo, and vice versa from the README to where the app is hosted online.
     - [x] UI -> repo: "source code" link on the panel's title line.
     - [ ] README -> hosted app: still needs a URL.
     - requires uploading the code to our web site
+- [ ] Celebration:
+    - [ ] Add some "confetti" at the beginning.
+    - [ ] Besides just rotating the shape, "gyrate" it, i.e. also rotate the axis of rotation (slowly) so that we get to see all sides equally well.
 - [x] UI: implement an "undo" function, to undo edge guesses.
 - [x] UI: fix the "reset" function, to clear guesses. It may be partially implemented, but doesn't look like it works.
 - [ ] In JS code, why are we copying data from grid to puzzleGrid, instead of inheriting it?

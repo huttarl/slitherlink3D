@@ -51,6 +51,19 @@
          "numPuzzles": 3
       },
       {
+         "file": "O",
+         "gridId": "O",
+         "gridName": "Octahedron",
+         "categories": [
+            "Platonic solid",
+            "deltahedron"
+         ],
+         "faces": 8,
+         "edges": 12,
+         "vertices": 6,
+         "numPuzzles": 3
+      },
+      {
          "file": "J3",
          "gridId": "J3",
          "gridName": "Triangular cupola (J3)",
@@ -63,6 +76,18 @@
          "numPuzzles": 3
       },
       {
+         "file": "tT",
+         "gridId": "tT",
+         "gridName": "Truncated tetrahedron",
+         "categories": [
+            "Archimedean solid"
+         ],
+         "faces": 8,
+         "edges": 18,
+         "vertices": 12,
+         "numPuzzles": 3
+      },
+      {
          "file": "J10",
          "gridId": "J10",
          "gridName": "Gyroelongated square pyramid (J10)",
@@ -72,6 +97,19 @@
          "faces": 13,
          "edges": 20,
          "vertices": 9,
+         "numPuzzles": 3
+      },
+      {
+         "file": "aC",
+         "gridId": "aC",
+         "gridName": "Cuboctahedron",
+         "categories": [
+            "Archimedean solid",
+            "quasiregular polyhedron"
+         ],
+         "faces": 14,
+         "edges": 24,
+         "vertices": 12,
          "numPuzzles": 3
       },
       {
@@ -99,6 +137,31 @@
          "numPuzzles": 5
       },
       {
+         "file": "tC",
+         "gridId": "tC",
+         "gridName": "Truncated cube",
+         "categories": [
+            "Archimedean solid"
+         ],
+         "faces": 14,
+         "edges": 36,
+         "vertices": 24,
+         "numPuzzles": 3
+      },
+      {
+         "file": "tO",
+         "gridId": "tO",
+         "gridName": "Truncated octahedron",
+         "categories": [
+            "Archimedean solid",
+            "parallelohedron"
+         ],
+         "faces": 14,
+         "edges": 36,
+         "vertices": 24,
+         "numPuzzles": 3
+      },
+      {
          "file": "J37",
          "gridId": "J37",
          "gridName": "Elongated square gyrobicupola (J37)",
@@ -111,6 +174,56 @@
          "numPuzzles": 3
       },
       {
+         "file": "eC",
+         "gridId": "eC",
+         "gridName": "Rhombicuboctahedron",
+         "categories": [
+            "Archimedean solid"
+         ],
+         "faces": 26,
+         "edges": 48,
+         "vertices": 24,
+         "numPuzzles": 3
+      },
+      {
+         "file": "aD",
+         "gridId": "aD",
+         "gridName": "Icosidodecahedron",
+         "categories": [
+            "Archimedean solid",
+            "quasiregular polyhedron"
+         ],
+         "faces": 32,
+         "edges": 60,
+         "vertices": 30,
+         "numPuzzles": 2
+      },
+      {
+         "file": "sC",
+         "gridId": "sC",
+         "gridName": "Snub cube",
+         "categories": [
+            "Archimedean solid",
+            "chiral polyhedron"
+         ],
+         "faces": 38,
+         "edges": 60,
+         "vertices": 24,
+         "numPuzzles": 2
+      },
+      {
+         "file": "bC",
+         "gridId": "bC",
+         "gridName": "Truncated cuboctahedron",
+         "categories": [
+            "Archimedean solid"
+         ],
+         "faces": 26,
+         "edges": 72,
+         "vertices": 48,
+         "numPuzzles": 2
+      },
+      {
          "file": "J47",
          "gridId": "J47",
          "gridName": "Gyroelongated pentagonal cupolarotunda (J47)",
@@ -121,6 +234,18 @@
          "edges": 80,
          "vertices": 35,
          "numPuzzles": 3
+      },
+      {
+         "file": "tD",
+         "gridId": "tD",
+         "gridName": "Truncated dodecahedron",
+         "categories": [
+            "Archimedean solid"
+         ],
+         "faces": 32,
+         "edges": 90,
+         "vertices": 60,
+         "numPuzzles": 2
       },
       {
          "file": "tI",
@@ -159,6 +284,18 @@
          "numPuzzles": 3
       },
       {
+         "file": "eD",
+         "gridId": "eD",
+         "gridName": "Rhombicosidodecahedron",
+         "categories": [
+            "Archimedean solid"
+         ],
+         "faces": 62,
+         "edges": 120,
+         "vertices": 60,
+         "numPuzzles": 2
+      },
+      {
          "file": "sD",
          "gridId": "sD",
          "gridName": "Snub dodecahedron",
@@ -169,6 +306,18 @@
          "edges": 150,
          "vertices": 60,
          "numPuzzles": 3
+      },
+      {
+         "file": "bD",
+         "gridId": "bD",
+         "gridName": "Truncated icosidodecahedron",
+         "categories": [
+            "Archimedean solid"
+         ],
+         "faces": 62,
+         "edges": 180,
+         "vertices": 120,
+         "numPuzzles": 2
       }
    ]
 }
