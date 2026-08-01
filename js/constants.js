@@ -17,6 +17,9 @@ export const DRAG_THRESHOLD_PIXELS = 5;
 export const FACE_DEFAULT_COLOR = new THREE.Color(0xeeeeee);
 export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44); // Used for debugging
 
+// How fast the view spins while celebrating a solved puzzle.
+export const CELEBRATION_SPIN_DEGREES_PER_SEC = 30;
+
 // Grid (polyhedron) shown when the URL has no ?grid= parameter.
 // The value is a data/ filename stem (see data/grids.json), which can
 // differ from the grid's internal gridId.

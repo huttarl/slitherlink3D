@@ -23,9 +23,14 @@ async function main() {
         // getDelta()/getElapsed() (Timer separates advancing from reading,
         // unlike the old THREE.Clock).
         sceneManager.timer.update();
+        const delta = sceneManager.timer.getDelta();
 
-        // OrbitControls update is required if autorotating.
-        sceneManager.controls.update(sceneManager.timer.getDelta());
+        // Spin the view while celebrating a solved puzzle (a no-op otherwise).
+        sceneManager.updateCelebrationSpin(delta);
+
+        // Required for damping/inertia in both control schemes. (Trackball
+        // ignores the argument; orbit uses it.)
+        sceneManager.controls.update(delta);
 
         // Render the scene
         gameState.render();

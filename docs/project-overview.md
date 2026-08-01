@@ -322,7 +322,13 @@ progression order. A new grid won't appear in the picker until this has run.
 - **Coordinate system**: Right-handed with Z-up orientation
 - **Edge interaction**: Click edges to cycle through unknown→filledIn→ruledOut→unknown
 - **Face interaction**: Click faces to highlight them (debugging feature)
-- **Camera controls**: OrbitControls for 3D navigation with zoom constraints
+- **Camera controls**: OrbitControls by default — it keeps the view level, so
+  the player can't get disoriented, but dragging stops at the poles. Loading
+  with `?controls=trackball` switches to TrackballControls for unconstrained
+  tumbling, and reveals a "Right side up" button to undo any resulting roll.
+  Clue digits stay legible either way, since `clueRenderer` rolls them toward
+  the camera each frame. (Which control scheme players prefer is still an open
+  question — hence the URL parameter rather than a committed choice.)
 
 ## Current State & TODOs
 

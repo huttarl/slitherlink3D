@@ -1,6 +1,11 @@
 import * as THREE from './three/three.module.min.js';
 import { OrbitControls } from './three/OrbitControls.js';
-import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM} from "./constants.js";
+import { TrackballControls } from './three/TrackballControls.js';
+import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CELEBRATION_SPIN_DEGREES_PER_SEC} from "./constants.js";
+
+// Axis the celebration spin turns about, and the direction levelCamera()
+// restores as "up". Module-level so it isn't rebuilt every frame.
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 /**
  * Manages all THREE.js scene objects and rendering components.
@@ -15,6 +20,10 @@ export class SceneManager {
         this.renderer = null;
         this.camera = null;
         this.controls = null;
+        // True while the solved-puzzle celebration is spinning the view.
+        // (We spin the camera ourselves rather than using OrbitControls'
+        // autoRotate, since TrackballControls has no equivalent.)
+        this.isCelebrationSpinning = false;
         // Timekeeping for the render loop and the solve timer. (THREE.Timer,
         // successor of the deprecated THREE.Clock.) connect(document) hooks
         // the Page Visibility API, so time doesn't accumulate while the tab
@@ -66,7 +75,11 @@ export class SceneManager {
         );
 
         // Set up controls
-        this.setupControls({minDistance: CAMERA_MIN_ZOOM, maxDistance: CAMERA_MAX_ZOOM});
+        // ?controls=trackball opts into free rotation; anything else (or
+        // nothing) gets the default orbit controls. See setupControls.
+        const controlsStyle = new URLSearchParams(window.location.search).get('controls');
+        this.setupControls({minDistance: CAMERA_MIN_ZOOM, maxDistance: CAMERA_MAX_ZOOM,
+                            style: controlsStyle});
     }
 
     /**
@@ -96,23 +109,109 @@ export class SceneManager {
     }
 
     /**
-     * Sets up camera controls
-     * @param {Object} config - Controls configuration
+     * Sets up camera controls.
+     *
+     * Two schemes, chosen by config.style:
+     *
+     * - 'orbit' (default): OrbitControls keeps the camera's up direction
+     *   pointing at world +Y, so the view never rolls and the player can't get
+     *   disoriented. The cost is that dragging stops at the poles -- you can
+     *   still reach every face by dragging sideways, but the vertical motion
+     *   hits a wall, which players read as "I can't turn it that way."
+     * - 'trackball': TrackballControls rotates freely in any direction, with no
+     *   up direction maintained, so the polyhedron can be tumbled to any
+     *   orientation (including upside-down). The view can end up rolled, hence
+     *   the "Right side up" button that ui.js shows in this mode.
+     *
+     * Clue digits stay legible either way: clueRenderer rolls them toward the
+     * camera every frame.
+     *
+     * @param {Object} config - {minDistance, maxDistance, style}
      */
     setupControls(config = {}) {
         if (!this.camera || !this.renderer) {
             throw new Error('Camera and renderer must be set up before controls');
         }
-        
-        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+
+        this.controlsStyle = config.style === 'trackball' ? 'trackball' : 'orbit';
+        const minDistance = config.minDistance || 3;
+        const maxDistance = config.maxDistance || 20;
+
+        if (this.controlsStyle === 'trackball') {
+            this.controls = new TrackballControls(this.camera, this.renderer.domElement);
+            // staticMoving = false gives inertia, the counterpart of
+            // OrbitControls' damping; the factor is how quickly it settles
+            // (higher = settles sooner), so it's roughly the inverse of
+            // OrbitControls' dampingFactor.
+            this.controls.staticMoving = false;
+            this.controls.dynamicDampingFactor = 0.2;
+            this.controls.rotateSpeed = 2.0;
+        } else {
+            this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+            this.controls.enableDamping = true;
+            // Default dampingFactor is 0.05, but we want more because when the
+            // shape keeps rotating it's hard to click on the right thing.
+            this.controls.dampingFactor = 0.1;
+        }
+
         this.controls.target.set(0, 0, 0);
-        this.controls.minDistance = config.minDistance || 3;
-        this.controls.maxDistance = config.maxDistance || 20;
-        this.controls.enableDamping = true;
-        // Default dampingFactor is 0.05, but we want more because when the
-        // shape keeps rotating it's hard to click on the right thing.
-        this.controls.dampingFactor = 0.1;
+        this.controls.minDistance = minDistance;
+        this.controls.maxDistance = maxDistance;
+
+        // TrackballControls converts pointer positions into rotations using a
+        // cached rectangle of the canvas, which it only measures in
+        // handleResize(). It calls that itself on connect, but at that moment
+        // the freshly appended canvas can still measure zero, leaving the
+        // rectangle empty and every drag computing NaN. Measure again now, and
+        // whenever the window resizes (see onWindowResize). OrbitControls
+        // needs no equivalent.
+        if (this.controls.handleResize) {
+            this.controls.handleResize();
+        }
+
         this.controls.update();
+    }
+
+    /**
+     * Restores the view to "right side up": keeps the camera where it is, but
+     * removes any roll, so world up is up on screen again.
+     *
+     * Only meaningful with trackball controls, since OrbitControls never lets
+     * the view roll in the first place (there it's harmless but does nothing).
+     */
+    levelCamera() {
+        this.camera.up.set(0, 1, 0);
+        this.camera.lookAt(this.controls.target);
+        this.controls.update();
+    }
+
+    /**
+     * Starts/stops the celebration spin. We rotate the camera about world up
+     * ourselves rather than using OrbitControls' autoRotate, so that the
+     * celebration behaves the same under both control schemes (TrackballControls
+     * has no autoRotate).
+     */
+    startCelebrationSpin() {
+        this.isCelebrationSpinning = true;
+    }
+
+    stopCelebrationSpin() {
+        this.isCelebrationSpinning = false;
+    }
+
+    /**
+     * Advances the celebration spin, if it's running. Called once per frame
+     * from the render loop.
+     * @param {number} deltaSeconds - time since the previous frame
+     */
+    updateCelebrationSpin(deltaSeconds) {
+        if (!this.isCelebrationSpinning) return;
+        const angle = THREE.MathUtils.degToRad(CELEBRATION_SPIN_DEGREES_PER_SEC) * deltaSeconds;
+        // Orbit the camera around the target, about world up.
+        this.camera.position.sub(this.controls.target)
+            .applyAxisAngle(WORLD_UP, angle)
+            .add(this.controls.target);
+        this.camera.lookAt(this.controls.target);
     }
 
     /**
@@ -187,6 +286,10 @@ export class SceneManager {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
+            // TrackballControls caches the canvas rectangle; re-measure it.
+            if (this.controls && this.controls.handleResize) {
+                this.controls.handleResize();
+            }
         }
     }
 

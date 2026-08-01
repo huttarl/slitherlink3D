@@ -63,6 +63,16 @@ export function setupUI(gameState) {
         }
     });
 
+    // "Right side up" only matters when the view can roll, i.e. with trackball
+    // controls; with orbit controls it would be a button that does nothing.
+    const levelButton = document.getElementById('levelCamera');
+    if (gameState.sceneManager.controlsStyle === 'trackball') {
+        levelButton.classList.remove('hidden');
+        levelButton.addEventListener('click', () => {
+            gameState.sceneManager.levelCamera();
+        });
+    }
+
     const checkSolutionButton = document.getElementById('checkSolution');
     checkSolutionButton.addEventListener('click', () => {
         const result = gameState.getPuzzleGrid().checkUserSolution(true);
@@ -394,9 +404,7 @@ export function updateUndoRedoButtons(puzzleGrid) {
  * @param {GameState} gameState
  */
 function celebrateSolved(gameState) {
-    const controls = gameState.sceneManager.controls;
-    controls.autoRotateSpeed = 10.0;
-    controls.autoRotate = true;
+    gameState.sceneManager.startCelebrationSpin();
 
     const name = gameState.getPuzzleGrid().gridName;
     const elapsedTimeSec = Math.round(gameState.sceneManager.timer.getElapsed());
@@ -430,8 +438,6 @@ export function displayOverlay(title, message) {
 function hideOverlay() {
     document.getElementById('overlayMessage').classList.add('hidden');
 
-    // Stop auto-rotation if enabled.
-    const gameState = GameState.getInstance();
-    const controls = gameState.sceneManager.controls;
-    controls.autoRotate = false;
+    // Stop the celebration spin, if it was running.
+    GameState.getInstance().sceneManager.stopCelebrationSpin();
 }

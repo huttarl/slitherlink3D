@@ -202,6 +202,10 @@
             <button id="redoMove" style="margin-top: 1ex" title="Redo (Ctrl+Shift+Z or Ctrl+Y)"
                     aria-label="Redo" disabled>&#x21BB;</button>
             <button id="resetPuzzle" style="margin-top: 1ex">Reset</button>
+            <!-- Shown by ui.js only with ?controls=trackball, where the view
+                 can end up rolled; orbit controls never roll. -->
+            <button id="levelCamera" class="hidden" style="margin-top: 1ex"
+                    title="Remove any tilt, so world up is up on screen again">Right side up</button>
             <div style="margin-top: 1ex; font-size: 14px">
                 <label title="Mark edges in red when they clearly break the rules, as you play">
                     <input type="checkbox" id="highlightViolations" checked>
