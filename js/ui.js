@@ -100,6 +100,11 @@ export function setupUI(gameState) {
     });
 
     document.addEventListener('keydown', e => {
+        // While the confirmation dialog is up it owns the keyboard: it handles
+        // Escape itself, and undoing behind a modal question would be
+        // confusing.
+        if (isConfirmDialogOpen()) return;
+
         if (e.key === 'Escape') hideOverlay();
 
         // Undo/redo keyboard shortcuts: Ctrl+Z (Cmd+Z on Mac) to undo;
@@ -145,14 +150,16 @@ async function setupSelectors(puzzleGrid) {
         option.selected = (grid.file === currentGrid);
         gridSelect.appendChild(option);
     }
-    gridSelect.addEventListener('change', () => {
-        if (!confirmLeavingPuzzle(puzzleGrid)) {
-            gridSelect.value = currentGrid; // Undo the visible selection.
-            return;
+    gridSelect.addEventListener('change', async () => {
+        // Keep the picker showing the puzzle that's actually loaded until the
+        // move is confirmed; if we do navigate, the reload sets it from the URL.
+        const chosen = gridSelect.value;
+        gridSelect.value = currentGrid;
+        if (await confirmLeavingPuzzle(puzzleGrid)) {
+            // Reload the page with the chosen grid. Drop the puzzle number:
+            // it referred to the previous grid's puzzle list.
+            goToPuzzle(chosen, null);
         }
-        // Reload the page with the chosen grid. Drop the puzzle number:
-        // it referred to the previous grid's puzzle list.
-        goToPuzzle(gridSelect.value, null);
     });
 
     // Puzzle picker: one entry per puzzle of the current grid.
@@ -177,12 +184,12 @@ async function setupSelectors(puzzleGrid) {
         option.selected = (n === currentPuzzle);
         puzzleSelect.appendChild(option);
     }
-    puzzleSelect.addEventListener('change', () => {
-        if (!confirmLeavingPuzzle(puzzleGrid)) {
-            puzzleSelect.value = String(currentPuzzle); // Undo the selection.
-            return;
+    puzzleSelect.addEventListener('change', async () => {
+        const chosen = Number(puzzleSelect.value);
+        puzzleSelect.value = String(currentPuzzle); // See the grid picker above.
+        if (await confirmLeavingPuzzle(puzzleGrid)) {
+            goToPuzzle(currentGrid, chosen);
         }
-        goToPuzzle(currentGrid, Number(puzzleSelect.value));
     });
 
     // "Next puzzle": one button in the panel (to skip ahead mid-solve) and
@@ -198,9 +205,10 @@ async function setupSelectors(puzzleGrid) {
         return;
     }
     panelNextButton.disabled = false;
-    panelNextButton.addEventListener('click', () => {
-        if (!confirmLeavingPuzzle(puzzleGrid)) return;
-        goToPuzzle(next.file, next.puzzle);
+    panelNextButton.addEventListener('click', async () => {
+        if (await confirmLeavingPuzzle(puzzleGrid)) {
+            goToPuzzle(next.file, next.puzzle);
+        }
     });
     overlayNextButton.classList.remove('hidden');
     overlayNextButton.addEventListener('click', (event) => {
@@ -243,11 +251,69 @@ function goToPuzzle(file, puzzleNumber) {
  * @param {PuzzleGrid} puzzleGrid
  * @returns {boolean} true if it's OK to navigate away
  */
-function confirmLeavingPuzzle(puzzleGrid) {
+async function confirmLeavingPuzzle(puzzleGrid) {
     if (currentPuzzleSolved) return true;
     if (puzzleGrid.undoStack.length === 0) return true;
-    return window.confirm(
-        'Leave this puzzle? Your marks on it will be lost.');
+    return confirmDialog('Leave this puzzle? Your marks on it will be lost.',
+                         'Leave puzzle');
+}
+
+/**
+ * Asks the player a yes/no question, using our own overlay rather than
+ * window.confirm() (whose placement and styling don't match the app).
+ *
+ * Unlike window.confirm this can't block, so it returns a promise: callers
+ * must await it.
+ *
+ * Cancelling is the safe answer, so Escape and a click on the backdrop
+ * outside the message box both count as "no". The confirm button takes focus,
+ * so Enter accepts (native button behavior -- no key handling needed for it).
+ *
+ * @param {string} message - the question to show
+ * @param {string} [confirmLabel] - label for the confirm button; name the
+ *     action ("Leave puzzle") rather than saying "OK" where possible
+ * @returns {Promise<boolean>} true if the player confirmed
+ */
+function confirmDialog(message, confirmLabel = 'OK') {
+    const dialog = document.getElementById('confirmDialog');
+    document.getElementById('confirmMessage').textContent = message;
+    const okButton = document.getElementById('confirmOK');
+    const cancelButton = document.getElementById('confirmCancel');
+    okButton.textContent = confirmLabel;
+    dialog.classList.remove('hidden');
+    okButton.focus();
+
+    return new Promise(resolve => {
+        // All the listeners are removed together, so the dialog leaves no
+        // handlers behind and can be reused for the next question.
+        function finish(answer) {
+            dialog.classList.add('hidden');
+            okButton.removeEventListener('click', onOK);
+            cancelButton.removeEventListener('click', onCancel);
+            dialog.removeEventListener('click', onBackdropClick);
+            document.removeEventListener('keydown', onKeyDown);
+            resolve(answer);
+        }
+        function onOK() { finish(true); }
+        function onCancel() { finish(false); }
+        function onBackdropClick(event) {
+            // Only the dark area around the box, not the box itself.
+            if (event.target === dialog) finish(false);
+        }
+        function onKeyDown(event) {
+            if (event.key === 'Escape') finish(false);
+        }
+
+        okButton.addEventListener('click', onOK);
+        cancelButton.addEventListener('click', onCancel);
+        dialog.addEventListener('click', onBackdropClick);
+        document.addEventListener('keydown', onKeyDown);
+    });
+}
+
+/** True while the confirmation dialog is waiting for an answer. */
+function isConfirmDialogOpen() {
+    return !document.getElementById('confirmDialog').classList.contains('hidden');
 }
 
 /**

@@ -130,6 +130,12 @@
             cursor: auto;
         }
 
+        /* Buttons inside an overlay message box (celebration, confirmation). */
+        .message-box button {
+            margin: 2ex 0.4em 0;
+            padding: 0.3em 0.9em;
+        }
+
         .hidden {
             display: none;
         }
@@ -153,7 +159,7 @@
                         <li>Click edges to mark them as part of the loop (black), not part of the loop
                         (white), or unknown (gray).</li>
                         <li>Drag to rotate. Scroll to zoom.</li>
-                        <li><a target="_blank" rel="noopener noreferrer" href="https://en.wikipedia.org/wiki/Slitherlink">More info and strategy tips</a></li>
+                        <li><a target="_blank" rel="noopener noreferrer" href="https://jonathanolson.net/slitherlink/">More info and strategy tips</a></li>
                     </ul>
                 </div>
             </details>
@@ -207,6 +213,17 @@
                 <button id="overlayNextPuzzle" class="hidden">Next puzzle &#x25B8;</button>
                 <p id="overlayEndNote" class="hidden">You've solved your way to the
                     end of the available puzzles!</p>
+            </div>
+        </div>
+        <!-- Themed stand-in for window.confirm(); driven by confirmDialog()
+             in ui.js. Shares the .overlay / .message-box styling with the
+             celebration above, but is a separate element so the two dialogs
+             don't have to save and restore each other's contents. -->
+        <div id="confirmDialog" class="hidden overlay">
+            <div class="message-box">
+                <p id="confirmMessage"></p>
+                <button id="confirmOK">OK</button>
+                <button id="confirmCancel">Cancel</button>
             </div>
         </div>
     </div>
