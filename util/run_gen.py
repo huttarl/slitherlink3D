@@ -9,9 +9,16 @@ Wraps the generator so that:
     has compas/networkx/matplotlib installed — the default python3 may not).
 
 Usage:
-    util/run_gen.py <grid.json> [num_puzzles] [timeout_seconds]
+    util/run_gen.py [--quiet|--verbose] <grid.json> [num_puzzles] [timeout_seconds]
 
 Defaults: num_puzzles=1, timeout_seconds=60.
+
+--quiet (-q) and --verbose (-v) are passed straight through to the
+generator, which uses them to set its stderr verbosity: --quiet leaves
+only errors, warnings and the outcome of the run, --verbose adds per-edge
+detail. Note that --quiet still lets errors through, so it is a better
+way to keep a batch run's output manageable than redirecting stderr to
+/dev/null, which hides real failures too.
 
 On timeout, the generator is first sent SIGINT so it can output any
 puzzles that were already completed (it catches KeyboardInterrupt and
@@ -36,24 +43,47 @@ GRACE_SECONDS = 15
 
 
 def usage():
-    print("Usage: util/run_gen.py <grid.json> [num_puzzles] [timeout_seconds]",
+    print("Usage: util/run_gen.py [--quiet|--verbose] <grid.json> "
+          "[num_puzzles] [timeout_seconds]", file=sys.stderr)
+    print("  -q, --quiet    only errors, warnings and the outcome of the run",
+          file=sys.stderr)
+    print("  -v, --verbose  add per-edge/per-face detail (very wordy)",
           file=sys.stderr)
     sys.exit(1)
 
 
 def main():
-    if len(sys.argv) < 2 or len(sys.argv) > 4:
+    # The flags may appear anywhere among the arguments; everything else is
+    # positional, in the order given in usage().
+    flags = []
+    positional = []
+    for arg in sys.argv[1:]:
+        if arg in ("-q", "--quiet", "-v", "--verbose"):
+            flags.append(arg)
+        elif arg.startswith("-"):
+            print(f"run_gen.py: unrecognized option '{arg}'", file=sys.stderr)
+            usage()  # exits
+        else:
+            positional.append(arg)
+
+    if len(positional) < 1 or len(positional) > 3:
         usage()  # exits
-    grid_file = sys.argv[1]
-    num_puzzles = sys.argv[2] if len(sys.argv) >= 3 else DEFAULT_NUM_PUZZLES
-    timeout = float(sys.argv[3]) if len(sys.argv) == 4 else DEFAULT_TIMEOUT_SECONDS
+    grid_file = positional[0]
+    num_puzzles = positional[1] if len(positional) >= 2 else DEFAULT_NUM_PUZZLES
+    timeout = float(positional[2]) if len(positional) == 3 else DEFAULT_TIMEOUT_SECONDS
 
     generator = Path(__file__).resolve().parent / "genSliPuzzles.py"
-    # Force the non-interactive backend for the child process only.
-    env = dict(os.environ, MPLBACKEND="Agg")
+    # Force the non-interactive backend for the child process only. Having done
+    # that, silence matplotlib's complaint that the backend can't show a
+    # figure: the generator calls plt.pause and plt.show to animate its
+    # progress, which is exactly what we don't want here, so the warning is
+    # telling us something we already arranged. Suppressed by message so that
+    # other warnings still come through, including under --quiet.
+    env = dict(os.environ, MPLBACKEND="Agg",
+               PYTHONWARNINGS="ignore:FigureCanvasAgg is non-interactive")
     # sys.executable is the interpreter running this wrapper (python3.11),
     # so the generator gets the same one.
-    cmd = [sys.executable, str(generator), grid_file, num_puzzles]
+    cmd = [sys.executable, str(generator), grid_file, num_puzzles] + flags
 
     proc = subprocess.Popen(cmd, env=env)
     try:
