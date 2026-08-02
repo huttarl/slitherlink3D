@@ -171,8 +171,10 @@ those layers subscribe to its observer callbacks instead.
   - `genSliPuzzles.py` — puzzle generator: paints faces red/blue, ensures each
     color is connected and non-boring, derives the loop along edges between
     differently-colored faces, then uses `slisolver` to whittle clues to a
-    minimal uniquely-solvable set.
-  - `slisolver.py` — solver used to verify clue uniqueness.
+    fairly minimal set that is still solvable by deduction.
+  - `slisolver.py` — solver: propagation rules, clue patterns, face coloring,
+    and bounded lookahead; used to check both deductive solvability and
+    uniqueness.
     (`slisolver_old.py` is a retired earlier draft, kept for reference.)
   - `run_gen.py` — wrapper that runs `genSliPuzzles.py` headlessly with a
     timeout (see "Generating polyhedra and puzzles").
@@ -262,12 +264,17 @@ Three sources:
 - **Phase A — solution**: randomly paint faces red/blue, force each color
   region to be connected (via a dual graph in networkx), disrupt "boring"
   all-one-color neighborhoods, and take the edges between differently-colored
-  faces as the solution loop.
+  faces as the solution loop. The coloring and its bookkeeping live in a
+  `RegionColoring` object; the boundary is rejected unless it is a single
+  simple loop, which counts as a failed attempt and re-randomizes.
 - **Phase B — clues**: compute each face's wall count, then whittle the
-  clues down to a fairly minimal subset that still yields a *unique*
-  solution. Uniqueness is checked by `slisolver.py` (constraint propagation
-  + depth-first search); the minimal prefix of a random clue ordering is
-  found by binary search, and the best of several random orderings wins.
+  clues down to a fairly minimal subset that is still *solvable by
+  deduction* at `LOOKAHEAD_DEPTH` — a stronger requirement than a unique
+  solution, and the difference between a puzzle you can reason through and
+  one that needs trial and error. Checked by `slisolver.py` (constraint
+  propagation, clue patterns, coloring, and bounded suppositions); the
+  minimal prefix of a random clue ordering is found by binary search, and
+  the best of several random orderings wins.
 
 Two ways to run it:
 

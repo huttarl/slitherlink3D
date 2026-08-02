@@ -2,10 +2,9 @@
 
 Strategy:
     min_prefix_satisfying() is a pure function, so we unit-test it with
-    fake predicates (no solver, no mesh). cut_clues() reads module-level
-    globals (mesh, solution, num_faces, dualG), so the integration tests
-    point those globals at a small cube via monkeypatch, then run the
-    real solver.
+    fake predicates (no solver, no mesh). cut_clues() takes the mesh as an
+    argument, so the integration tests just hand it a small cube and let
+    the real solver run -- no module globals involved.
 """
 import os
 
@@ -18,7 +17,14 @@ import pytest
 from compas.datastructures import Mesh
 
 import genSliPuzzles
-from genSliPuzzles import LOOKAHEAD_DEPTH, cut_clues, min_prefix_satisfying
+from genSliPuzzles import (
+    LOOKAHEAD_DEPTH,
+    RegionColoring,
+    blue,
+    cut_clues,
+    min_prefix_satisfying,
+    red,
+)
 from slisolver import solvable_by_deduction
 
 
@@ -142,37 +148,97 @@ def num_walls_by_face(mesh, loop):
             for fkey in mesh.faces()}
 
 
+@pytest.fixture
+def cube():
+    """Same cube as in test_slisolver.py: 8 vertices, 6 quad faces, 12 edges.
+
+    Face keys: 0=bottom, 1=top, 2=front, 3=right, 4=back, 5=left.
+    """
+    vertices = [
+        [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+        [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
+    ]
+    faces = [
+        [0, 3, 2, 1],   # bottom (outward normal -z)
+        [4, 5, 6, 7],   # top    (+z)
+        [0, 1, 5, 4],   # front  (-y)
+        [1, 2, 6, 5],   # right  (+x)
+        [2, 3, 7, 6],   # back   (+y)
+        [3, 0, 4, 7],   # left   (-x)
+    ]
+    return Mesh.from_vertices_and_faces(vertices, faces)
+
+
+def dual_graph(mesh):
+    """The face-adjacency graph RegionColoring needs alongside the mesh."""
+    import networkx as nx
+    dualG = nx.Graph()
+    for f in mesh.faces():
+        dualG.add_node(f)
+        for nbr in mesh.face_neighbors(f):
+            dualG.add_edge(f, nbr)
+    return dualG
+
+
+class TestRegionColoring:
+    """The face counts are derived from the mesh, not tallied as faces are
+    painted. These are the regressions for the two ways the old module-global
+    tallies went wrong."""
+
+    @pytest.fixture
+    def coloring(self, cube):
+        return RegionColoring(cube, dual_graph(cube))
+
+    def test_repainting_a_face_does_not_double_count(self, coloring, cube):
+        """Painting a red face blue used to add to blue without taking anything
+        off red, so the counts drifted above the number of faces."""
+        for fkey in cube.faces():
+            coloring.paint_face(fkey, red)
+        assert (coloring.count(red), coloring.count(blue)) == (6, 0)
+
+        coloring.paint_face(0, blue)
+        assert (coloring.count(red), coloring.count(blue)) == (5, 1)
+        assert coloring.count(red) + coloring.count(blue) == cube.number_of_faces()
+
+    def test_randomizing_again_does_not_accumulate(self, coloring, cube):
+        """randomize_face_colors used to add to the counts without resetting
+        them, so a second attempt started with the first attempt's totals still
+        in place -- and after a few attempts the counts exceeded num_faces,
+        which is what silently switched adjust_populations off."""
+        for _ in range(3):
+            coloring.randomize_face_colors()
+            assert (coloring.count(red) + coloring.count(blue)
+                    == cube.number_of_faces())
+
+    def test_adjust_populations_tops_up_the_missing_color(self, coloring, cube):
+        """The one thing that reads the counts: with no blue faces at all, it
+        must paint some blue. This is what stopped happening once the counts
+        inflated past num_faces / 3."""
+        for fkey in cube.faces():
+            coloring.paint_face(fkey, red)
+        coloring.adjust_populations()
+        assert coloring.count(blue) == round(cube.number_of_faces() / 3)
+
+    def test_painting_flags_the_other_color_for_a_check(self, coloring):
+        """Painting a face red can disconnect the blue region, so it's blue that
+        needs re-checking, and vice versa."""
+        coloring.paint_face(0, red)
+        assert (coloring.blue_needs_check, coloring.red_needs_check) == (True, False)
+
+        coloring2 = RegionColoring(coloring.mesh, coloring.dualG)
+        coloring2.paint_face(0, blue)
+        assert (coloring2.red_needs_check, coloring2.blue_needs_check) == (True, False)
+
+
 class TestCutClues:
 
     @pytest.fixture
-    def cube(self):
-        """Same cube as in test_slisolver.py: 8 vertices, 6 quad faces, 12 edges.
+    def cube_with_bottom_loop(self, cube):
+        """The cube, with the bottom-face loop as the established solution.
 
-        Face keys: 0=bottom, 1=top, 2=front, 3=right, 4=back, 5=left.
-        """
-        vertices = [
-            [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
-            [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
-        ]
-        faces = [
-            [0, 3, 2, 1],   # bottom (outward normal -z)
-            [4, 5, 6, 7],   # top    (+z)
-            [0, 1, 5, 4],   # front  (-y)
-            [1, 2, 6, 5],   # right  (+x)
-            [2, 3, 7, 6],   # back   (+y)
-            [3, 0, 4, 7],   # left   (-x)
-        ]
-        return Mesh.from_vertices_and_faces(vertices, faces)
-
-    @pytest.fixture
-    def cube_with_bottom_loop(self, cube, monkeypatch):
-        """Point genSliPuzzles' module globals at the cube, with the
-        bottom-face loop as the established solution. monkeypatch restores
-        the globals after each test."""
-        monkeypatch.setattr(genSliPuzzles, 'mesh', cube)
-        monkeypatch.setattr(genSliPuzzles, 'dualG', None)  # unused by the solver
-        monkeypatch.setattr(genSliPuzzles, 'num_faces', cube.number_of_faces())
-        monkeypatch.setattr(genSliPuzzles, 'solution', BOTTOM_LOOP)
+        Nothing to set up beyond the mesh itself: cut_clues takes it as an
+        argument. This fixture used to monkeypatch four module globals
+        (mesh, dualG, num_faces, solution) to stand in for a generator run."""
         return cube
 
     def test_num_walls_fixture_sanity(self, cube):
@@ -202,7 +268,7 @@ class TestCutClues:
         """
         walls = num_walls_by_face(cube_with_bottom_loop, BOTTOM_LOOP)
         ordering = [(f, walls[f]) for f in [0, 1, 2, 3, 4, 5]]
-        assert cut_clues(ordering) == 2
+        assert cut_clues(cube_with_bottom_loop, ordering) == 2
 
     def test_result_is_deducible_and_minimal(self, cube_with_bottom_loop):
         """Whatever count cut_clues returns, that prefix must be solvable by
@@ -210,7 +276,7 @@ class TestCutClues:
         survives future changes to the rule set."""
         walls = num_walls_by_face(cube_with_bottom_loop, BOTTOM_LOOP)
         ordering = [(f, walls[f]) for f in [0, 1, 2, 3, 4, 5]]
-        needed = cut_clues(ordering)
+        needed = cut_clues(cube_with_bottom_loop, ordering)
 
         assert solvable_by_deduction(cube_with_bottom_loop, ordering, needed,
                                      depth=LOOKAHEAD_DEPTH) is True
@@ -225,4 +291,4 @@ class TestCutClues:
         # position deducible, so the minimum is 5.
         walls = num_walls_by_face(cube_with_bottom_loop, BOTTOM_LOOP)
         ordering = [(f, walls[f]) for f in [2, 3, 4, 5, 0, 1]]
-        assert cut_clues(ordering) == 5
+        assert cut_clues(cube_with_bottom_loop, ordering) == 5

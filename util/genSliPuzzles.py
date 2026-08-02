@@ -45,12 +45,9 @@ fig: Figure|None = None
 ax: Axes3D|None = None
 poly: Poly3DCollection|None = None
 
-# Puzzle generation state
-total_red = 0
-total_blue = 0
-# If a face has been painted blue, we need to check whether the red faces are still connected; and v.v.
-red_needs_check = False
-blue_needs_check = False
+# Puzzle generation state. The face coloring and its bookkeeping live in a
+# RegionColoring, built once the mesh exists; see build_graphs.
+coloring = None
 # Symbols for our colors, so that we don't risk typos.
 red = "red"
 blue = "blue"
@@ -105,20 +102,21 @@ def require_properties(properties):
             sys.exit(1)
 
 
-def on_key_press(event):
+def on_key_press(event, mesh):
     """Process key press events."""
     log('User pressed ', event.key)
     sys.stderr.flush()
     if event.key == 'x':
-        update_display()
+        update_display(mesh)
 
 
-def setup_display():
+def setup_display(mesh):
     """Set up the display for the mesh."""
     global fig, ax, poly
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    fig.canvas.mpl_connect('key_press_event', on_key_press)
+    fig.canvas.mpl_connect('key_press_event',
+                           lambda event: on_key_press(event, mesh))
     # plt.ion() # enable interactive mode
 
     # draw faces
@@ -154,7 +152,7 @@ def setup_display():
     plt.axis('off')
 
 
-def update_display():
+def update_display(mesh):
     """Update the display with the current mesh."""
     global fig, ax
 
@@ -166,7 +164,7 @@ def update_display():
     plt.pause(0.001)  # brief pause to refresh display
 
 
-def log_mesh():
+def log_mesh(mesh):
     """Log faces, edges of built mesh for debugging."""
     for (fkey) in mesh.faces():
         edges = ", ".join(str(ekey) for ekey in mesh.face_halfedges(fkey))
@@ -180,13 +178,13 @@ def log_mesh():
 
 def build_graphs():
     """Build a graph (and its dual) from the faces and vertices loaded from the grid JSON."""
-    global mesh, dualG
+    global mesh, dualG, coloring
     # Verified that the vertex IDs are the same ones we use in the javascript game, i.e.
     #   the indices vertices. Because the game expects the solution to use those IDs.
     mesh = Mesh.from_vertices_and_faces(grid_vertices, grid_faces)
     # That was easy!
     log(f"Built mesh. F: {mesh.number_of_faces()}, V: {mesh.number_of_vertices()}, E: {mesh.number_of_edges()}")
-    # log_mesh()
+    # log_mesh(mesh)
     normalize_vertices()
 
     # Now make a dual graph in nx, with nodes for the faces of the grid.
@@ -199,6 +197,10 @@ def build_graphs():
         for nbr in mesh.face_neighbors(f):
             dualG.add_edge(f, nbr)
     log(f"Built dual graph. V: {dualG.number_of_nodes()} nodes, E: {dualG.number_of_edges()} edges.")
+
+    # One coloring for the whole run: each puzzle attempt repaints it from
+    # scratch (RegionColoring.generate), so there is nothing to carry over.
+    coloring = RegionColoring(mesh, dualG)
 
     # Debugging:
     # for vertex in mesh.vertices():
@@ -294,154 +296,230 @@ def process_args():
         num_puzzles_wanted = int(positional[1])
 
 
-def paint_random_faces(color, how_many):
-    """Change specified number of random faces to the given color.
-    Checks that the chosen faces weren't already that color.
-    Adjusts totals, and updates dual graph and *_needs_check as needed."""
-    global red_needs_check, blue_needs_check, total_red, total_blue
-    log(f"Painting {how_many} faces {color}.", level=2)
-    for i in range(how_many):
-        while True:
-            fkey = random.choice(list(mesh.faces()))
-            if mesh.face_attribute(fkey, "color") != color:
-                paint_face(fkey, color)
-                break # out of 'while', continue 'for'
+class RegionColoring:
+    """The red/blue two-coloring of the faces that a puzzle's solution comes from.
 
+    The loop is the boundary between the two colors, so generating a puzzle
+    starts by painting the faces: randomly at first, then repaired until each
+    color forms one connected region of a reasonable size with no dull
+    all-one-color neighborhoods. See generate.
 
-def paint_face(fkey, color):
-    """Paint the given face the given color.
-    Adjusts totals, and updates dual graph and *_needs_check as needed."""
-    global total_red, total_blue, red_needs_check, blue_needs_check
-    mesh.face_attribute(fkey, "color", color)
-    dualG.nodes[fkey]["color"] = color
-    if color == red:
-        total_red += 1
-        blue_needs_check = True
-    else:
-        total_blue += 1
-        red_needs_check = True
+    This owns the state that used to live in module globals -- which color still
+    needs a connectedness check, and how many faces each color has. Holding it
+    here rather than at module level is what lets the clue code below be called
+    with a mesh of the caller's choosing, so the tests no longer have to reach
+    in and monkeypatch a module global to test anything downstream.
 
+    The face counts are DERIVED from the mesh on demand rather than tallied as
+    faces are painted. Tallying is what the module globals did, and they got it
+    wrong twice over: paint_face incremented the new color's count without
+    decrementing the old one, and randomize_face_colors added to the counts
+    without first resetting them. So the "totals" were really a count of paint
+    operations, drifting further above num_faces on every attempt, and since
+    adjust_populations is the one thing that reads them, its "keep each color to
+    at least a third of the faces" rule quietly stopped firing after the first
+    attempt. Deriving the counts costs a pass over the faces in a routine that
+    already does connected-components work, and it cannot get out of step.
+    """
 
-def adjust_populations():
-    """If the number of blue or red faces is too low, increase it."""
-    if total_red < num_faces / 3 or total_red < 1:
-        paint_random_faces(red, round(num_faces / 3 - total_red))
-    elif total_blue < num_faces / 3 or total_blue < 1:
-        paint_random_faces(blue, round(num_faces / 3 - total_blue))
+    def __init__(self, mesh, dualG):
+        self.mesh = mesh
+        self.dualG = dualG
+        self.num_faces = mesh.number_of_faces()
+        # Whether each color's region still needs its connectedness checked.
+        # Painting a face one color can disconnect the other color, so painting
+        # sets the OTHER color's flag; see paint_face.
+        self.red_needs_check = False
+        self.blue_needs_check = False
 
+    def count(self, color):
+        """How many faces currently have the given color."""
+        return sum(1 for fkey in self.mesh.faces()
+                   if self.mesh.face_attribute(fkey, "color") == color)
 
-def paint_neighbor_face(component, color):
-    """Expand the given connected component, which consists of faces of the given color,
-    by painting a neighbor the same color.
-    Adjusts totals, and updates dual graph and *_needs_check as needed.
-        component - A set containing the face keys in the connected component.
-        color - The color to paint the new neighbor face."""
-    # Convert set to a list for choosing randomly.
-    faces = list(component)
-    while True:
-        face_to_grow = random.choice(faces)
-        # Pick a neighbor of face_to_grow.
-        neighbor = random.choice (mesh.face_neighbors(face_to_grow))
-        # If the neighbor is already this color, try another neighbor.
-        if mesh.face_attribute(neighbor, "color") != color:
-            # If the neighbor is the same color, paint it the same color..
-            paint_face(neighbor, color)
+    def randomize_face_colors(self):
+        """Assign red or blue randomly to each face."""
+        for fkey in self.mesh.faces():
+            color = random.choice([red, blue])
+            self.mesh.face_attribute(fkey, "color", color)
+            self.dualG.nodes[fkey]["color"] = color
+
+    def paint_face(self, fkey, color):
+        """Paint the given face the given color.
+        Updates the dual graph and *_needs_check as needed."""
+        self.mesh.face_attribute(fkey, "color", color)
+        self.dualG.nodes[fkey]["color"] = color
+        if color == red:
+            self.blue_needs_check = True
+        else:
+            self.red_needs_check = True
+
+    def paint_random_faces(self, color, how_many):
+        """Change specified number of random faces to the given color.
+        Checks that the chosen faces weren't already that color."""
+        log(f"Painting {how_many} faces {color}.", level=2)
+        for i in range(how_many):
+            while True:
+                fkey = random.choice(list(self.mesh.faces()))
+                if self.mesh.face_attribute(fkey, "color") != color:
+                    self.paint_face(fkey, color)
+                    break # out of 'while', continue 'for'
+
+    def adjust_populations(self):
+        """If the number of blue or red faces is too low, increase it."""
+        total_red = self.count(red)
+        if total_red < self.num_faces / 3 or total_red < 1:
+            self.paint_random_faces(red, round(self.num_faces / 3 - total_red))
             return
-        # Otherwise, pick a new face and a new neighbor.
+        total_blue = self.count(blue)
+        if total_blue < self.num_faces / 3 or total_blue < 1:
+            self.paint_random_faces(blue, round(self.num_faces / 3 - total_blue))
+
+    def paint_neighbor_face(self, component, color):
+        """Expand the given connected component, which consists of faces of the given color,
+        by painting a neighbor the same color.
+            component - A set containing the face keys in the connected component.
+            color - The color to paint the new neighbor face."""
+        # Convert set to a list for choosing randomly.
+        faces = list(component)
+        while True:
+            face_to_grow = random.choice(faces)
+            # Pick a neighbor of face_to_grow.
+            neighbor = random.choice (self.mesh.face_neighbors(face_to_grow))
+            # If the neighbor is already this color, try another neighbor.
+            if self.mesh.face_attribute(neighbor, "color") != color:
+                # If the neighbor is the same color, paint it the same color..
+                self.paint_face(neighbor, color)
+                return
+            # Otherwise, pick a new face and a new neighbor.
+
+    def ensure_connected(self, color):
+        """Check whether faces of the given color are connected.
+        If not, add paint until they are.
+        Return True if any faces were painted, False if the faces were already connected."""
+        log(f"Ensuring connectedness of {color} faces.", level=2)
+        faces_painted = False
+        while True:
+            # Collect face nodes of the given color.
+            this_color_face_nodes = [f for f, d in self.dualG.nodes(data=True)
+                                     if d['color'] == color]
+            subgraph = self.dualG.subgraph(this_color_face_nodes)
+            # Find the smallest connected component.
+            smallest_cc = min(nx.connected_components(subgraph), key=len)
+            is_connected = (len(smallest_cc) == len(this_color_face_nodes))
+
+            log(f"Connectedness of {len(this_color_face_nodes)} {color}: {is_connected}.",
+                level=2)
+            update_display(self.mesh)
+
+            if is_connected:
+                return faces_painted
+
+            # At this point I had thought to pick a face adjacent to one of the connected groups.
+            # But it may be just as effective (and is easier) to just paint a random face.
+            # paint_random_faces(color, 1)
+            # No ... that seems to take interminable iterations to get to a suitable state.
+            self.paint_neighbor_face(smallest_cc, color)
+            faces_painted = True
+
+            update_display(self.mesh)
+
+    def fix_boring_neighborhoods(self):
+        """Disrupt neighborhoods of where faces are all the same color."""
+        mesh = self.mesh
+        # Set all faces to "boring".
+        for fkey in mesh.faces():
+            mesh.face_attribute(fkey, "boring", True)
+        for ekey in mesh.edges():
+            # For every edge, get the two faces it connects.
+            (f1, f2) = mesh.edge_faces(ekey)
+            log(f"Checking edge {ekey} (f{f1}, f{f2})...", level=2)
+            if (mesh.face_attribute(f1, "color") != mesh.face_attribute(f2, "color")):
+                log(f"Edge {ekey} has different colors on faces {f1} and {f2}.", level=2)
+                # Faces that have different-colored neighbors are not "boring".
+                mesh.face_attribute(f1, "boring", False)
+                mesh.face_attribute(f2, "boring", False)
+
+        # Now check for boring faces with all-boring neighbors.
+        num_boring_faces = 0
+        for fkey in mesh.faces():
+            if mesh.face_attribute(fkey, "boring"):
+                log(f"Boring face {fkey} is {mesh.face_attribute(fkey, 'color')}.", level=2)
+                num_boring_faces += 1
+                # Check if any of the neighbors are also boring.
+                for nbr in mesh.face_neighbors(fkey):
+                    if mesh.face_attribute(nbr, "boring"):
+                        # We have two adjacent boring faces.
+                        log(f"Boring face {fkey} has a boring neighbor {nbr}.", level=2)
+                        # Paint one of them the opposite color.
+                        f_to_color = random.choice([fkey, nbr])
+                        old_color = mesh.face_attribute(f_to_color, "color")
+                        log(f"  Painting face {f_to_color} {opposite_color[old_color]}",
+                            level=2)
+                        self.paint_face(f_to_color, opposite_color[old_color])
+                        # Now this face is no longer boring, nor are (most of?) its neighbors.
+                        mesh.face_attribute(f_to_color, "boring", False)
+                        for nbr_of_changed in mesh.face_neighbors(f_to_color):
+                            mesh.face_attribute(nbr_of_changed, "boring", False)
+                        # Stop processing this face. Check other boring faces (continue outer loop).
+                        break
+
+    def generate(self, i):
+        """Paint fresh random regions and repair them into usable ones.
+
+        Makes sure each region is connected, reasonably large, and not boring.
+        i is the puzzle index, just used for logging."""
+        self.randomize_face_colors()
+        update_display(self.mesh)
+        finished = False
+        self.blue_needs_check = True
+        self.red_needs_check = True
+        iterations = 0
+        while not finished:
+            self.adjust_populations()  # Could set red_needs_check or blue_needs_check.
+            if self.blue_needs_check:
+                # Make sure blue is connected.
+                added_blue = self.ensure_connected(blue)
+                self.blue_needs_check = False
+                # If that required painting faces blue...
+                if added_blue:
+                    self.red_needs_check = True
+            if self.red_needs_check:
+                # Make sure red is connected.
+                added_red = self.ensure_connected(red)
+                self.red_needs_check = False
+                # If that required painting faces red...
+                if added_red:
+                    self.blue_needs_check = True
+            self.fix_boring_neighborhoods()
+            finished = not (self.blue_needs_check or self.red_needs_check)
+            iterations += 1
+            log(f"{iterations} steps. Needs check: blue={self.blue_needs_check} "
+                f"red={self.red_needs_check}", level=2)
+
+        log(f"Generated regions for puzzle {i + 1} with {self.count(red)} red faces "
+            f"and {self.count(blue)} blue faces, in {iterations} steps.")
+        populate_num_walls(self.mesh)
 
 
-def ensure_connected(color):
-    """Check whether faces of the given color are connected.
-    If not, add paint until they are.
-    Return True if any faces were painted, False if the faces were already connected."""
-    log(f"Ensuring connectedness of {color} faces.", level=2)
-    faces_painted = False
-    while True:
-        # Collect face nodes of the given color.
-        # p = dualG.nodes(data=True)
-        # print(f"Dual graph has {len(p)} nodes") # {repr(p)}
-        this_color_face_nodes = [f for f, d in dualG.nodes(data=True) if d['color'] == color]
-        subgraph = dualG.subgraph(this_color_face_nodes)
-        # is_connected = nx.is_connected(subgraph)
-        # Find the smallest connected component.
-        smallest_cc = min(nx.connected_components(subgraph), key=len)
-        is_connected = (len(smallest_cc) == len(this_color_face_nodes))
-
-        log(f"Connectedness of {len(this_color_face_nodes)} {color}: {is_connected}.",
-            level=2)
-        update_display()
-
-        if is_connected:
-            return faces_painted
-
-        # At this point I had thought to pick a face adjacent to one of the connected groups.
-        # But it may be just as effective (and is easier) to just paint a random face.
-        # paint_random_faces(color, 1)
-        # No ... that seems to take interminable iterations to get to a suitable state.
-        paint_neighbor_face(smallest_cc, color)
-        faces_painted = True
-
-        update_display()
-
-
-def fix_boring_neighborhoods():
-    """Disrupt neighborhoods of where faces are all the same color."""
-    # Set all faces to "boring".
-    for fkey in mesh.faces():
-        mesh.face_attribute(fkey, "boring", True)
-    for ekey in mesh.edges():
-        # For every edge, get the two faces it connects.
-        (f1, f2) = mesh.edge_faces(ekey)
-        log(f"Checking edge {ekey} (f{f1}, f{f2})...", level=2)
-        if (mesh.face_attribute(f1, "color") != mesh.face_attribute(f2, "color")):
-            log(f"Edge {ekey} has different colors on faces {f1} and {f2}.", level=2)
-            # Faces that have different-colored neighbors are not "boring".
-            mesh.face_attribute(f1, "boring", False)
-            mesh.face_attribute(f2, "boring", False)
-
-    # Now check for boring faces with all-boring neighbors.
-    num_boring_faces = 0
-    for fkey in mesh.faces():
-        if mesh.face_attribute(fkey, "boring"):
-            log(f"Boring face {fkey} is {mesh.face_attribute(fkey, 'color')}.", level=2)
-            num_boring_faces += 1
-            # Check if any of the neighbors are also boring.
-            for nbr in mesh.face_neighbors(fkey):
-                if mesh.face_attribute(nbr, "boring"):
-                    # We have two adjacent boring faces.
-                    log(f"Boring face {fkey} has a boring neighbor {nbr}.", level=2)
-                    # Paint one of them the opposite color.
-                    f_to_color = random.choice([fkey, nbr])
-                    old_color = mesh.face_attribute(f_to_color, "color")
-                    log(f"  Painting face {f_to_color} {opposite_color[old_color]}",
-                        level=2)
-                    paint_face(f_to_color, opposite_color[old_color])
-                    # Now this face is no longer boring, nor are (most of?) its neighbors.
-                    mesh.face_attribute(f_to_color, "boring", False)
-                    for nbr_of_changed in mesh.face_neighbors(f_to_color):
-                        mesh.face_attribute(nbr_of_changed, "boring", False)
-                    # Stop processing this face. Check other boring faces (continue outer loop).
-                    break
-
-
-def is_edge_boring(ekey):
+def is_edge_boring(mesh, ekey):
     """Given an edge key, return True if the edge has two faces with the same color."""
     # Get the two faces it connects.
     (f1, f2) = mesh.edge_faces(ekey)
     return (mesh.face_attribute(f1, "color") == mesh.face_attribute(f2, "color"))
 
 
-def boundary_edges():
+def boundary_edges(mesh):
     """The set of edges between differently-colored faces, as frozensets.
 
     This is the loop the coloring implies, and it is what populate_num_walls
     counts, so it -- not the walk in enumerate_solution -- is the authority on
     which edges the clues describe.
     """
-    return {frozenset(ekey) for ekey in mesh.edges() if not is_edge_boring(ekey)}
+    return {frozenset(ekey) for ekey in mesh.edges() if not is_edge_boring(mesh, ekey)}
 
 
-def check_boundary_is_single_loop():
+def check_boundary_is_single_loop(mesh):
     """Raise ValueError unless the color boundary is one simple closed loop.
 
     The two-coloring of the faces guarantees an even number of boundary edges
@@ -461,7 +539,7 @@ def check_boundary_is_single_loop():
 
     Callers treat this as a failed attempt and re-randomise the regions.
     """
-    boundary = boundary_edges()
+    boundary = boundary_edges(mesh)
     if not boundary:
         raise ValueError("No edges found with different colors.")
 
@@ -488,20 +566,20 @@ def check_loop_covers_boundary(solution, boundary):
             f"them covers only {len(walked)}, so it is more than one loop.")
 
 
-def enumerate_solution():
+def enumerate_solution(mesh):
     """Express the solution as a sequence of vertex IDs that specify the loop.
 
     Raises ValueError if the color boundary is not a single simple loop; see
     check_boundary_is_single_loop.
     """
-    check_boundary_is_single_loop()
-    boundary = boundary_edges()
+    check_boundary_is_single_loop(mesh)
+    boundary = boundary_edges(mesh)
 
     solution = []
     start_vertex = None
     next_vertex = None
     for ekey in mesh.edges():
-        if not is_edge_boring(ekey):
+        if not is_edge_boring(mesh, ekey):
             # Remember that an edge key is just (v1, v2), that is a tuple of two vertex IDs.
             (start_vertex, next_vertex) = ekey
             break
@@ -521,7 +599,7 @@ def enumerate_solution():
                 continue # Skip the previous vertex.
             log(" trying neighbor", neighbor, level=2)
             ekey = (next_vertex, neighbor)
-            if not is_edge_boring(ekey):
+            if not is_edge_boring(mesh, ekey):
                 # Found an outgoing edge.
                 log(f"Found next edge! {ekey}", level=2)
                 if neighbor == start_vertex:
@@ -541,7 +619,7 @@ def enumerate_solution():
     return solution
 
 
-def random_face_ordering():
+def random_face_ordering(mesh):
     """Generate a random ordering of (face, clue) pairs for the established solution.
 
     Faces whose every edge is on the loop (num_walls == number of sides, i.e.
@@ -557,7 +635,7 @@ def random_face_ordering():
     return clues
 
 
-def populate_num_walls():
+def populate_num_walls(mesh):
     """Populate the mesh's 'num_walls' attribute for each face.
 
     This means the number of edges that are 'filled in', i.e., part of the solution
@@ -573,7 +651,7 @@ def populate_num_walls():
         mesh.face_attribute(fkey, 'num_walls', num_walls)
 
 
-def clues_by_face(clues_in, num_clues_to_use):
+def clues_by_face(clues_in, num_clues_to_use, num_faces):
     """Convert the first num_clues_to_use clues from [(face, num_walls)] to [num_walls] format.
 
     In the returned list, the indices of the list correspond to face indices.
@@ -584,7 +662,7 @@ def clues_by_face(clues_in, num_clues_to_use):
     return clues_out
 
 
-def generate_minimal_clueset() -> list[int]:
+def generate_minimal_clueset(mesh) -> list[int]:
     """Using established solution, generate a fairly minimal set of clues that fit only that solution.
 
     In some cases this may not be possible, so the return value may be None.
@@ -603,12 +681,13 @@ def generate_minimal_clueset() -> list[int]:
     # Maybe try a few times and pick the best.
     # Track the BEST ordering separately so we don't return clues from
     # the last iteration's ordering (which might not be the best).
+    num_faces = mesh.number_of_faces()
     min_needed = num_faces + 1   # sentinel: no successful ordering seen yet
     best_face_clues = None
     # TODO: Start these in separate threads for parallelism, and cancel if they take too long.
     for i in range(5):
-        face_clues = random_face_ordering()
-        num_needed = cut_clues(face_clues)
+        face_clues = random_face_ordering(mesh)
+        num_needed = cut_clues(mesh, face_clues)
         # cut_clues returns None when no prefix of this ordering yields a
         # unique solution; skip such orderings.
         if num_needed is not None and num_needed < min_needed:
@@ -618,7 +697,7 @@ def generate_minimal_clueset() -> list[int]:
     if best_face_clues is None:
         return None   # No ordering produced a uniquely-solvable clue set.
 
-    return clues_by_face(best_face_clues, min_needed)
+    return clues_by_face(best_face_clues, min_needed, num_faces)
 
 
 def min_prefix_satisfying(predicate, n_total, initial_guess) -> int|None:
@@ -665,7 +744,7 @@ def min_prefix_satisfying(predicate, n_total, initial_guess) -> int|None:
         n = (min_n + max_n) // 2
 
 
-def cut_clues(clues: list[tuple]) -> int|None:
+def cut_clues(mesh, clues: list[tuple]) -> int|None:
     """Given a list of (face, clue) pairs, find the shortest prefix that makes
     a good puzzle. Returns None if no prefix does.
 
@@ -719,9 +798,9 @@ def generate_puzzle(i):
                 level=0)
             return False
         attempts += 1
-        generate_regions(i)
+        coloring.generate(i)
         try:
-            solution = enumerate_solution()
+            solution = enumerate_solution(mesh)
         except ValueError as problem:
             # e.g. the regions came out all one color, so there are no edges
             # between differently-colored faces and hence no loop. That's a
@@ -731,7 +810,7 @@ def generate_puzzle(i):
             log(f"Attempt {attempts} for puzzle {i} produced no loop ({problem}); "
                 f"trying again.")
             continue
-        clues = generate_minimal_clueset()
+        clues = generate_minimal_clueset(mesh)
         log(f"Generating clues for puzzle {i} attempt {attempts} "
             f"{'succeeded' if clues else 'failed'}")
         # If we couldn't generate proper clues for this puzzle, start over from scratch.
@@ -741,57 +820,6 @@ def generate_puzzle(i):
 
     plt.show()
     return True
-
-
-def generate_regions(i):
-    """Generate random red and blue regions, which will determine the solution.
-
-    Makes sure each region is connected, reasonably large, and not boring.
-    i is the puzzle index, just used for logging."""
-    global total_red, total_blue, blue_needs_check, red_needs_check
-    randomize_face_colors()
-    update_display()
-    finished = False
-    blue_needs_check = True
-    red_needs_check = True
-    iterations = 0
-    while not finished:
-        adjust_populations()  # Could trigger red_needs_check or blue_needs_check.
-        if blue_needs_check:
-            # Make sure blue is connected.
-            added_blue = ensure_connected(blue)
-            blue_needs_check = False
-            # If that required painting faces blue...
-            if added_blue:
-                red_needs_check = True
-        if red_needs_check:
-            # Make sure red is connected.
-            added_red = ensure_connected(red)
-            red_needs_check = False
-            # If that required painting faces red...
-            if added_red:
-                blue_needs_check = True
-        fix_boring_neighborhoods()
-        finished = not (blue_needs_check or red_needs_check)
-        iterations += 1
-        log(f"{iterations} steps. Needs check: blue={blue_needs_check} red={red_needs_check}",
-            level=2)
-
-    log(f"Generated regions for puzzle {i + 1} with {total_red} red faces and {total_blue} blue faces, in {iterations} steps.")
-    populate_num_walls()
-
-
-def randomize_face_colors():
-    """Assign red or blue randomly to each face."""
-    global total_red, total_blue
-    for fkey in mesh.faces():
-        color = random.choice([red, blue])
-        if color == red:
-            total_red += 1
-        else:
-            total_blue += 1
-        mesh.face_attribute(fkey, "color", color)
-        dualG.nodes[fkey]["color"] = color
 
 
 def generate_puzzles():
@@ -821,7 +849,7 @@ def output_puzzles():
 def main():
     process_args()
     load_grid_file()
-    setup_display()
+    setup_display(mesh)
     # random.seed() # Uncomment once we're finished debugging.
     try:
         generate_puzzles()
