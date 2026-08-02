@@ -17,10 +17,11 @@ The JS side of the app runs directly in the browser with no build process:
 
 The Python utilities under `util/` have a pytest suite:
 
-- **Run Python tests**: `pytest util/tests` from the repo root.
-  Thorough-but-slow tests (e.g. the data/ puzzle-uniqueness sweep) are
-  skipped by default; `pytest --all util/tests` runs everything, and
-  `pytest -m slow util/tests` runs only the slow ones.
+- **Run Python tests**: `pytest util/tests` from the repo root. That runs
+  everything, including the `slow`-marked data/ puzzle-uniqueness sweep,
+  in a few seconds — puzzles are generated to be solvable by deduction, so
+  the solver never has to search. `pytest util/tests -m slow` runs only the
+  sweep; `-m "not slow"` skips it, should it ever get expensive again.
 - Python deps used by `util/`: `compas`, `networkx`, `matplotlib`, `pytest`
   (plus `numpy` and `scipy` for `genRandomPolyh.py` and `genUniformPolyh.py`).
 - Run the suite after changing any file in `util/`.
@@ -179,9 +180,9 @@ those layers subscribe to its observer callbacks instead.
   - `run_gen.py` — wrapper that runs `genSliPuzzles.py` headlessly with a
     timeout (see "Generating polyhedra and puzzles").
   - `build_catalogue.py` — regenerates `data/grids.json` from the data files.
-  - `tests/` — pytest suite covering `slisolver.py`, the clue-minimization
-    workflow in `genSliPuzzles.py`, and (slow, non-default) a uniqueness
-    sweep of every puzzle in `data/`.
+  - `tests/` — pytest suite covering `slisolver.py`, the region coloring and
+    clue-minimization workflow in `genSliPuzzles.py`, and a `slow`-marked
+    uniqueness sweep of every puzzle in `data/`.
 - **main.html** — single page; loads `js/main.js` as an ES module.
 
 ## Data formats
@@ -342,11 +343,12 @@ progression order. A new grid won't appear in the picker until this has run.
 The project is in active development.
 
 The Python puzzle-generation pipeline (solver + generator) works end-to-end.
-`data/` currently holds **26 grids with 72 puzzles**: all 5 Platonic solids,
-all 13 Archimedean solids, and 8 Johnson solids, ranging from the tetrahedron
-(4 faces, 6 edges) to the truncated icosidodecahedron (62 faces, 180 edges).
-Every puzzle's uniqueness was verified by the solver, and can be re-verified
-any time via the slow-marked pytest sweep.
+`data/` currently holds **26 grids with 78 puzzles** (3 each): all 5 Platonic
+solids, all 13 Archimedean solids, and 8 Johnson solids, ranging from the
+tetrahedron (4 faces, 6 edges) to the truncated icosidodecahedron (62 faces,
+180 edges). Every puzzle is uniquely solvable AND solvable by deduction --
+verified by the solver, and re-verified any time by the `slow`-marked pytest
+sweep, which runs as part of a normal `pytest util/tests`.
 
 Uniqueness checks are time-budgeted, so generation stays bounded even where
 the solver's search would blow up. Generating a couple of puzzles takes

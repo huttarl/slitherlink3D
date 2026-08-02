@@ -820,8 +820,20 @@ def cut_clues(mesh, clues: list[tuple]) -> int|None:
                                  round(len(clues) * 0.6))
 
 
+def already_generated(clues):
+    """Have we already produced a puzzle with exactly these clues?
+
+    Comparing the clues alone is enough to tell puzzles apart: each one we keep
+    is uniquely solvable, so two with the same clues necessarily have the same
+    solution too.
+    """
+    return any(puzzle["clues"] == clues for puzzle in puzzles_output["puzzles"])
+
+
 def generate_puzzle(i):
-    """Generate the ith puzzle. Returns True if one was produced.
+    """Generate the ith puzzle, distinct from the ones already generated.
+
+    Returns True if one was produced.
 
     i is just used for logging, I think.
 
@@ -859,6 +871,18 @@ def generate_puzzle(i):
         log(f"Generating clues for puzzle {i} attempt {attempts} "
             f"{'succeeded' if clues else 'failed'}")
         # If we couldn't generate proper clues for this puzzle, start over from scratch.
+
+        if clues and already_generated(clues):
+            # Small grids have few distinct puzzles -- on the tetrahedron the
+            # loop is always some face's boundary, so there are only four -- and
+            # drawing each puzzle independently will sometimes draw the same one
+            # twice. That makes the puzzle picker offer a choice that isn't one,
+            # so treat it as a failed attempt. The attempt cap above stops this
+            # spinning forever on a grid whose puzzles we have exhausted.
+            log(f"Attempt {attempts} for puzzle {i} repeated a puzzle already "
+                f"generated; trying again.")
+            clues = None
+            continue
 
     puzzle = { "clues": clues, "solution": solution }
     puzzles_output["puzzles"].append(puzzle)
