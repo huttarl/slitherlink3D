@@ -8,9 +8,9 @@ Note, some of these items may be already done even if they're not checked off.
     defensible standard, but I don't really want to support that anymore. What to use instead?
     - [ ] A serious geometer would even want to browse or filter by category, e.g. Johnson solids.
 - [x] quick: fix "black" to "dark blue" in instructions.
-- [ ] quick: brighten lighting on the faces that the camera can see. Sometimes the polyhedron appears
+- [x] quick: brighten lighting on the faces that the camera can see. Sometimes the polyhedron appears
     backlit, and it can be hard to distinguish edge colors.
-- [ ] quick: highlight the "Check Solution" button automatically when it's ready to check.
+- [ ] quick?: highlight the "Check Solution" button automatically when it's ready to check.
     Not sure if that's when all clues are satisfied and no mistakes are highlighted ... or only
     when the puzzle is completely & correctly solved.
 - [ ] This is probably mentioned elsewhere where I talk about sources of polyhedra, but ...

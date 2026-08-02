@@ -365,6 +365,29 @@ def apply_pattern_rules(mesh):
     itself, so they hold for any face size. A "-1 face" has deficit 1: exactly
     one of its edges is ruled out.
 
+    The rules themselves are the functions listed in PATTERN_RULES, one per
+    rule; this runs each in turn and stops at the first contradiction. See each
+    of them for what it deduces and why.
+
+    The (clue 0, clue 1) and (clue 0, -1) vertex patterns need no code of
+    their own: a clue-0 face has all its edges ruled out by the ordinary clue
+    rule, which then supplies exactly the "every other edge here is ruled out"
+    context that Rules A and B look for.
+
+    Returns (ok, changed) -- same convention as the other rule families.
+    """
+    changed = False
+    for rule in PATTERN_RULES:
+        (ok, did) = rule(mesh)
+        if not ok:
+            return (False, changed)
+        changed = changed or did
+    return (True, changed)
+
+
+def apply_rules_a_and_b(mesh):
+    """Rules A and B: one face, at a vertex whose other edges are all settled.
+
     Rule A (-1 face at a settled vertex). Every vertex of a -1 face has
     exactly two filled edges: the face contributes two edges there and they
     can't both be ruled out, since that would be two ruled-out edges in a face
@@ -377,47 +400,14 @@ def apply_pattern_rules(mesh):
     reach two filled, so it must have none: both of the face's edges there are
     ruled out.
 
-    Rule C (two -1 faces meeting at a vertex but NOT sharing an edge). Each
-    contributes at least one filled edge at that vertex (Rule A's reasoning),
-    and a vertex holds at most two, so each contributes exactly one and every
-    other edge there is ruled out. Since each face's single ruled-out edge is
-    therefore at this vertex, all of its other edges are filled.
-
-    Note Rule C needs no condition on the vertex's degree: "at most two
-    filled" does the work.
-
-    Rule D (two -1 faces that DO share an edge). Take the shared edge e, with
-    endpoints P and Q. Each face's edges away from both P and Q are filled.
-
-    Proof for face A: suppose A's one ruled-out edge were somewhere other than
-    e or A's edges at P and Q. Then e and both of A's edges at P and Q are
-    filled -- so at P, e plus A's edge there make two filled, forcing B's edge
-    at P to be ruled out, and the same at Q. That gives B two ruled-out edges,
-    which a -1 face cannot have. So A's ruled-out edge is among e and its two
-    neighbours in A, and every other edge of A is filled. Symmetrically for B.
-
-    Rule D says nothing about e itself. That is the exception discussed
-    elsewhere: if the loop were exactly the boundary of A and B together, e is
-    ruled out and both faces are still satisfied. Excluding that possibility
-    needs a global argument (there is loop elsewhere), so the "e is filled"
-    half is deliberately left out here. Note the rest of Rule D holds even in
-    that exceptional case.
-
-    Nothing else is forced by a shared-edge pair. What IS true there is "not
-    zero filled at each end of e", which determines no edge on its own; that
-    belongs in a future tier 2 alongside "exactly one of these two" and "both
-    or neither".
-
-    The (clue 0, clue 1) and (clue 0, -1) vertex patterns need no code of
-    their own: a clue-0 face has all its edges ruled out by the ordinary clue
-    rule, which then supplies exactly the "every other edge here is ruled out"
-    context that Rules A and B look for.
+    The two share a single scan because they are the same deduction in opposite
+    directions: the clue decides only whether the face's pair of edges at a
+    settled vertex must both be filled or both be ruled out.
 
     Returns (ok, changed) -- same convention as the other rule families.
     """
     changed = False
 
-    # --- Rules A and B: one face, at a vertex whose other edges are settled.
     for fkey in mesh.faces():
         clue = mesh.face_attribute(fkey, 'clue')
         if clue is None:
@@ -441,7 +431,38 @@ def apply_pattern_rules(mesh):
                 return (False, changed)
             changed = changed or did
 
-    # --- Rule D: two -1 faces sharing an edge.
+    return (True, changed)
+
+
+def apply_rule_d(mesh):
+    """Rule D: two -1 faces that DO share an edge.
+
+    Take the shared edge e, with endpoints P and Q. Each face's edges away from
+    both P and Q are filled.
+
+    Proof for face A: suppose A's one ruled-out edge were somewhere other than
+    e or A's edges at P and Q. Then e and both of A's edges at P and Q are
+    filled -- so at P, e plus A's edge there make two filled, forcing B's edge
+    at P to be ruled out, and the same at Q. That gives B two ruled-out edges,
+    which a -1 face cannot have. So A's ruled-out edge is among e and its two
+    neighbours in A, and every other edge of A is filled. Symmetrically for B.
+
+    Rule D says nothing about e itself. That is the exception discussed
+    elsewhere: if the loop were exactly the boundary of A and B together, e is
+    ruled out and both faces are still satisfied. Excluding that possibility
+    needs a global argument (there is loop elsewhere), so the "e is filled"
+    half is deliberately left out here. Note the rest of Rule D holds even in
+    that exceptional case.
+
+    Nothing else is forced by a shared-edge pair. What IS true there is "not
+    zero filled at each end of e", which determines no edge on its own; that
+    belongs in a future tier 2 alongside "exactly one of these two" and "both
+    or neither".
+
+    Returns (ok, changed) -- same convention as the other rule families.
+    """
+    changed = False
+
     for ekey in mesh.edges():
         (face1, face2) = mesh.edge_faces(ekey)
         if face1 is None or face2 is None:
@@ -460,7 +481,24 @@ def apply_pattern_rules(mesh):
                 return (False, changed)
             changed = changed or did
 
-    # --- Rule C: two -1 faces meeting at a vertex only.
+    return (True, changed)
+
+
+def apply_rule_c(mesh):
+    """Rule C: two -1 faces meeting at a vertex but NOT sharing an edge.
+
+    Each contributes at least one filled edge at that vertex (Rule A's
+    reasoning), and a vertex holds at most two, so each contributes exactly one
+    and every other edge there is ruled out. Since each face's single ruled-out
+    edge is therefore at this vertex, all of its other edges are filled.
+
+    Note Rule C needs no condition on the vertex's degree: "at most two
+    filled" does the work.
+
+    Returns (ok, changed) -- same convention as the other rule families.
+    """
+    changed = False
+
     for vkey in mesh.vertices():
         minus_one_faces = [f for f in mesh.vertex_faces(vkey)
                            if f is not None and is_minus_one_face(mesh, f)]
@@ -493,6 +531,14 @@ def apply_pattern_rules(mesh):
                     changed = changed or did
 
     return (True, changed)
+
+
+# The tier-1 rules, in the order apply_pattern_rules runs them. Each is sound on
+# its own, so the order can't change what the set of them concludes at a fixed
+# point -- but it does decide which rule gets to a given edge first, so keep it
+# stable, since the tests name the rule they expect to fire. Add new tier-1
+# rules here.
+PATTERN_RULES = (apply_rules_a_and_b, apply_rule_d, apply_rule_c)
 
 
 def propagate_with_lookahead(mesh, clues, num_clues, depth=1):

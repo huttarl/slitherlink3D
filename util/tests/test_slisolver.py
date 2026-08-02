@@ -20,6 +20,9 @@ from slisolver import (
     apply_clues,
     apply_color_rules,
     apply_pattern_rules,
+    apply_rule_c,
+    apply_rule_d,
+    apply_rules_a_and_b,
     apply_vertex_rules,
     is_complete_solution,
     is_valid_loop,
@@ -1028,7 +1031,7 @@ class TestApplyPatternRules:
         # Vertex 0's edges are (0,1) and (0,3) of the bottom face, plus (0,4).
         set_edge(cube, 0, 4, 'ruledOut')
 
-        (ok, changed) = apply_pattern_rules(cube)
+        (ok, changed) = apply_rules_a_and_b(cube)
         assert ok is True
         assert changed is True
         assert guess_of(cube, 0, 1) == 'filledIn'
@@ -1041,7 +1044,7 @@ class TestApplyPatternRules:
         cube.face_attribute(0, 'clue', 1)
         set_edge(cube, 0, 4, 'ruledOut')
 
-        (ok, changed) = apply_pattern_rules(cube)
+        (ok, changed) = apply_rules_a_and_b(cube)
         assert ok is True
         assert changed is True
         assert guess_of(cube, 0, 1) == 'ruledOut'
@@ -1055,7 +1058,7 @@ class TestApplyPatternRules:
         set_edge(cube, 0, 4, 'ruledOut')
         set_edge(cube, 0, 1, 'ruledOut')
 
-        (ok, _changed) = apply_pattern_rules(cube)
+        (ok, _changed) = apply_rules_a_and_b(cube)
         assert ok is False
 
     def test_rule_d_adjacent_minus_one_faces_fill_the_far_edges(self, cube):
@@ -1072,7 +1075,7 @@ class TestApplyPatternRules:
         cube.face_attribute(0, 'clue', 3)   # bottom
         cube.face_attribute(2, 'clue', 3)   # front; shares edge (0,1) with bottom
 
-        (ok, changed) = apply_pattern_rules(cube)
+        (ok, changed) = apply_rule_d(cube)
         assert (ok, changed) == (True, True)
         assert guess_of(cube, 3, 2) == 'filledIn'   # bottom's far edge
         assert guess_of(cube, 5, 4) == 'filledIn'   # front's far edge
@@ -1095,7 +1098,7 @@ class TestApplyPatternRules:
         cube.face_attribute(0, 'clue', 3)
         cube.face_attribute(2, 'clue', 3)
 
-        (ok, _changed) = apply_pattern_rules(cube)
+        (ok, _changed) = apply_rule_d(cube)
         assert ok is True, "Rule D must not contradict a legal solution"
         assert guess_of(cube, 3, 2) == 'filledIn'
         assert guess_of(cube, 5, 4) == 'filledIn'
@@ -1109,7 +1112,7 @@ class TestApplyPatternRules:
         octahedron.face_attribute(0, 'clue', 2)
         octahedron.face_attribute(1, 'clue', 2)
 
-        assert apply_pattern_rules(octahedron) == (True, False)
+        assert apply_rule_d(octahedron) == (True, False)
 
     def test_rule_c_two_minus_one_faces_meeting_only_at_a_vertex(self, octahedron):
         """Two -1 faces that share only a vertex: each contributes exactly one
@@ -1125,12 +1128,45 @@ class TestApplyPatternRules:
         octahedron.face_attribute(0, 'clue', 2)   # [0,2,3]
         octahedron.face_attribute(2, 'clue', 2)   # [0,4,5]
 
-        (ok, changed) = apply_pattern_rules(octahedron)
+        (ok, changed) = apply_rule_c(octahedron)
         assert ok is True
         assert changed is True
         # Each face's edge away from vertex 0 is forced filled.
         assert guess_of(octahedron, 2, 3) == 'filledIn'
         assert guess_of(octahedron, 4, 5) == 'filledIn'
+
+    def test_every_rule_function_is_registered(self):
+        """A rule that isn't in PATTERN_RULES simply never runs, and the symptom
+        -- a new rule that deduces nothing -- gives no hint why. Fail here
+        instead."""
+        import slisolver
+        defined = {name for name in dir(slisolver) if name.startswith('apply_rule')}
+        registered = {rule.__name__ for rule in slisolver.PATTERN_RULES}
+        assert defined == registered
+
+    def test_dispatcher_reaches_each_rule(self, cube, octahedron):
+        """apply_pattern_rules must actually run all of them, so check a
+        position that only one rule can crack, once per rule."""
+        # Rule A: a -1 face at a settled vertex.
+        fill(cube, [])
+        cube.face_attribute(0, 'clue', 3)
+        set_edge(cube, 0, 4, 'ruledOut')
+        assert apply_pattern_rules(cube) == (True, True)
+        assert guess_of(cube, 0, 1) == 'filledIn'
+
+        # Rule D: two -1 faces sharing an edge.
+        fill(cube, [])
+        cube.face_attribute(0, 'clue', 3)
+        cube.face_attribute(2, 'clue', 3)
+        assert apply_pattern_rules(cube) == (True, True)
+        assert guess_of(cube, 3, 2) == 'filledIn'
+
+        # Rule C: two -1 faces meeting only at a vertex.
+        fill(octahedron, [])
+        octahedron.face_attribute(0, 'clue', 2)
+        octahedron.face_attribute(2, 'clue', 2)
+        assert apply_pattern_rules(octahedron) == (True, True)
+        assert guess_of(octahedron, 2, 3) == 'filledIn'
 
     def test_patterns_never_contradict_a_real_solution(self, dodecahedron, dodec_puzzle):
         """Soundness spot-check on real data: every edge the rules determine
