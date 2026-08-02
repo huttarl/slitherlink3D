@@ -12,7 +12,7 @@
          "faces": 4,
          "edges": 6,
          "vertices": 4,
-         "numPuzzles": 1
+         "numPuzzles": 3
       },
       {
          "file": "J1",
@@ -122,7 +122,7 @@
          "faces": 12,
          "edges": 30,
          "vertices": 20,
-         "numPuzzles": 1
+         "numPuzzles": 3
       },
       {
          "file": "I",
@@ -134,7 +134,7 @@
          "faces": 20,
          "edges": 30,
          "vertices": 12,
-         "numPuzzles": 5
+         "numPuzzles": 3
       },
       {
          "file": "tC",
@@ -257,7 +257,7 @@
          "faces": 32,
          "edges": 90,
          "vertices": 60,
-         "numPuzzles": 5
+         "numPuzzles": 2
       },
       {
          "file": "J48",
@@ -269,7 +269,7 @@
          "faces": 52,
          "edges": 90,
          "vertices": 40,
-         "numPuzzles": 3
+         "numPuzzles": 2
       },
       {
          "file": "J75",
@@ -281,7 +281,7 @@
          "faces": 62,
          "edges": 120,
          "vertices": 60,
-         "numPuzzles": 3
+         "numPuzzles": 2
       },
       {
          "file": "eD",
@@ -305,7 +305,7 @@
          "faces": 92,
          "edges": 150,
          "vertices": 60,
-         "numPuzzles": 3
+         "numPuzzles": 2
       },
       {
          "file": "bD",

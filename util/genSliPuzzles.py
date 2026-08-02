@@ -58,6 +58,17 @@ opposite_color = {red: blue, blue: red}
 # minimal, or discarding a region — never an unverified puzzle.
 SOLVER_TIME_BUDGET = 20.0
 
+# How much "suppose this edge were filled..." reasoning a puzzle may require.
+# 0 demands that plain propagation finish it, which needs a lot of clues and
+# makes easy puzzles; 1 allows one supposition at a time, which is what a
+# competent player does routinely; 2 or more starts to feel like guessing.
+# This is the difficulty dial: see cut_clues.
+LOOKAHEAD_DEPTH = 1
+
+# How many times to start over with fresh regions when a solution turns out to
+# admit no deductively-solvable clue set, before giving up on that puzzle.
+MAX_REGION_ATTEMPTS = 15
+
 
 def log(*args, **kwargs):
     """Print a diagnostic/progress message to stderr.
@@ -383,8 +394,72 @@ def is_edge_boring(ekey):
     return (mesh.face_attribute(f1, "color") == mesh.face_attribute(f2, "color"))
 
 
+def boundary_edges():
+    """The set of edges between differently-colored faces, as frozensets.
+
+    This is the loop the coloring implies, and it is what populate_num_walls
+    counts, so it -- not the walk in enumerate_solution -- is the authority on
+    which edges the clues describe.
+    """
+    return {frozenset(ekey) for ekey in mesh.edges() if not is_edge_boring(ekey)}
+
+
+def check_boundary_is_single_loop():
+    """Raise ValueError unless the color boundary is one simple closed loop.
+
+    The two-coloring of the faces guarantees an even number of boundary edges
+    at every vertex, but NOT that they form a single simple cycle. Two things
+    can go wrong:
+
+      - a "pinch" vertex, where four boundary edges meet: the boundary crosses
+        itself there, so it is not a simple cycle;
+      - several disjoint cycles, when the coloring produces more than one
+        region boundary.
+
+    Either way the position is not a legal Slitherlink solution, and
+    enumerate_solution's walk would quietly return just the piece it happened
+    to start on -- while the clues, from populate_num_walls, still count every
+    boundary edge. That mismatch produced puzzles whose stored solution did not
+    satisfy their own clues.
+
+    Callers treat this as a failed attempt and re-randomise the regions.
+    """
+    boundary = boundary_edges()
+    if not boundary:
+        raise ValueError("No edges found with different colors.")
+
+    for vkey in mesh.vertices():
+        degree = sum(1 for nbr in mesh.vertex_neighbors(vkey)
+                     if frozenset((vkey, nbr)) in boundary)
+        if degree not in (0, 2):
+            raise ValueError(f"Vertex {vkey} has {degree} boundary edges, so the "
+                             f"boundary is not a simple loop.")
+
+
+def check_loop_covers_boundary(solution, boundary):
+    """Raise ValueError unless the walked loop uses every boundary edge.
+
+    With every vertex at boundary-degree 0 or 2 the walk cannot pinch, so the
+    one remaining way to come up short is a boundary made of several disjoint
+    cycles: the walk returns to its start having traced only one of them.
+    """
+    walked = {frozenset((solution[i], solution[(i + 1) % len(solution)]))
+              for i in range(len(solution))}
+    if walked != boundary:
+        raise ValueError(
+            f"The color boundary has {len(boundary)} edges but the loop through "
+            f"them covers only {len(walked)}, so it is more than one loop.")
+
+
 def enumerate_solution():
-    """Express the solution as a sequence of vertex IDs that specify the loop."""
+    """Express the solution as a sequence of vertex IDs that specify the loop.
+
+    Raises ValueError if the color boundary is not a single simple loop; see
+    check_boundary_is_single_loop.
+    """
+    check_boundary_is_single_loop()
+    boundary = boundary_edges()
+
     solution = []
     start_vertex = None
     next_vertex = None
@@ -413,6 +488,7 @@ def enumerate_solution():
                 # Found an outgoing edge.
                 log(f"Found next edge! {ekey}")
                 if neighbor == start_vertex:
+                    check_loop_covers_boundary(solution, boundary)
                     return solution
                 solution.append(neighbor)
                 log(f"   {solution}...")
@@ -429,9 +505,16 @@ def enumerate_solution():
 
 
 def random_face_ordering():
-    """Generate a random ordering of (face, clue) pairs for the established solution."""
-    # Make a list of (face, clue) pairs, and shuffle it.
-    clues = [(fkey, mesh.face_attribute(fkey, 'num_walls')) for fkey in mesh.faces()]
+    """Generate a random ordering of (face, clue) pairs for the established solution.
+
+    Faces whose every edge is on the loop (num_walls == number of sides, i.e.
+    a deficit of 0) are left out. Such a clue trivialises the puzzle: it forces
+    all of that face's edges, which puts two filled edges at each of its
+    vertices, which rules out everything else there -- so the loop must be
+    exactly that face's boundary, and the whole puzzle falls out of one clue.
+    """
+    clues = [(fkey, mesh.face_attribute(fkey, 'num_walls')) for fkey in mesh.faces()
+             if mesh.face_attribute(fkey, 'num_walls') < len(mesh.face_vertices(fkey))]
     random.shuffle(clues)
     log(f"Clue ordering: {clues}")
     return clues
@@ -546,39 +629,80 @@ def min_prefix_satisfying(predicate, n_total, initial_guess) -> int|None:
 
 
 def cut_clues(clues: list[tuple]) -> int|None:
-    """Given a list of (face, clue) pairs, determine the minimum prefix needed to give a unique solution.
+    """Given a list of (face, clue) pairs, find the shortest prefix that makes
+    a good puzzle. Returns None if no prefix does.
 
-    If there is no such prefix, return None.
+    "Good" means SOLVABLE BY DEDUCTION at LOOKAHEAD_DEPTH, not merely having a
+    unique solution. That distinction turned out to matter enormously. Cutting
+    to the uniqueness threshold produced puzzles that were technically fair but
+    unsolvable in practice: measuring the 72 puzzles generated that way, only
+    2 could be solved by reasoning at all, and 42 offered no legal first move,
+    since every clue needed some edge decided before it could say anything. The
+    rest could only be finished by trial and error, which is exactly the
+    "not fun" this was meant to avoid.
+
+    Requiring deductive solvability subsumes uniqueness, so nothing is lost: a
+    position that sound rules determine completely admits no other solution.
+    It does mean more clues than before -- that is the point.
     """
     # We now have all the clues, in a random order. We just need to determine how many
     # of them are needed.
-    def prefix_gives_unique_solution(num_clues):
-        return slisolver.solution_is_unique(clues, num_clues, solution, mesh, dualG,
-                                            time_budget=SOLVER_TIME_BUDGET)
+    def prefix_is_solvable_by_deduction(num_clues):
+        return slisolver.solvable_by_deduction(mesh, clues, num_clues,
+                                               depth=LOOKAHEAD_DEPTH)
 
-    # Start probing at about 30% of the faces; usually far fewer clues
-    # than num_faces are needed.
-    return min_prefix_satisfying(prefix_gives_unique_solution, num_faces,
-                                 round(num_faces * 0.3))
+    # Search over the clues we actually have, which may be fewer than
+    # num_faces now that random_face_ordering drops deficit-0 faces.
+    # Deductive solvability needs more clues than uniqueness did, so start
+    # probing higher up than the old 30% guess.
+    return min_prefix_satisfying(prefix_is_solvable_by_deduction, len(clues),
+                                 round(len(clues) * 0.6))
 
 
 def generate_puzzle(i):
-    """Generate the ith puzzle.
+    """Generate the ith puzzle. Returns True if one was produced.
 
-    i is just used for logging, I think."""
+    i is just used for logging, I think.
+
+    Some solutions admit no clue set we can solve by deduction, so we start
+    over with a fresh pair of regions -- but only up to MAX_REGION_ATTEMPTS
+    times, as the algorithm spec calls for ("If our attempts exceed a preset
+    limit, give up on this solution and start over with A"). Without that
+    limit this loop can spin indefinitely on a grid where deduction rarely
+    succeeds, and since every pass logs, the log alone will eventually fill
+    the disk. (It did: a 10 GB stderr file, on a J2 run.)
+    """
     global solution
     clues = None
+    attempts = 0
     while not clues:
+        if attempts >= MAX_REGION_ATTEMPTS:
+            log(f"Giving up on puzzle {i} after {attempts} attempts: no set of "
+                f"clues for any of those solutions was solvable by deduction.")
+            return False
+        attempts += 1
         generate_regions(i)
-        solution = enumerate_solution()
+        try:
+            solution = enumerate_solution()
+        except ValueError as problem:
+            # e.g. the regions came out all one color, so there are no edges
+            # between differently-colored faces and hence no loop. That's a
+            # failed attempt, not a reason to abandon the whole run -- which is
+            # what happened before, since the exception escaped this loop and
+            # killed the process, losing any puzzles already generated.
+            log(f"Attempt {attempts} for puzzle {i} produced no loop ({problem}); "
+                f"trying again.")
+            continue
         clues = generate_minimal_clueset()
-        log(f"Generating clues for puzzle {i} {'succeeded' if clues else 'failed'}")
+        log(f"Generating clues for puzzle {i} attempt {attempts} "
+            f"{'succeeded' if clues else 'failed'}")
         # If we couldn't generate proper clues for this puzzle, start over from scratch.
 
     puzzle = { "clues": clues, "solution": solution }
     puzzles_output["puzzles"].append(puzzle)
 
     plt.show()
+    return True
 
 
 def generate_regions(i):
@@ -632,9 +756,17 @@ def randomize_face_colors():
 
 
 def generate_puzzles():
-    """Generate puzzles."""
+    """Generate the requested puzzles, reporting any we couldn't produce.
+
+    A puzzle that can't be generated isn't fatal: we output the ones that
+    worked (see output_puzzles) rather than losing them.
+    """
+    produced = 0
     for i in range(num_puzzles_wanted):
-        generate_puzzle(i)
+        if generate_puzzle(i):
+            produced += 1
+    if produced < num_puzzles_wanted:
+        log(f"Produced {produced} of the {num_puzzles_wanted} puzzles requested.")
 
 
 def output_puzzles():

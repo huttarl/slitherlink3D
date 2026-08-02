@@ -15,8 +15,11 @@ from compas.datastructures import Mesh
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 from slisolver import (
+    FaceColoring,
     apply_clue_rules,
     apply_clues,
+    apply_color_rules,
+    apply_pattern_rules,
     apply_vertex_rules,
     is_complete_solution,
     is_valid_loop,
@@ -110,6 +113,20 @@ def fill(mesh, edge_endpoints):
     for ekey in mesh.edges():
         guess = 'filledIn' if frozenset(ekey) in target else 'unknown'
         mesh.edge_attribute(ekey, 'guess', guess)
+
+
+def set_edge(mesh, v1, v2, guess):
+    """Set one edge's 'guess' to any of the three states.
+
+    Vertex order doesn't matter: COMPAS keeps edge attributes per *undirected*
+    edge (locked in by test_edge_attribute_is_orientation_independent).
+    """
+    mesh.edge_attribute((v1, v2), 'guess', guess)
+
+
+def guess_of(mesh, v1, v2):
+    """Read one edge's 'guess'. Vertex order doesn't matter (see set_edge)."""
+    return mesh.edge_attribute((v1, v2), 'guess')
 
 
 # --- fixture sanity tests ---
@@ -851,3 +868,284 @@ class TestDodecahedronIntegration:
         (clues, solution) = dodec_puzzle
         result = solution_is_unique(clues, len(clues), solution, dodecahedron, None)
         assert result is True
+
+
+class TestFaceColoring:
+    """The parity union-find underneath apply_color_rules: it answers
+    'same color or opposite?' without ever assigning an absolute color."""
+
+    def test_unrelated_faces_have_no_relation(self):
+        coloring = FaceColoring()
+        assert coloring.relation(1, 2) is None
+
+    def test_same_and_opposite_are_remembered(self):
+        coloring = FaceColoring()
+        assert coloring.relate(1, 2, opposite=True) is True
+        assert coloring.relation(1, 2) is True
+        assert coloring.relate(3, 4, opposite=False) is True
+        assert coloring.relation(3, 4) is False
+
+    def test_relations_compose_along_a_chain(self):
+        # opposite + opposite = same; add one more opposite and it flips again.
+        coloring = FaceColoring()
+        coloring.relate(1, 2, opposite=True)
+        coloring.relate(2, 3, opposite=True)
+        assert coloring.relation(1, 3) is False
+        coloring.relate(3, 4, opposite=True)
+        assert coloring.relation(1, 4) is True
+
+    def test_same_relations_compose_to_same(self):
+        coloring = FaceColoring()
+        coloring.relate(1, 2, opposite=False)
+        coloring.relate(2, 3, opposite=False)
+        assert coloring.relation(1, 3) is False
+
+    def test_contradiction_is_reported(self):
+        # 1 and 3 are forced same by the chain, so claiming they're opposite
+        # must be rejected.
+        coloring = FaceColoring()
+        coloring.relate(1, 2, opposite=True)
+        coloring.relate(2, 3, opposite=True)
+        assert coloring.relate(1, 3, opposite=True) is False
+        # Restating what's already known is fine, not a contradiction.
+        assert coloring.relate(1, 3, opposite=False) is True
+
+    def test_relation_is_symmetric(self):
+        coloring = FaceColoring()
+        coloring.relate(7, 8, opposite=True)
+        assert coloring.relation(8, 7) is True
+
+    def test_long_chain_stays_consistent(self):
+        # 40 links, alternating: parity should still be exact at the far end.
+        coloring = FaceColoring()
+        for i in range(40):
+            assert coloring.relate(i, i + 1, opposite=True) is True
+        # An even number of flips means same color, odd means opposite.
+        assert coloring.relation(0, 40) is False
+        assert coloring.relation(0, 39) is True
+
+
+class TestApplyColorRules:
+    """Coloring inference over a cube. Face keys: 0 bottom, 1 top,
+    2 front, 3 right, 4 back, 5 left."""
+
+    def test_empty_board_deduces_nothing(self, cube):
+        fill(cube, [])
+        (ok, changed) = apply_color_rules(cube)
+        assert ok is True
+        assert changed is False
+
+    def test_three_faces_at_a_vertex_force_the_third_edge(self, cube):
+        # Faces 0 (bottom), 2 (front) and 5 (left) all meet at vertex 0, so
+        # each pair shares an edge. Decide two of those edges and the third
+        # is forced: bottom/front opposite (filled) and bottom/left same
+        # (ruled out) makes front/left opposite, so edge (0,4) must be filled.
+        fill(cube, [])
+        set_edge(cube, 0, 1, 'filledIn')   # bottom | front
+        set_edge(cube, 0, 3, 'ruledOut')   # bottom | left
+
+        (ok, changed) = apply_color_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert guess_of(cube, 0, 4) == 'filledIn'
+
+    def test_deduces_what_vertex_and_clue_rules_cannot(self, cube):
+        """The distinguishing case: a relationship carried around a ring of
+        faces, forcing an edge that no local rule can touch.
+
+        Ruling out the three edges (1,5), (2,6), (3,7) makes all four side
+        faces the same color, so the fourth side edge (0,4) must be ruled out
+        too. None of those three edges touches vertex 0 or vertex 4, so the
+        vertex rule sees nothing at either end of (0,4); there are no clues,
+        so the clue rule sees nothing either.
+        """
+        fill(cube, [])
+        set_edge(cube, 1, 5, 'ruledOut')   # front | right
+        set_edge(cube, 2, 6, 'ruledOut')   # right | back
+        set_edge(cube, 3, 7, 'ruledOut')   # back  | left
+
+        # First: confirm the other two rule families really are helpless here.
+        (ok_v, changed_v) = apply_vertex_rules(cube)
+        (ok_c, changed_c) = apply_clue_rules(cube)
+        assert (ok_v, changed_v) == (True, False)
+        assert (ok_c, changed_c) == (True, False)
+        assert guess_of(cube, 0, 4) == 'unknown'
+
+        # Coloring closes the ring and forces the edge.
+        (ok, changed) = apply_color_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert guess_of(cube, 0, 4) == 'ruledOut'
+
+    def test_detects_a_coloring_contradiction(self, cube):
+        # Same ring, but with the fourth side edge filled in: the four side
+        # faces are all one color, yet (0,4) claims front and left differ.
+        fill(cube, [])
+        set_edge(cube, 1, 5, 'ruledOut')
+        set_edge(cube, 2, 6, 'ruledOut')
+        set_edge(cube, 3, 7, 'ruledOut')
+        set_edge(cube, 0, 4, 'filledIn')
+
+        (ok, _changed) = apply_color_rules(cube)
+        assert ok is False
+
+    def test_odd_ring_of_filled_edges_is_a_contradiction(self, cube):
+        # Three of the four side edges filled and the fourth ruled out means
+        # going around the ring flips color an odd number of times, which
+        # can't close up. (This is the parity constraint that the per-vertex
+        # rule cannot see.)
+        fill(cube, [])
+        set_edge(cube, 1, 5, 'filledIn')
+        set_edge(cube, 2, 6, 'filledIn')
+        set_edge(cube, 3, 7, 'filledIn')
+        set_edge(cube, 0, 4, 'ruledOut')
+
+        (ok, _changed) = apply_color_rules(cube)
+        assert ok is False
+
+
+class TestApplyPatternRules:
+    """Tier-1 clue patterns, stated in terms of a face's deficit (sides minus
+    clue). Cube faces: 0 bottom, 1 top, 2 front, 3 right, 4 back, 5 left.
+    A cube face with clue 3 is a "-1 face"."""
+
+    def test_no_clues_deduces_nothing(self, cube):
+        fill(cube, [])
+        assert apply_pattern_rules(cube) == (True, False)
+
+    def test_mid_range_clue_alone_deduces_nothing(self, cube):
+        # Deficit 2 isn't a tier-1 pattern: nothing is forced.
+        fill(cube, [])
+        cube.face_attribute(0, 'clue', 2)
+        assert apply_pattern_rules(cube) == (True, False)
+
+    def test_rule_a_fills_both_edges_of_a_minus_one_face(self, cube):
+        """A -1 face at a vertex whose other edges are ruled out: its two
+        edges there must both be filled, because the face can't afford two
+        ruled-out edges and the vertex can't hold just one filled edge."""
+        fill(cube, [])
+        cube.face_attribute(0, 'clue', 3)       # bottom, 4 sides -> -1 face
+        # Vertex 0's edges are (0,1) and (0,3) of the bottom face, plus (0,4).
+        set_edge(cube, 0, 4, 'ruledOut')
+
+        (ok, changed) = apply_pattern_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert guess_of(cube, 0, 1) == 'filledIn'
+        assert guess_of(cube, 0, 3) == 'filledIn'
+
+    def test_rule_b_rules_out_both_edges_of_a_clue_one_face(self, cube):
+        """The mirror image: a clue-1 face can't have two filled edges at one
+        vertex, so with the vertex's other edges ruled out it must have none."""
+        fill(cube, [])
+        cube.face_attribute(0, 'clue', 1)
+        set_edge(cube, 0, 4, 'ruledOut')
+
+        (ok, changed) = apply_pattern_rules(cube)
+        assert ok is True
+        assert changed is True
+        assert guess_of(cube, 0, 1) == 'ruledOut'
+        assert guess_of(cube, 0, 3) == 'ruledOut'
+
+    def test_rule_a_reports_a_contradiction(self, cube):
+        # Same setup, but one of the two edges is already ruled out, so the
+        # vertex could only ever reach one filled edge: impossible.
+        fill(cube, [])
+        cube.face_attribute(0, 'clue', 3)
+        set_edge(cube, 0, 4, 'ruledOut')
+        set_edge(cube, 0, 1, 'ruledOut')
+
+        (ok, _changed) = apply_pattern_rules(cube)
+        assert ok is False
+
+    def test_rule_d_adjacent_minus_one_faces_fill_the_far_edges(self, cube):
+        """Rule D: two -1 faces sharing an edge fill each other's edges that
+        touch neither end of it.
+
+        Bottom (face 0) and front (face 2) share edge (0,1). Away from vertices
+        0 and 1, the bottom has only (3,2) and the front only (5,4), so both
+        are filled. Nothing else is forced: the shared edge and the four edges
+        beside it stay unknown, because the loop could still be the boundary of
+        these two faces together, in which case (0,1) is ruled out.
+        """
+        fill(cube, [])
+        cube.face_attribute(0, 'clue', 3)   # bottom
+        cube.face_attribute(2, 'clue', 3)   # front; shares edge (0,1) with bottom
+
+        (ok, changed) = apply_pattern_rules(cube)
+        assert (ok, changed) == (True, True)
+        assert guess_of(cube, 3, 2) == 'filledIn'   # bottom's far edge
+        assert guess_of(cube, 5, 4) == 'filledIn'   # front's far edge
+
+        # The shared edge and its four neighbours are deliberately untouched.
+        assert guess_of(cube, 0, 1) == 'unknown'    # the shared edge
+        for (u, v) in [(0, 3), (2, 1), (1, 5), (4, 0)]:
+            assert guess_of(cube, u, v) == 'unknown', f"edge {(u, v)} shouldn't be forced"
+
+    def test_rule_d_holds_even_for_the_domino_solution(self, cube):
+        """The exception to "the shared edge is filled" doesn't threaten the
+        rest of Rule D: with the loop running around bottom+front together,
+        the far edges really are filled and the shared edge really is ruled
+        out, so Rule D's conclusions still hold."""
+        # Loop around the union of the bottom and front faces.
+        fill(cube, [(0, 3), (3, 2), (2, 1), (1, 5), (5, 4), (4, 0)])
+        for e in cube.edges():
+            if cube.edge_attribute(e, 'guess') == 'unknown':
+                cube.edge_attribute(e, 'guess', 'ruledOut')
+        cube.face_attribute(0, 'clue', 3)
+        cube.face_attribute(2, 'clue', 3)
+
+        (ok, _changed) = apply_pattern_rules(cube)
+        assert ok is True, "Rule D must not contradict a legal solution"
+        assert guess_of(cube, 3, 2) == 'filledIn'
+        assert guess_of(cube, 5, 4) == 'filledIn'
+        assert guess_of(cube, 0, 1) == 'ruledOut'
+
+    def test_rule_d_forces_nothing_between_adjacent_triangles(self, octahedron):
+        """A triangle's three edges all touch an end of any given edge, so a
+        shared-edge pair of -1 triangles leaves nothing 'away' to fill."""
+        fill(octahedron, [])
+        # Faces 0 and 1 are adjacent triangles; -1 for a triangle means clue 2.
+        octahedron.face_attribute(0, 'clue', 2)
+        octahedron.face_attribute(1, 'clue', 2)
+
+        assert apply_pattern_rules(octahedron) == (True, False)
+
+    def test_rule_c_two_minus_one_faces_meeting_only_at_a_vertex(self, octahedron):
+        """Two -1 faces that share only a vertex: each contributes exactly one
+        filled edge there, so each one's single ruled-out edge is at that
+        vertex and all its other edges are filled.
+
+        On the octahedron, vertex 0 has four triangles around it (faces 0-3).
+        Faces 0 and 2 are opposite there, sharing only vertex 0. A triangle
+        with clue 2 is a -1 face.
+        """
+        fill(octahedron, [])
+        assert 2 not in octahedron.face_neighbors(0), "faces 0 and 2 should meet only at a vertex"
+        octahedron.face_attribute(0, 'clue', 2)   # [0,2,3]
+        octahedron.face_attribute(2, 'clue', 2)   # [0,4,5]
+
+        (ok, changed) = apply_pattern_rules(octahedron)
+        assert ok is True
+        assert changed is True
+        # Each face's edge away from vertex 0 is forced filled.
+        assert guess_of(octahedron, 2, 3) == 'filledIn'
+        assert guess_of(octahedron, 4, 5) == 'filledIn'
+
+    def test_patterns_never_contradict_a_real_solution(self, dodecahedron, dodec_puzzle):
+        """Soundness spot-check on real data: every edge the rules determine
+        must agree with the puzzle's stored solution."""
+        (clues, solution) = dodec_puzzle
+        for e in dodecahedron.edges():
+            dodecahedron.edge_attribute(e, 'guess', 'unknown')
+        apply_clues(clues, len(clues), dodecahedron)
+        assert propagate_constraints(dodecahedron, clues, len(clues)) is True
+
+        loop_edges = {frozenset((solution[i], solution[(i + 1) % len(solution)]))
+                      for i in range(len(solution))}
+        for e in dodecahedron.edges():
+            guess = dodecahedron.edge_attribute(e, 'guess')
+            if guess == 'unknown':
+                continue
+            assert (guess == 'filledIn') == (frozenset(e) in loop_edges), (
+                f"edge {tuple(e)} deduced {guess}, contradicting the solution")

@@ -18,7 +18,8 @@ import pytest
 from compas.datastructures import Mesh
 
 import genSliPuzzles
-from genSliPuzzles import cut_clues, min_prefix_satisfying
+from genSliPuzzles import LOOKAHEAD_DEPTH, cut_clues, min_prefix_satisfying
+from slisolver import solvable_by_deduction
 
 
 # --- helpers ---
@@ -180,20 +181,48 @@ class TestCutClues:
         walls = num_walls_by_face(cube, BOTTOM_LOOP)
         assert walls == {0: 4, 1: 0, 2: 1, 3: 1, 4: 1, 5: 1}
 
-    def test_high_info_clue_first_needs_one_clue(self, cube_with_bottom_loop):
-        # With the bottom face's clue (4) first, one clue suffices:
-        # clue 4 forces all 4 bottom edges, vertex rules rule out the
-        # verticals, and the only remaining choice (the top 4-cycle)
-        # would make a second, disjoint loop — rejected by is_valid_loop.
+    def test_high_info_ordering_needs_two_clues(self, cube_with_bottom_loop):
+        """Bottom clue (4) first, top clue (0) second: two clues.
+
+        The bottom's clue 4 forces all four bottom edges, and the vertex rule
+        then rules out the verticals — but that leaves the four top edges
+        undecided. Ruling them out needs "there must be only ONE loop", which
+        none of our propagation rules encode yet: the solver only checks it in
+        is_valid_loop, once an assignment is complete. Players DO reason with
+        it ("filling that would close the loop early, leaving clues
+        unsatisfied, so it must be ruled out"), so this is a gap in our rule
+        set rather than a fact that is off-limits — see the TODO about adding
+        it as a rule. For now the top's clue 0 settles those edges directly,
+        so the answer is 2.
+
+        Under the older, uniqueness-only test this ordering needed just 1
+        clue: the two-loop alternative was eliminated by is_valid_loop at the
+        end of a search, not by deduction. That is the difference this change
+        is about.
+        """
         walls = num_walls_by_face(cube_with_bottom_loop, BOTTOM_LOOP)
         ordering = [(f, walls[f]) for f in [0, 1, 2, 3, 4, 5]]
-        assert cut_clues(ordering) == 1
+        assert cut_clues(ordering) == 2
+
+    def test_result_is_deducible_and_minimal(self, cube_with_bottom_loop):
+        """Whatever count cut_clues returns, that prefix must be solvable by
+        deduction and the one below it must not be. Stated as a property so it
+        survives future changes to the rule set."""
+        walls = num_walls_by_face(cube_with_bottom_loop, BOTTOM_LOOP)
+        ordering = [(f, walls[f]) for f in [0, 1, 2, 3, 4, 5]]
+        needed = cut_clues(ordering)
+
+        assert solvable_by_deduction(cube_with_bottom_loop, ordering, needed,
+                                     depth=LOOKAHEAD_DEPTH) is True
+        assert solvable_by_deduction(cube_with_bottom_loop, ordering, needed - 1,
+                                     depth=LOOKAHEAD_DEPTH) is False
 
     def test_low_info_ordering_needs_five_clues(self, cube_with_bottom_loop):
         # Side faces first (each clue 1), then bottom (4), then top (0).
-        # Any prefix of just side clues is ambiguous: the top loop and the
-        # bottom loop both give every side face exactly 1 filled edge.
-        # Adding the bottom clue (5th) pins it down, so the minimum is 5.
+        # No prefix of side clues alone gets anywhere: the top loop and the
+        # bottom loop both give every side face exactly 1 filled edge, so
+        # nothing distinguishes them. The bottom clue (5th) is what makes the
+        # position deducible, so the minimum is 5.
         walls = num_walls_by_face(cube_with_bottom_loop, BOTTOM_LOOP)
         ordering = [(f, walls[f]) for f in [2, 3, 4, 5, 0, 1]]
         assert cut_clues(ordering) == 5

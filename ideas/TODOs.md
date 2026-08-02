@@ -5,10 +5,24 @@ Note, some of these items may be already done even if they're not checked off.
     defensible standard, but I don't really want to support that anymore. What to use instead?
     - [ ] A serious geometer would even want to browse or filter by category, e.g. Johnson solids.
 - [ ] quick: fix "black" to "dark blue" in instructions.
+- [ ] quick: brighten lighting on the faces that the camera can see. Sometimes the polyhedron appears
+    backlit, and it can be hard to distinguish edge colors.
+- [ ] quick: highlight the "Check Solution" button automatically when it's ready to check.
+    Not sure if that's when all clues are satisfied and no mistakes are highlighted ... or only
+    when the puzzle is completely & correctly solved.
+- [ ] This is probably mentioned elsewhere where I talk about sources of polyhedra, but ...
+    look at Krazydad's Variety Slitherlinks to see which tilings might inspire good
+    new polyhedra. E.g. Penrose tiling...
 - [ ] At some point, it would be good to save persistent state about which puzzles the user
     has solved. Then completionists can make sure they've done all of them. The dropdown
     pickers could reflect which grids and puzzles are done, and the panel could show that state
     for the current puzzle. (Maybe even "Solved in 4m55s.")
+- [ ] Consider "landmarks" in the background, to help the player stay oriented, especially if
+    we're using trackball controls, where "up" doesn't stay stable. E.g. a moon or planet. But landmarks
+    whose "up" is obvious would help more. And 2 or 3 landmarks would help more than one.
+    Maybe a bird, a cloud, an airplane... milky way...
+    - [ ] I was thinking just part of the background texture, but we could do actual 3D models,
+      if they're close enough for that to matter. It's just harder to find good ones free.
 - [ ] puzzle generation: try to make sure that puzzles are fun, not just uniquely solvable.
     Can we measure whether they're trivially propagatable or require deep trial and error?
     This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt
