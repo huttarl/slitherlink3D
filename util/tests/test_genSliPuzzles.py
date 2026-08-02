@@ -260,6 +260,66 @@ class TestRegionColoring:
         assert (coloring2.red_needs_check, coloring2.blue_needs_check) == (True, False)
 
 
+class TestDuplicateRejection:
+    """Puzzles must differ as the PLAYER sees them, which means up to rotation
+    and reflection -- they can turn the solid over. Comparing clue lists face by
+    face isn't enough, and data/ shipped such pairs before this: all three
+    tetrahedron puzzles were one puzzle, and two of the cube's three matched."""
+
+    @pytest.fixture(autouse=True)
+    def cube_as_the_current_grid(self, cube, monkeypatch):
+        """The dedupe helpers read the module's mesh and output, so point both at
+        a cube with no puzzles recorded yet."""
+        monkeypatch.setattr(genSliPuzzles, 'mesh', cube)
+        monkeypatch.setattr(genSliPuzzles, 'symmetries_cache', None)
+        monkeypatch.setattr(genSliPuzzles, 'puzzles_output', {'puzzles': []})
+
+    def test_finds_the_cubes_48_symmetries(self):
+        """24 rotations, doubled by reflections."""
+        assert len(genSliPuzzles.face_symmetries()) == 48
+
+    def test_a_rotated_puzzle_counts_as_the_same_one(self):
+        """Clue 2 on the bottom, clue 1 on the top, versus the same pair on the
+        front and back: a quarter turn carries one onto the other."""
+        bottom_and_top = [2, 1, -1, -1, -1, -1]
+        front_and_back = [-1, -1, 2, -1, 1, -1]
+        assert genSliPuzzles.same_puzzle_up_to_symmetry(bottom_and_top,
+                                                        front_and_back)
+
+    def test_adjacent_and_opposite_placements_are_different_puzzles(self):
+        """Clue 2 and clue 1 on OPPOSITE faces, versus on ADJACENT faces. No
+        symmetry maps an opposite pair to an adjacent one, so these are two
+        puzzles -- and they share a clue census, which is exactly the case the
+        census test alone would get wrong."""
+        opposite = [2, 1, -1, -1, -1, -1]     # bottom and top
+        adjacent = [2, -1, 1, -1, -1, -1]     # bottom and front
+        assert (genSliPuzzles.clue_census(opposite)
+                == genSliPuzzles.clue_census(adjacent))
+        assert not genSliPuzzles.same_puzzle_up_to_symmetry(opposite, adjacent)
+
+    def test_already_generated_rejects_a_rotation_of_a_kept_puzzle(self):
+        genSliPuzzles.puzzles_output['puzzles'].append(
+            {'clues': [2, 1, -1, -1, -1, -1], 'solution': [0, 1, 2, 3]})
+        assert genSliPuzzles.already_generated([-1, -1, 2, -1, 1, -1]) is True
+
+    def test_already_generated_accepts_a_genuinely_new_puzzle(self):
+        genSliPuzzles.puzzles_output['puzzles'].append(
+            {'clues': [2, 1, -1, -1, -1, -1], 'solution': [0, 1, 2, 3]})
+        assert genSliPuzzles.already_generated([2, -1, 1, -1, -1, -1]) is False
+
+    def test_a_differing_census_skips_the_symmetry_scan(self, monkeypatch):
+        """The census is the cheap pre-filter: when it differs, no symmetry could
+        relate the two, so the group is never even computed."""
+        genSliPuzzles.puzzles_output['puzzles'].append(
+            {'clues': [2, 1, -1, -1, -1, -1], 'solution': [0, 1, 2, 3]})
+
+        def fail_if_called():
+            raise AssertionError("should not need the symmetry group here")
+        monkeypatch.setattr(genSliPuzzles, 'face_symmetries', fail_if_called)
+
+        assert genSliPuzzles.already_generated([3, 3, 3, -1, -1, -1]) is False
+
+
 class TestBackendCanDisplay:
     """What gates the progress redraws. Getting this wrong either wastes most of
     a headless run's time (the reason for the gate) or silently kills the

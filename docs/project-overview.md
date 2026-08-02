@@ -343,12 +343,18 @@ progression order. A new grid won't appear in the picker until this has run.
 The project is in active development.
 
 The Python puzzle-generation pipeline (solver + generator) works end-to-end.
-`data/` currently holds **26 grids with 78 puzzles** (3 each): all 5 Platonic
-solids, all 13 Archimedean solids, and 8 Johnson solids, ranging from the
-tetrahedron (4 faces, 6 edges) to the truncated icosidodecahedron (62 faces,
-180 edges). Every puzzle is uniquely solvable AND solvable by deduction --
-verified by the solver, and re-verified any time by the `slow`-marked pytest
-sweep, which runs as part of a normal `pytest util/tests`.
+`data/` currently holds **26 grids with 76 puzzles**: all 5 Platonic solids,
+all 13 Archimedean solids, and 8 Johnson solids, ranging from the tetrahedron
+(4 faces, 6 edges) to the truncated icosidodecahedron (62 faces, 180 edges).
+Every grid offers 3 puzzles except the tetrahedron, which has exactly one
+puzzle in total: its loop is always some face's boundary, that face's clue is
+excluded for having a deficit of 0, and all four faces are equivalent under
+the solid's symmetries, so every such puzzle is the same one turned around.
+
+Every puzzle is uniquely solvable AND solvable by deduction, and no two on a
+grid are the same board up to rotation or reflection -- verified by the
+solver, and re-verified any time by the `slow`-marked pytest sweep, which
+runs as part of a normal `pytest util/tests`.
 
 Uniqueness checks are time-budgeted, so generation stays bounded even where
 the solver's search would blow up. Generating a couple of puzzles takes
