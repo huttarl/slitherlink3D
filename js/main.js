@@ -44,8 +44,10 @@ async function main() {
             sceneManager.controls.update(delta);
         }
 
-        // Now that the camera is final for this frame, orient/cull the clues.
+        // Now that the camera is final for this frame, orient/cull the clues
+        // and move the headlight to where the camera ended up.
         updateTextVisibility(gameState);
+        sceneManager.updateHeadlight();
 
         // Render the scene
         gameState.render();

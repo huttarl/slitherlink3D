@@ -1,10 +1,13 @@
 Note, some of these items may be already done even if they're not checked off.
+- [ ] Add more rules, after A B C and D, to help the puzzle generator / evaluator know
+    what's possible & easy for players. I have several that I use experientially in
+    solving variety slitherlink puzzles.
 - [ ] Make the info about the polyhedra and their categories more front-and-center.
     Each grid file already includes categories (many-to-many), but we don't show them yet.
     Include a link to info about each polyhedron, and each category. Wikipedia would be a
     defensible standard, but I don't really want to support that anymore. What to use instead?
     - [ ] A serious geometer would even want to browse or filter by category, e.g. Johnson solids.
-- [ ] quick: fix "black" to "dark blue" in instructions.
+- [x] quick: fix "black" to "dark blue" in instructions.
 - [ ] quick: brighten lighting on the faces that the camera can see. Sometimes the polyhedron appears
     backlit, and it can be hard to distinguish edge colors.
 - [ ] quick: highlight the "Check Solution" button automatically when it's ready to check.

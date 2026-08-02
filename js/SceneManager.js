@@ -50,6 +50,7 @@ export class SceneManager {
         // Lighting
         this.ambientLight = null;
         this.directionalLight = null;
+        this.headlight = null;
     }
 
     /**
@@ -84,6 +85,10 @@ export class SceneManager {
         const controlsStyle = new URLSearchParams(window.location.search).get('controls');
         this.setupControls({minDistance: CAMERA_MIN_ZOOM, maxDistance: CAMERA_MAX_ZOOM,
                             style: controlsStyle});
+
+        // Now that there is a camera, put the headlight on it, so the very first
+        // frame is lit like all the others.
+        this.updateHeadlight();
     }
 
     /**
@@ -295,16 +300,58 @@ export class SceneManager {
 
     /**
      * Sets up lighting for the scene
+     *
+     * Three lights, with distinct jobs:
+     *
+     *   - ambient, so nothing is ever pure black;
+     *   - a fixed directional light, which is what gives the solid its sense of
+     *     form: because it does NOT follow the camera, its shading and specular
+     *     highlights shift as you rotate, and that motion reads as shape;
+     *   - a "headlight" that follows the camera (see updateHeadlight), so the
+     *     faces you are looking at are always lit.
+     *
+     * The headlight is there because a fixed light alone leaves the solid
+     * backlit from half of the possible viewpoints, and on a dim face the edge
+     * colors are hard to tell apart -- which matters here, since the colors are
+     * what the player is reading. The fixed light was turned down from 1.2 to
+     * make room for it, so the brightest a face can now get is about what it
+     * was before; the difference is at the dim end, where a camera-facing face
+     * used to fall back to ambient alone.
      */
     setupLighting() {
-        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
         this.scene.add(this.ambientLight);
-        
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.55);
         this.directionalLight.position.set(5, 5, 5);
         this.scene.add(this.directionalLight);
 
+        this.headlight = new THREE.DirectionalLight(0xffffff, 0.75);
+        // Positioned by updateHeadlight, both once at startup and every frame
+        // after. Its target is the default, the world origin, which is where the
+        // solid is centered -- so aiming it is just a matter of moving it to the
+        // camera. Note we can't do that here: setupLighting runs during
+        // createGameState, and the camera isn't built until setupStuff, later.
+        this.scene.add(this.headlight);
+
         console.log("setupLighting done");
+    }
+
+    /**
+     * Moves the headlight to the camera, so it lights whatever we're looking at.
+     *
+     * Call once per frame AFTER the camera is final for that frame, or the
+     * lighting trails the view by a frame during a drag.
+     *
+     * Parenting the light to the camera instead would also work, but it needs
+     * the camera itself added to the scene graph for the renderer to find the
+     * light -- an indirection that is easy to trip over later. Copying the
+     * position is one line and says what it does.
+     */
+    updateHeadlight() {
+        if (this.headlight && this.camera) {
+            this.headlight.position.copy(this.camera.position);
+        }
     }
 
     /**
