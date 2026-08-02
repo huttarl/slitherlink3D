@@ -68,9 +68,11 @@
         /*    margin-left: 5px;*/
         /*    vertical-align: middle;*/
         /*}*/
+        /* Lower right, out of the way of the #info panel at the top left. On a
+           narrow screen the two were overlapping when both sat along the top. */
         .debugging {
             position: fixed;
-            top: 10px;
+            bottom: 10px;
             right: 10px;
             background: rgba(0, 0, 0, 0.7);
             color: white;

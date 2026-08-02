@@ -5,7 +5,8 @@
  */
 
 import * as THREE from './three/three.module.min.js';
-import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES } from './constants.js';
+import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES,
+         LONG_PRESS_MS } from './constants.js';
 
 /**
  * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
@@ -41,6 +42,12 @@ export function makeInteraction(gameState) {
     let pointerDownX = 0, pointerDownY = 0;
     // Farthest the pointer has strayed from its starting point in this gesture.
     let maxPointerMovement = 0;
+
+    // Long press: the touch equivalent of shift+click, which a phone can't do.
+    // The pending timer, and whether it fired and already handled this gesture
+    // (so the click that follows the release doesn't cycle the edge again).
+    let longPressTimer = null;
+    let longPressHandled = false;
 
     /** Updates the visual highlight state of a face.
      *
@@ -143,6 +150,41 @@ export function makeInteraction(gameState) {
         }
     }
 
+    /** Picks whatever is under the given screen position and acts on it.
+     *
+     * Shared by tapping/clicking and by the long press, which differ only in
+     * which way an edge's state should cycle.
+     *
+     * @private
+     * @param {number} clientX
+     * @param {number} clientY
+     * @param {boolean} reverseDirection - Cycle an edge's state backwards.
+     * @returns {boolean} Whether an edge was hit.
+     */
+    function pickAt(clientX, clientY, reverseDirection) {
+        mouse.x = (clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, sceneManager.camera);
+
+        // Check for edge clicks first.
+        const edgeIntersects = raycaster.intersectObjects(edgeMeshes);
+        if (edgeIntersects.length > 0) {
+            handleEdgeClick(edgeIntersects[0].object, reverseDirection);
+            return true;
+        }
+
+        // Check for face clicks if no edge was clicked.
+        const faceIntersects = raycaster.intersectObject(sceneManager.polyhedronMesh);
+        if (faceIntersects.length > 0) {
+            const faceIndex = faceIntersects[0].faceIndex * 3;
+            const faceId = puzzleGrid.faceMap.get(faceIndex);
+            if (faceId !== undefined) {
+                handleFaceClick(faceId);
+            }
+        }
+        return false;
+    }
+
     /**
      * Handles mouse click events on the canvas
      * @private
@@ -155,30 +197,18 @@ export function makeInteraction(gameState) {
         // panel (visible when zoomed in).
         if (event.target !== sceneManager.renderer.domElement) return;
 
+        // A long press already acted on this gesture; releasing still fires a
+        // click, which would cycle the same edge a second time.
+        if (longPressHandled) {
+            longPressHandled = false;
+            return;
+        }
+
         // Suppress the click if the pointer moved far enough during this
         // gesture to count as a drag (i.e. a camera rotation).
         if (maxPointerMovement > DRAG_THRESHOLD_PIXELS) return;
 
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, sceneManager.camera);
-        
-        // Check for edge clicks first.
-        const edgeIntersects = raycaster.intersectObjects(edgeMeshes);
-        if (edgeIntersects.length > 0) {
-            handleEdgeClick(edgeIntersects[0].object, event.shiftKey);
-            return;
-        }
-        
-        // Check for face clicks if no edge was clicked.
-        const faceIntersects = raycaster.intersectObject(sceneManager.polyhedronMesh);
-        if (faceIntersects.length > 0) {
-            const faceIndex = faceIntersects[0].faceIndex * 3;
-            const faceId = puzzleGrid.faceMap.get(faceIndex);
-            if (faceId !== undefined) {
-                handleFaceClick(faceId);
-            }
-        }
+        pickAt(event.clientX, event.clientY, event.shiftKey);
     }
 
     /**
@@ -191,6 +221,16 @@ export function makeInteraction(gameState) {
         sceneManager.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    /** Cancels any pending long press. Safe to call when none is pending.
+     * @private
+     */
+    function cancelLongPress() {
+        if (longPressTimer !== null) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    }
+
     /** Starts tracking a pointer gesture (mouse, touch, or pen).
      * @private
      * @param {PointerEvent} event
@@ -199,6 +239,36 @@ export function makeInteraction(gameState) {
         pointerDownX = event.clientX;
         pointerDownY = event.clientY;
         maxPointerMovement = 0;
+        cancelLongPress();
+
+        // Long press is the touch stand-in for shift+click, so it's offered to
+        // fingers and pens but NOT to a mouse: a mouse has a shift key, and
+        // arming it there would turn any deliberately slow click into a reverse
+        // cycle.
+        if (event.pointerType === 'mouse') return;
+        if (event.target !== sceneManager.renderer.domElement) return;
+
+        const startX = event.clientX;
+        const startY = event.clientY;
+        longPressTimer = setTimeout(() => {
+            longPressTimer = null;
+            // Holding still is a long press; wandering off is a camera drag,
+            // and onPointerMove will already have cancelled us in that case.
+            if (maxPointerMovement > DRAG_THRESHOLD_PIXELS) return;
+            // Act now rather than on release, so the edge changes under the
+            // finger while it's still down -- that IS the feedback that the
+            // long press registered.
+            if (pickAt(startX, startY, true)) {
+                longPressHandled = true;
+            }
+        }, LONG_PRESS_MS);
+    }
+
+    /** Ends a pointer gesture, dropping any long press that hasn't fired yet.
+     * @private
+     */
+    function onPointerUp() {
+        cancelLongPress();
     }
 
     /** Tracks how far the pointer strays from where the gesture began.
@@ -214,21 +284,52 @@ export function makeInteraction(gameState) {
         const movement = Math.hypot(event.clientX - pointerDownX,
                                     event.clientY - pointerDownY);
         maxPointerMovement = Math.max(maxPointerMovement, movement);
+        // Straying this far means the finger is rotating the camera, not
+        // holding an edge, so a long press is no longer on the cards.
+        if (maxPointerMovement > DRAG_THRESHOLD_PIXELS) {
+            cancelLongPress();
+        }
+    }
+
+    /** Suppresses the context menu on the canvas.
+     *
+     * On Android a long press on the canvas otherwise raises the browser's own
+     * menu (and can start a text selection), which lands on top of the puzzle
+     * and swallows the release. Only the canvas is affected; the info panel's
+     * links and text keep their normal menu.
+     *
+     * @private
+     * @param {Event} event
+     */
+    function onContextMenu(event) {
+        if (event.target === sceneManager.renderer.domElement) {
+            event.preventDefault();
+        }
     }
 
     // Set up event listeners
     window.addEventListener('click', onMouseClick);
     window.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    // A gesture the browser takes over (scroll, zoom, an incoming call) ends
+    // with pointercancel rather than pointerup, and would otherwise leave the
+    // long-press timer armed to fire at whatever is under those coordinates.
+    window.addEventListener('pointercancel', onPointerUp);
+    window.addEventListener('contextmenu', onContextMenu);
     window.addEventListener('resize', onWindowResize);
 
     // Return cleanup function
     return {
         // Remove all event listeners when the interaction handler is no longer needed.
         dispose: () => {
+            cancelLongPress();
             window.removeEventListener('click', onMouseClick);
             window.removeEventListener('pointerdown', onPointerDown);
             window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+            window.removeEventListener('contextmenu', onContextMenu);
             window.removeEventListener('resize', onWindowResize);
         }
     };
