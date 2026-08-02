@@ -219,6 +219,36 @@ class TestRegionColoring:
         coloring.adjust_populations()
         assert coloring.count(blue) == round(cube.number_of_faces() / 3)
 
+    def test_paint_random_faces_paints_that_many_distinct_faces(self, coloring, cube):
+        for fkey in cube.faces():
+            coloring.paint_face(fkey, blue)
+        coloring.paint_random_faces(red, 4)
+        assert coloring.count(red) == 4
+        assert coloring.count(blue) == cube.number_of_faces() - 4
+
+    def test_paint_random_faces_skips_faces_already_that_color(self, coloring, cube):
+        """The candidates are the faces NOT already this color, so asking for two
+        more reds when four faces are red leaves six red, not two."""
+        for fkey in [0, 1, 2, 3]:
+            coloring.paint_face(fkey, red)
+        for fkey in [4, 5]:
+            coloring.paint_face(fkey, blue)
+        coloring.paint_random_faces(red, 2)
+        assert coloring.count(red) == 6
+
+    def test_paint_random_faces_clamps_to_what_is_available(self, coloring, cube):
+        """Asking for more than exist used to spin forever looking for a
+        candidate that could never turn up."""
+        coloring.paint_random_faces(red, 99)
+        assert coloring.count(red) == cube.number_of_faces()
+
+    def test_paint_random_faces_ignores_nonpositive_counts(self, coloring, cube):
+        for fkey in cube.faces():
+            coloring.paint_face(fkey, blue)
+        coloring.paint_random_faces(red, 0)
+        coloring.paint_random_faces(red, -3)
+        assert coloring.count(red) == 0
+
     def test_painting_flags_the_other_color_for_a_check(self, coloring):
         """Painting a face red can disconnect the blue region, so it's blue that
         needs re-checking, and vice versa."""
@@ -228,6 +258,35 @@ class TestRegionColoring:
         coloring2 = RegionColoring(coloring.mesh, coloring.dualG)
         coloring2.paint_face(0, blue)
         assert (coloring2.red_needs_check, coloring2.blue_needs_check) == (True, False)
+
+
+class TestBackendCanDisplay:
+    """What gates the progress redraws. Getting this wrong either wastes most of
+    a headless run's time (the reason for the gate) or silently kills the
+    animation when someone runs the generator directly to watch it."""
+
+    @pytest.mark.parametrize("backend, expected", [
+        ("Agg", False),
+        ("agg", False),        # matplotlib reports capitalized; don't rely on it
+        ("pdf", False),
+        ("svg", False),
+        ("template", False),
+        ("TkAgg", True),
+        ("QtAgg", True),
+        ("MacOSX", True),
+    ])
+    def test_recognizes_which_backends_can_show_a_figure(self, backend, expected,
+                                                         monkeypatch):
+        monkeypatch.setattr(genSliPuzzles.plt, 'get_backend', lambda: backend)
+        assert genSliPuzzles.backend_can_display() is expected
+
+    def test_update_display_does_nothing_when_the_display_is_dead(self, cube,
+                                                                  monkeypatch):
+        """It must not even touch `poly`, which is None until setup_display runs
+        -- so a run that never sets up a figure can still call this freely."""
+        monkeypatch.setattr(genSliPuzzles, 'DISPLAY_IS_LIVE', False)
+        monkeypatch.setattr(genSliPuzzles, 'poly', None)
+        genSliPuzzles.update_display(cube)   # would raise if it drew anything
 
 
 class TestCutClues:

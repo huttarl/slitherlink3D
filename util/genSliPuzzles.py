@@ -82,6 +82,28 @@ MAX_REGION_ATTEMPTS = 15
 VERBOSITY = 1
 
 
+def backend_can_display():
+    """True if the current matplotlib backend can actually show a figure.
+
+    Which decides whether the progress redraws are worth doing at all: see
+    update_display.
+    """
+    try:
+        from matplotlib.backends import backend_registry, BackendFilter
+        non_interactive = backend_registry.list_builtin(BackendFilter.NON_INTERACTIVE)
+    except ImportError:
+        # matplotlib < 3.9, where the registry doesn't exist yet. (The attribute
+        # this falls back on is deprecated from 3.9 and gone in 3.11, which is
+        # why it's only the fallback.)
+        from matplotlib.rcsetup import non_interactive_bk as non_interactive
+    return plt.get_backend().lower() not in {b.lower() for b in non_interactive}
+
+
+# Decided once: the backend comes from the environment (run_gen.py sets
+# MPLBACKEND=Agg for headless runs) and doesn't change mid-run.
+DISPLAY_IS_LIVE = backend_can_display()
+
+
 def log(*args, level=1, **kwargs):
     """Print a diagnostic/progress message to stderr, if VERBOSITY allows it.
 
@@ -153,8 +175,19 @@ def setup_display(mesh):
 
 
 def update_display(mesh):
-    """Update the display with the current mesh."""
+    """Update the display with the current mesh, if anyone can see it.
+
+    Called after every region repair step, to animate the coloring as it
+    settles. Under a non-interactive backend that animation goes nowhere --
+    plt.show() can't display it -- but the work is real: on the snub
+    dodecahedron this ran 6367 times at 26 ms each, 95% of the whole run,
+    rebuilding a Poly3DCollection and calling plt.draw() for a figure that was
+    then thrown away. Since run_gen.py forces Agg, that was every batch run.
+    """
     global fig, ax
+
+    if not DISPLAY_IS_LIVE:
+        return
 
     colors = [mesh.face_attribute(fkey, 'color') for fkey in mesh.faces()]
     poly.set_facecolor(colors)
@@ -356,14 +389,26 @@ class RegionColoring:
 
     def paint_random_faces(self, color, how_many):
         """Change specified number of random faces to the given color.
-        Checks that the chosen faces weren't already that color."""
+        Only faces that weren't already that color are chosen.
+
+        This used to draw a random face from a freshly built list(mesh.faces())
+        and retry until it hit one of the other color -- rebuilding that list on
+        every draw, and drawing repeatedly as the supply of candidates shrank.
+        Since the faces it wants are exactly the ones not already this color,
+        one sample of that set does the same job: the result is still a
+        uniformly random set of distinct faces.
+        """
         log(f"Painting {how_many} faces {color}.", level=2)
-        for i in range(how_many):
-            while True:
-                fkey = random.choice(list(self.mesh.faces()))
-                if self.mesh.face_attribute(fkey, "color") != color:
-                    self.paint_face(fkey, color)
-                    break # out of 'while', continue 'for'
+        if how_many <= 0:
+            return
+        candidates = [fkey for fkey in self.mesh.faces()
+                      if self.mesh.face_attribute(fkey, "color") != color]
+        # adjust_populations never asks for more than are available -- it asks
+        # for at most a third of the faces, and every face it would count
+        # against that is already this color -- but clamp rather than let
+        # random.sample raise if some future caller is less careful.
+        for fkey in random.sample(candidates, min(how_many, len(candidates))):
+            self.paint_face(fkey, color)
 
     def adjust_populations(self):
         """If the number of blue or red faces is too low, increase it."""
