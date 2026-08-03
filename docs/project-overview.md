@@ -7,13 +7,21 @@ Slitherlink3D is an interactive 3D puzzle game that brings the classic Slitherli
 The JS side of the app runs directly in the browser with no build process:
 
 - **Run the application**: Open `main.html` in a web browser or serve via a local web server
-- **Local development server**: `python3 -m http.server 8000` (or any static file server)
+- **Local development server**: `util/serve.py` (http.server plus
+  `Cache-Control: no-cache`, so an edit is always picked up on reload; plain
+  `python3 -m http.server 8000` can serve stale modules for days).
 - **No build/lint commands** for the JS code — vanilla ES modules.
 - **Run JS unit tests**: `npm test` (equivalently `node --test "js/tests/*.test.js"`).
   Uses Node's built-in test runner — no npm install, no dependencies. Covers the
-  headless game logic (Grid topology, solution checking, undo/redo history);
-  rendering and interaction are still verified manually in the browser.
+  headless game logic (Grid topology, solution checking, undo/redo history) and
+  a few CSS conventions read straight out of `main.html`.
   Run these after changing game-logic files in `js/`.
+- **Run phone-shaped tests**: `npm run test:mobile` — the real app in a real
+  browser at phone size, asserting *where things land on screen* and how touch
+  input sequences. Opt-in: needs a one-time `npm install --save-dev
+  @playwright/test && npx playwright install chromium`. See
+  `js/tests/mobile/README.md` for what each test is guarding against and what
+  automation still can't tell you.
 
 The Python utilities under `util/` have a pytest suite:
 

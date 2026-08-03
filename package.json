@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test \"js/tests/*.test.js\""
+    "test": "node --test \"js/tests/*.test.js\"",
+    "test:mobile": "playwright test --config=js/tests/mobile/playwright.config.js"
   }
 }
