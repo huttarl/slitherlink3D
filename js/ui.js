@@ -10,6 +10,28 @@ import {nextPuzzleLocation} from "./catalogue.js";
 // from it doesn't pointlessly ask whether to discard the player's marks.
 let currentPuzzleSolved = false;
 
+// Buttons that live in the strip while the panel is collapsed: the things
+// wanted DURING a puzzle. Everything else (pickers, Reset, how-to-play, the
+// settings) is only wanted between puzzles or rarely, so it stays in the
+// drawer. These are moved, not duplicated, so each button keeps one set of
+// listeners and one disabled state.
+const STRIP_BUTTON_IDS = ['undoMove', 'redoMove', 'levelCamera', 'checkSolution'];
+
+// Below this viewport width the panel starts collapsed. Chosen to catch
+// phones in both orientations while leaving tablets and desktops expanded.
+const NARROW_SCREEN_QUERY = '(max-width: 700px)';
+
+// How long an informational check result stays up. One carrying the
+// Clear-errors button ignores this and waits to be used instead.
+const TOAST_SECONDS = 4;
+
+/** Where each strip button lives when the panel is expanded, so it can be put
+ *  back exactly where it was. Keyed by element id. */
+const buttonHomes = new Map();
+
+/** Timer for auto-dismissing an informational toast. */
+let toastTimer = null;
+
 /**
  * Sets up the UI event listeners for the game.
  * @param gameState
@@ -79,13 +101,22 @@ export function setupUI(gameState) {
         showCheckResults(result);
     });
 
-    const clearErrorsButton = document.getElementById('clearErrors');
-    clearErrorsButton.addEventListener('click', () => {
+    // Clearing errors is offered in two places -- the drawer's feedback line
+    // and the toast -- so both buttons run the same handler.
+    const clearErrors = () => {
         const numCleared = gameState.getPuzzleGrid().clearErrors();
         // clearErrors fires onHistoryChanged, which hides the feedback area;
         // confirm the action afterward. (Recovery hint, since it's one move.)
-        setCheckStatus(`Cleared ${numCleared} wrong ${numCleared === 1 ? 'mark' : 'marks'}. Undo restores them.`);
-    });
+        reportCheckMessage(
+            `Cleared ${numCleared} wrong ${numCleared === 1 ? 'mark' : 'marks'}. Undo restores them.`,
+            false);
+    };
+    document.getElementById('clearErrors').addEventListener('click', clearErrors);
+    document.getElementById('toastClearErrors').addEventListener('click', clearErrors);
+
+    document.getElementById('toastDismiss').addEventListener('click', hideToast);
+
+    setupCollapsiblePanel();
 
     const undoButton = document.getElementById('undoMove');
     undoButton.addEventListener('click', () => {
@@ -181,6 +212,7 @@ async function setupSelectors(puzzleGrid) {
     // Puzzle picker: one entry per puzzle of the current grid.
     const puzzleSelect = document.getElementById('puzzleSelect');
     const currentGridEntry = catalogue.grids.find(g => g.file === currentGrid);
+    const gridName = currentGridEntry ? currentGridEntry.gridName : currentGrid;
     const numPuzzles = currentGridEntry ? currentGridEntry.numPuzzles : 0;
     if (numPuzzles === 0) {
         // Not in the catalogue, or a grid without puzzles.
@@ -188,11 +220,13 @@ async function setupSelectors(puzzleGrid) {
         option.textContent = '(no puzzles)';
         puzzleSelect.appendChild(option);
         puzzleSelect.disabled = true;
+        setWhereAmI(gridName, null);
         return;
     }
     // The same clamping as GameState.setupScene: an out-of-range ?puzzle=
     // means the last puzzle gets loaded, so show that one as selected.
     const currentPuzzle = Math.min(parseInt(params.get('puzzle'), 10) || 1, numPuzzles);
+    setWhereAmI(gridName, currentPuzzle);
     for (let n = 1; n <= numPuzzles; n++) {
         const option = document.createElement('option');
         option.value = String(n);
@@ -333,6 +367,142 @@ function isConfirmDialogOpen() {
 }
 
 /**
+ * Wires the panel's collapse/expand behaviour and sets the starting state.
+ *
+ * Collapsed, the panel is a one-line strip: menu button, where-am-I, and the
+ * buttons a player reaches for mid-puzzle. That's all a phone can spare -- the
+ * full panel covered a third of the screen. Wide screens start expanded, as
+ * before, but can still collapse for an unobstructed board.
+ *
+ * Picking a polyhedron or puzzle needs no auto-collapse: those navigate, and
+ * the fresh page applies the same starting rule.
+ */
+function setupCollapsiblePanel() {
+    const info = document.getElementById('info');
+    const toggle = document.getElementById('panelToggle');
+    const strip = document.getElementById('stripButtons');
+
+    for (const id of STRIP_BUTTON_IDS) {
+        const button = document.getElementById(id);
+        buttonHomes.set(id, {parent: button.parentElement,
+                             next: button.nextSibling,
+                             label: button.textContent});
+    }
+
+    /** Moves the in-play buttons into the strip, or back into the drawer. */
+    function setCollapsed(collapsed) {
+        info.classList.toggle('collapsed', collapsed);
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        for (const id of STRIP_BUTTON_IDS) {
+            const button = document.getElementById(id);
+            const home = buttonHomes.get(id);
+            if (collapsed) {
+                strip.appendChild(button);
+                // "Check solution" is too wide for a strip button; the full
+                // wording stays in the tooltip.
+                if (id === 'checkSolution') button.textContent = 'Check';
+            } else {
+                home.parent.insertBefore(button, home.next);
+                button.textContent = home.label;
+            }
+        }
+    }
+
+    // Screen width decides the starting state, and keeps deciding until the
+    // player expresses a preference -- after that it's theirs to keep. Without
+    // the listener, a phone rotated to landscape would stay collapsed, and a
+    // page that happened to load at zero width (a hidden container, say) would
+    // stay collapsed even once it became wide.
+    const narrowScreen = window.matchMedia(NARROW_SCREEN_QUERY);
+    let playerChoseState = false;
+
+    narrowScreen.addEventListener('change', () => {
+        if (!playerChoseState) setCollapsed(narrowScreen.matches);
+    });
+
+    toggle.addEventListener('click', () => {
+        playerChoseState = true;
+        setCollapsed(!info.classList.contains('collapsed'));
+    });
+    // Where-am-I is a shortcut to the pickers, which live in the drawer.
+    document.getElementById('whereAmI').addEventListener('click', () => {
+        playerChoseState = true;
+        setCollapsed(false);
+    });
+
+    setCollapsed(narrowScreen.matches);
+}
+
+/** True when the panel is collapsed, so check results belong in the toast. */
+function isPanelCollapsed() {
+    return document.getElementById('info').classList.contains('collapsed');
+}
+
+/** Labels the strip's where-am-I button, which says what's loaded and opens
+ *  the pickers. Called once the catalogue is known.
+ *
+ * The name and the number go in separate spans: on a narrow strip the name is
+ * the part that gets truncated, so the number -- the bit that changes as you
+ * work through a grid -- stays legible. "Puzzle" is left out for the same
+ * reason: it's the least informative word available.
+ *
+ * @param {string} gridName - e.g. "Truncated icosahedron"
+ * @param {number|null} puzzleNumber - null for a grid with no puzzles
+ */
+function setWhereAmI(gridName, puzzleNumber) {
+    document.getElementById('whereAmIGrid').textContent = gridName;
+    document.getElementById('whereAmIPuzzle').textContent =
+        puzzleNumber ? `· ${puzzleNumber}` : '· (none)';
+}
+
+/**
+ * Shows a check result in the toast: a full-width bar along the bottom, used
+ * while the panel is collapsed so the board stays visible and the message
+ * needn't be abbreviated.
+ *
+ * @param {string} message
+ * @param {boolean} offerClear - Show the Clear-errors button.
+ */
+function showToast(message, offerClear) {
+    const toast = document.getElementById('checkToast');
+    document.getElementById('toastStatus').textContent = message;
+    document.getElementById('toastClearErrors').classList.toggle('hidden', !offerClear);
+    toast.classList.remove('hidden');
+
+    clearTimeout(toastTimer);
+    toastTimer = null;
+    // A toast offering an action has to wait for it; one that only reports
+    // gets out of the way on its own.
+    if (!offerClear) {
+        toastTimer = setTimeout(hideToast, TOAST_SECONDS * 1000);
+    }
+}
+
+/** Hides the check-result toast. */
+function hideToast() {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+    document.getElementById('checkToast').classList.add('hidden');
+    document.getElementById('toastClearErrors').classList.add('hidden');
+}
+
+/**
+ * Reports a check message wherever the player is currently looking: the
+ * toast when the panel is collapsed, the drawer's status line when it's open.
+ *
+ * @param {string} message
+ * @param {boolean} offerClear - Whether to offer the Clear-errors button.
+ */
+function reportCheckMessage(message, offerClear) {
+    if (isPanelCollapsed()) {
+        showToast(message, offerClear);
+    } else {
+        setCheckStatus(message);
+        document.getElementById('clearErrors').classList.toggle('hidden', !offerClear);
+    }
+}
+
+/**
  * Presents the outcome of an explicit "Check solution" to the player, in
  * the status line under the buttons.
  *
@@ -344,35 +514,48 @@ function isConfirmDialogOpen() {
  * @param {Object} result - return value of checkUserSolution(true)
  */
 function showCheckResults(result) {
-    const clearButton = document.getElementById('clearErrors');
-    clearButton.classList.add('hidden');
+    document.getElementById('clearErrors').classList.add('hidden');
     const numErrors = result.mismatchedEdgeIds ? result.mismatchedEdgeIds.length : 0;
 
     if (result.status === 2) {
-        // The celebration overlay also appears, via the onSolved observer.
-        setCheckStatus('Solved!');
-    } else if (numErrors > 0) {
+        // The celebration overlay says this far better than a status line can,
+        // so when it's going to appear (via the onSolved observer) the toast
+        // stays out of the way; the drawer still notes it for a wide screen.
+        if (isPanelCollapsed()) {
+            hideToast();
+        } else {
+            setCheckStatus('Solved!');
+        }
+        return;
+    }
+
+    if (numErrors > 0) {
         let message = `${numErrors} of your marks ${numErrors === 1 ? "doesn't" : "don't"} match the solution.`;
         if (result.vertexViolations.length > 0) {
             message += ' Self-crossings are highlighted in red.';
         }
-        setCheckStatus(message);
-        clearButton.classList.remove('hidden');
-    } else {
-        // No wrong marks: report why the puzzle nevertheless isn't solved.
-        let message;
-        if (result.clueViolations.length > 0) {
-            message = 'Looks good so far! (Some clues remain unsatisfied.)';
-        } else {
-            const reasons = {
-                noEdges: "You haven't filled in any edges yet.",
-                incomplete: 'Looks good so far! (But the loop is not yet complete.)',
-                multipleLoops: 'There is more than one loop!',
-            };
-            message = reasons[result.loopCheck?.reason] ?? 'Not solved yet.';
-        }
-        setCheckStatus(message);
+        reportCheckMessage(message, true);
+        return;
     }
+
+    // No wrong marks: report why the puzzle nevertheless isn't solved.
+    let message;
+    if (!result.hasFilledEdges) {
+        // Checked before the clue test on purpose: an untouched board leaves
+        // every nonzero clue unsatisfied, so the clue branch would otherwise
+        // always answer first and "Looks good so far!" would be the response
+        // to having done nothing at all.
+        message = "You haven't filled in any edges yet.";
+    } else if (result.clueViolations.length > 0) {
+        message = 'Looks good so far! (Some clues remain unsatisfied.)';
+    } else {
+        const reasons = {
+            incomplete: 'Looks good so far! (But the loop is not yet complete.)',
+            multipleLoops: 'There is more than one loop!',
+        };
+        message = reasons[result.loopCheck?.reason] ?? 'Not solved yet.';
+    }
+    reportCheckMessage(message, false);
 }
 
 /** Shows the given message in the check-feedback status line. */
@@ -381,10 +564,13 @@ function setCheckStatus(message) {
     document.getElementById('checkStatus').textContent = message;
 }
 
-/** Hides the check-feedback area (status line and Clear-errors button). */
+/** Hides the check-feedback area (status line and Clear-errors button), and
+ *  the toast, wherever the last result was shown. Called on any board change,
+ *  which makes that result stale. */
 function hideCheckFeedback() {
     document.getElementById('checkFeedback').classList.add('hidden');
     document.getElementById('clearErrors').classList.add('hidden');
+    hideToast();
 }
 
 /**

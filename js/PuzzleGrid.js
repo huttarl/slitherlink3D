@@ -371,7 +371,19 @@ export class PuzzleGrid extends Grid {
             clueViolations: [],
             loopCheck: null,
             mismatchedEdgeIds: null,
+            // Has the player filled in anything at all? Recorded here rather
+            // than left to the loop check (whose 'noEdges' reason says the same
+            // thing) because an early return on a rule violation skips that
+            // check -- and an untouched board violates every unsatisfied clue,
+            // so that early return is exactly the case that needs it.
+            hasFilledEdges: false,
         };
+        for (const edge of this.edges.values()) {
+            if (edge.metadata.userGuess === 1) {   // 1 = filledIn
+                result.hasFilledEdges = true;
+                break;
+            }
+        }
 
         // Keep track of whether we've already reset highlighting on edges and faces.
         let clearedEdgeHighlights = false, clearedFaceHighlights = false;

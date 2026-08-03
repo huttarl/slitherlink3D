@@ -31,6 +31,197 @@
             border-radius: 8px;
             max-width: 300px;
         }
+
+        /* --- Collapsible panel ------------------------------------------
+           The panel holds three kinds of thing, wanted at very different
+           rates: mid-puzzle verbs (undo/redo/level/check), between-puzzle
+           pickers, and rarely-touched extras (how to play, the repo link,
+           the auto-highlight setting). Only the first deserves permanent
+           room on a phone, so collapsing leaves just the strip.
+
+           Wide screens start expanded and behave as before; the toggle
+           works there too, for anyone who wants the board unobstructed. */
+
+        /* The strip is laid out only when collapsed; expanded, it's just the
+           toggle sitting above the drawer. */
+        #infoStrip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #info.collapsed {
+            /* Tighter than the expanded panel: this is a control strip, not
+               a panel, and every pixel here is board the player can't see. */
+            padding: 8px;
+            /* border-box, or the padding would be added OUTSIDE this width and
+               the strip would hang past the right edge, clipping its last
+               button (10px inset on each side is already accounted for). */
+            box-sizing: border-box;
+            max-width: calc(100vw - 20px);
+        }
+
+        #infoStrip {
+            min-width: 0;
+        }
+
+        /* The blanket `button { margin-top: 2ex }` below is meant for stacked
+           rows in the drawer; in the strip it pushed everything ~21px down, so
+           the space above the controls dwarfed the padding below them. The
+           strip does its own vertical centring. */
+        #infoStrip > button {
+            margin-top: 0;
+        }
+
+        #info.collapsed #infoDrawer {
+            display: none;
+        }
+
+        /* Where-am-I doubles as the shortcut to the pickers, so it looks like
+           a label but behaves like a button. Ellipsis rather than wrapping:
+           some polyhedron names are long ("Truncated icosidodecahedron"), and
+           the strip must stay one line. */
+        #whereAmI {
+            background: none;
+            border: none;
+            color: white;
+            font: inherit;
+            font-size: 14px;
+            padding: 4px 2px;
+            cursor: pointer;
+            white-space: nowrap;
+            /* Basis 0 with min-width 0 means this is what gives up room when
+               the strip is tight -- better a truncated label than a clipped
+               button. */
+            min-width: 0;
+            flex: 1 1 0;
+            text-align: left;
+            /* A flex row of [name][number] so the two can be squeezed
+               independently; see the spans below. */
+            display: flex;
+            align-items: baseline;
+            gap: 0.35em;
+        }
+
+        /* The name absorbs the squeeze... */
+        #whereAmIGrid {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        /* ...while the number holds its ground. */
+        #whereAmIPuzzle {
+            flex: 0 0 auto;
+        }
+
+        #whereAmI:hover, #whereAmI:focus {
+            text-decoration: underline;
+        }
+
+        /* Expanded, the strip carries the toggle and the title; the drawer
+           below shows the pickers and buttons in their usual places. */
+        #info:not(.collapsed) #whereAmI,
+        #info:not(.collapsed) #stripButtons {
+            display: none;
+        }
+
+        /* The title sits in the strip so the toggle costs no extra row. It
+           gives way to the where-am-I label when collapsed. */
+        #infoStrip h3 {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin: 0;
+        }
+
+        #info.collapsed #infoStrip h3 {
+            display: none;
+        }
+
+        /* The row spacing those buttons used to carry inline. Only direct
+           children, so the ones nested in rows (Next, Clear errors) keep their
+           own placement -- and so a button borrowed by the strip loses this
+           automatically. */
+        #infoDrawer > button {
+            margin-top: 1ex;
+        }
+
+        #panelToggle {
+            /* Comfortably tappable: 44px is the usual minimum touch target,
+               and this is the one control that must never be fiddly, since
+               it's the way back to everything else. */
+            min-width: 44px;
+            min-height: 44px;
+            font-size: 20px;
+            line-height: 1;
+            flex: 0 0 auto;
+        }
+
+        #stripButtons {
+            display: flex;
+            gap: 6px;
+            flex: 0 0 auto;
+        }
+
+        /* In the strip, the borrowed buttons get touch-sized and lose the
+           vertical margins they carry in the drawer. */
+        #stripButtons button {
+            margin: 0;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        /* --- Check-result toast (collapsed panel only) ------------------- */
+        #checkToast {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            /* Above the canvas, below nothing else that matters; the debug
+               panel sits in the same corner, hence the z-index. */
+            z-index: 1001;
+        }
+
+        /* .hidden is a class, so an id-based `display: flex` would outrank it
+           whatever the source order. Spell out the hidden case per id. */
+        #checkToast.hidden {
+            display: none;
+        }
+
+        #toastStatus {
+            flex: 1 1 auto;
+            /* Long messages wrap rather than stretching the bar off-screen. */
+            min-width: 0;
+        }
+
+        #checkToast button {
+            flex: 0 0 auto;
+            margin: 0;
+        }
+
+        #toastDismiss {
+            background: none;
+            border: none;
+            color: #ccc;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 6px;
+        }
+
+        /* The debug panel shares the bottom-right corner with the toast; when
+           the toast is up, move the panel clear of it. */
+        #checkToast:not(.hidden) ~ .debugging {
+            bottom: 64px;
+        }
         #info h3 {
             margin-top: 0;
             /* Put the title and the repo link on one line, with the link
@@ -166,10 +357,33 @@
 <body>
     <div id="canvas-container">
         <div id="info">
-            <!-- &#x2197; (north-east arrow) is the conventional hint that a
-                 link opens outside the app. -->
-            <h3>Slitherlink 3D<a target="_blank" rel="noopener noreferrer"
-                    href="https://github.com/huttarl/slitherlink3D">source code &#x2197;</a></h3>
+            <!-- The always-visible strip. On a phone this is the whole panel
+                 most of the time (see #info.collapsed): the verbs you need
+                 mid-puzzle, plus where-am-I, plus a way to open the rest.
+                 The buttons here are the SAME elements as the drawer's, moved
+                 by CSS rather than duplicated, so their wiring, disabled
+                 states and keyboard shortcuts have only one implementation. -->
+            <div id="infoStrip">
+                <button id="panelToggle" title="Show or hide the full panel"
+                        aria-label="Menu" aria-expanded="true"
+                        aria-controls="infoDrawer">&#x2261;</button>
+                <!-- The title shares the strip's line when expanded, so the
+                     toggle costs no vertical space; collapsed, the where-am-I
+                     label takes its place.
+                     &#x2197; (north-east arrow) is the conventional hint that
+                     a link opens outside the app. -->
+                <h3>Slitherlink 3D<a target="_blank" rel="noopener noreferrer"
+                        href="https://github.com/huttarl/slitherlink3D">source code &#x2197;</a></h3>
+                <!-- Two spans, so a long polyhedron name gets truncated while
+                     the puzzle number stays readable: it's the part that
+                     changes as you play, and "Tetrahedron ·" without a number
+                     tells you nothing you didn't know. -->
+                <button id="whereAmI" title="Choose a polyhedron or puzzle"
+                        aria-label="Current puzzle; opens the pickers"
+                    ><span id="whereAmIGrid"></span><span id="whereAmIPuzzle"></span></button>
+                <span id="stripButtons"></span>
+            </div>
+            <div id="infoDrawer">
             <!-- Collapsible Instructions -->
             <details>
                 <summary style="cursor: pointer; color: #88ccff; margin-top: 8px;">
@@ -198,16 +412,20 @@
                 <button id="nextPuzzle" style="margin-top: 0"
                         title="Go on to the next puzzle" disabled>Next &#x25B8;</button>
             </div>
-            <button id="checkSolution" style="margin-top: 1ex">Check solution</button>
-            <button id="undoMove" style="margin-top: 1ex" title="Undo (Ctrl+Z / Cmd+Z)"
+            <!-- Row spacing for these lives in CSS (#infoDrawer > button), not
+                 in inline styles: these buttons move into the strip when the
+                 panel collapses, and an inline margin would outrank the strip's
+                 own layout and push the whole row out of centre. -->
+            <button id="checkSolution">Check solution</button>
+            <button id="undoMove" title="Undo (Ctrl+Z / Cmd+Z)"
                     aria-label="Undo" disabled>&#x21BA;</button>
-            <button id="redoMove" style="margin-top: 1ex" title="Redo (Ctrl+Shift+Z or Ctrl+Y)"
+            <button id="redoMove" title="Redo (Ctrl+Shift+Z or Ctrl+Y)"
                     aria-label="Redo" disabled>&#x21BB;</button>
-            <button id="resetPuzzle" style="margin-top: 1ex">Reset</button>
+            <button id="resetPuzzle">Reset</button>
             <!-- Shown by ui.js only with trackball controls (the default),
                  where the view can end up rolled; ?controls=orbit never
                  rolls, so there it stays hidden. -->
-            <button id="levelCamera" class="hidden" style="margin-top: 1ex"
+            <button id="levelCamera" class="hidden"
                     title="Right side up: turn the view upright again"
                     aria-label="Right side up">&#x21E7;</button>
             <div style="margin-top: 1ex; font-size: 14px">
@@ -220,6 +438,17 @@
                 <button id="clearErrors" class="hidden" style="margin-top: 0.5ex"
                         title="Clear the marks that don't match the solution (undoable)">Clear errors</button>
             </div>
+            </div><!-- /#infoDrawer -->
+        </div>
+        <!-- Check results while the panel is collapsed: a full-width bar along
+             the bottom, so the board stays visible and the messages don't need
+             abbreviating. Informational ones fade; one carrying the
+             Clear-errors action waits to be used. See showCheckResults. -->
+        <div id="checkToast" class="hidden" role="status" aria-live="polite">
+            <span id="toastStatus"></span>
+            <button id="toastClearErrors" class="hidden"
+                    title="Clear the marks that don't match the solution (undoable)">Clear errors</button>
+            <button id="toastDismiss" title="Dismiss" aria-label="Dismiss">&#x2715;</button>
         </div>
         <div class="debugging">
             <details>
