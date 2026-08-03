@@ -19,7 +19,13 @@
         #canvas-container {
             position: relative;
             width: 100vw;
+            /* 100vh first as a fallback for browsers without dvh. dvh is the
+               height actually on screen, which on a phone excludes the browser's
+               toolbars -- so the container stops extending past the bottom of
+               what the player can see. Nothing is positioned against it today
+               (see the note on #checkToast), and this keeps it that way. */
             height: 100vh;
+            height: 100dvh;
         }
         #info {
             position: absolute;
@@ -174,10 +180,18 @@
 
         /* --- Check-result toast (collapsed panel only) ------------------- */
         #checkToast {
-            position: absolute;
+            /* fixed, NOT absolute: absolute anchored it to #canvas-container,
+               which is 100vh tall, and on a phone 100vh is the LARGE viewport --
+               it includes the strip behind the browser's own toolbars. So the
+               toast sat below the visible area and the player never saw a check
+               result, while on desktop, where 100vh is the whole window, it
+               looked right. (The debug panel was fixed all along, which is why
+               that one showed up on a phone and this didn't.) */
+            position: fixed;
             left: 10px;
             right: 10px;
-            bottom: 10px;
+            /* Clear of the iOS home indicator, where there is one. */
+            bottom: max(10px, env(safe-area-inset-bottom, 0px));
             display: flex;
             align-items: center;
             gap: 10px;
