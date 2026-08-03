@@ -133,9 +133,12 @@ export class GameState {
     /**
      * Sets up edge meshes and cross-references
      * @param {THREE.Mesh[]} edgeMeshes - Array of edge meshes
+     * @param {THREE.LineSegments} pickLines - Invisible lines picking aims at
+     * @param {number[]} pickEdgeIds - Edge id of each of pickLines' segments
      */
-    setupEdges(edgeMeshes) {
+    setupEdges(edgeMeshes, pickLines = null, pickEdgeIds = []) {
         this.sceneManager.addEdgeMeshes(edgeMeshes);
+        this.sceneManager.addEdgePickLines(pickLines, pickEdgeIds);
         this.puzzleGrid.setupCrossReferences(
             this.sceneManager.faceMap || new Map(),
             this.sceneManager.faceVertexRanges || new Map(),

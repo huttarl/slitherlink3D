@@ -39,6 +39,11 @@ export class SceneManager {
         // Geometry and meshes
         this.polyhedronMesh = null;
         this.geometry = null;
+        // Invisible line segments along the edges, which picking aims at
+        // instead of the thin drawn cylinders, and the edge id of each segment.
+        // Set by addEdgePickLines.
+        this.pickLines = null;
+        this.pickEdgeIds = [];
         // this.edgeMeshes = []; // unused?
         // this.vertexGroup = null; // unused?
 
@@ -286,6 +291,22 @@ export class SceneManager {
         edgeMeshes.forEach(mesh => edgeGroup.add(mesh));
         this.scene.add(edgeGroup);
         return edgeGroup;
+    }
+
+    /**
+     * Registers the invisible lines that edge picking aims at (see
+     * makeEdgePickLines in geometry.js), and adds them to the scene so their
+     * world matrix is kept up to date like anything else in it. They never
+     * render, being invisible.
+     *
+     * @param {THREE.LineSegments|null} pickLines
+     * @param {number[]} pickEdgeIds - Edge id of each segment, by segment index
+     */
+    addEdgePickLines(pickLines, pickEdgeIds = []) {
+        this.pickLines = pickLines;
+        this.pickEdgeIds = pickEdgeIds;
+        if (pickLines) this.scene.add(pickLines);
+        return pickLines;
     }
 
     /**

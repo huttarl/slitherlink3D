@@ -5,8 +5,9 @@
  */
 
 import * as THREE from './three/three.module.min.js';
+import { findCentroid, findFaceNormal } from './geometryUtils.js';
 import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES,
-         LONG_PRESS_MS, PICK_DEPTH_TOLERANCE } from './constants.js';
+         LONG_PRESS_MS, PICK_DEPTH_TOLERANCE, PICK_RADIUS } from './constants.js';
 
 /**
  * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
@@ -19,7 +20,13 @@ export function makeInteraction(gameState) {
     const sceneManager = gameState.getSceneManager();
     const puzzleGrid = gameState.getPuzzleGrid();
 
-    let edgeMeshes = puzzleGrid.getAllEdgeMeshes();
+    // Picking aims at invisible lines along the edges rather than at the drawn
+    // cylinders: params.Line.threshold then gives a click PICK_RADIUS of slack,
+    // so just missing a thin edge still counts. Falls back to the drawn meshes
+    // if a caller set the scene up without the lines (no tolerance then).
+    const pickLines = sceneManager.pickLines;
+    const pickEdgeIds = sceneManager.pickEdgeIds;
+    const fallbackEdgeMeshes = pickLines ? null : puzzleGrid.getAllEdgeMeshes();
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -150,6 +157,54 @@ export function makeInteraction(gameState) {
         }
     }
 
+    /** Outward normal and centroid of each face, for facesTowardCamera.
+     *  Computed once: the solid never moves, only the camera. */
+    const facePlanes = new Map();
+    for (const [faceId, face] of puzzleGrid.faces) {
+        const faceVertices = puzzleGrid.getFaceVertices(face);
+        const centroid = findCentroid(faceVertices);
+        const normal = findFaceNormal(faceVertices);
+        // Winding should already be outward, but a normal pointing inward would
+        // silently invert this test, so orient it against the centroid: the
+        // solid encloses the origin.
+        if (normal.dot(centroid) < 0) normal.negate();
+        facePlanes.set(faceId, {centroid, normal});
+    }
+
+    /** Is this edge on the side of the solid facing the camera?
+     *
+     * True if either of its faces faces the camera. For a CONVEX solid that is
+     * exactly visibility, which is what makes it a reliable last word on
+     * whether an edge may be picked.
+     *
+     * The depth comparison in pickAt does most of this work and needs no such
+     * assumption, but it cannot separate the two sides right at the silhouette,
+     * where the near and far surfaces meet: measured over 7900 sample points on
+     * the truncated icosahedron, 14 of them picked a hidden rim edge, and
+     * tightening the depth tolerance didn't help (11 still leaked at a quarter
+     * of the slack, at the cost of 178 legitimate near-misses). This closes
+     * that gap. Every grid we ship is convex -- Platonic, Archimedean and
+     * Johnson solids are convex by definition, and genRandomPolyh builds from a
+     * convex hull -- but a concave one would need this dropped, since a
+     * back-facing part of it can be genuinely visible.
+     *
+     * @private
+     * @param {number} edgeId
+     * @returns {boolean}
+     */
+    function facesTowardCamera(edgeId) {
+        const edge = puzzleGrid.edges.get(edgeId);
+        if (!edge) return false;
+        for (const faceId of edge.faceIDs) {
+            const plane = facePlanes.get(faceId);
+            if (plane && sceneManager.camera.position.clone()
+                    .sub(plane.centroid).dot(plane.normal) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Picks whatever is under the given screen position and acts on it.
      *
      * Shared by tapping/clicking and by the long press, which differ only in
@@ -182,12 +237,40 @@ export function makeInteraction(gameState) {
         const surfaceDistance = faceIntersects.length > 0
             ? faceIntersects[0].distance : Infinity;
 
-        // Nearest edge that isn't behind the surface. Hits come back sorted by
-        // distance, so the first one that passes is the nearest such edge.
-        const edgeHit = raycaster.intersectObjects(edgeMeshes).find(
-            hit => hit.distance <= surfaceDistance + PICK_DEPTH_TOLERANCE);
-        if (edgeHit) {
-            handleEdgeClick(edgeHit.object, reverseDirection);
+        // Clip the edge search to the visible depth rather than filtering its
+        // results afterwards. Mesh.raycast rejects a whole mesh whose bounding
+        // sphere lies beyond raycaster.far, before it intersects any triangle,
+        // so the far-side cylinders cost nothing instead of being intersected
+        // and then discarded. (Infinity + tolerance is still Infinity, which is
+        // the right answer when the ray misses the solid altogether.)
+        //
+        // far is state on a shared raycaster, hence the finally: leaving it set
+        // would silently clip every later pick.
+        let edgeId;
+        try {
+            raycaster.far = surfaceDistance + PICK_DEPTH_TOLERANCE;
+            if (pickLines) {
+                raycaster.params.Line.threshold = PICK_RADIUS;
+                // Nearest hit that's on the camera's side of the solid. Hits
+                // come back sorted, so this is the nearest pickable edge.
+                // Segments were emitted two endpoints at a time, in the order
+                // pickEdgeIds records, so a hit segment's first-vertex index
+                // halves to its position in that list.
+                const hit = raycaster.intersectObject(pickLines, false).find(
+                    h => facesTowardCamera(pickEdgeIds[h.index / 2]));
+                if (hit) edgeId = pickEdgeIds[hit.index / 2];
+            } else {
+                const hit = raycaster.intersectObjects(fallbackEdgeMeshes, false)
+                    .find(h => facesTowardCamera(h.object.userData.edgeId));
+                if (hit) edgeId = hit.object.userData.edgeId;
+            }
+        } finally {
+            raycaster.far = Infinity;
+        }
+        if (edgeId !== undefined) {
+            // Act on the DRAWN mesh: that's what gets recoloured, and
+            // highlighted red on a rule violation.
+            handleEdgeClick(puzzleGrid.getEdgeMesh(edgeId), reverseDirection);
             return true;
         }
 

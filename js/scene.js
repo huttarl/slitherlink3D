@@ -94,9 +94,11 @@ export async function createGameState() {
     // Set up the scene with geometry and puzzle data
     await gameState.setupScene(polyhedronData, puzzleData, materials);
 
-    // Create edge geometry and meshes
-    const edgeMeshes = createEdgeGeometry(gameState.getPuzzleGrid());
-    gameState.setupEdges(edgeMeshes);
+    // Create edge geometry and meshes (drawn cylinders, plus the invisible
+    // line segments that picking aims at).
+    const {edgeMeshes, pickLines, pickEdgeIds} =
+        createEdgeGeometry(gameState.getPuzzleGrid());
+    gameState.setupEdges(edgeMeshes, pickLines, pickEdgeIds);
 
     // Create vertex group
     const vertexGroup = createVertexGroup(gameState.getPuzzleGrid(), materials.vertex);

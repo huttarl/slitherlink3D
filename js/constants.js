@@ -13,14 +13,31 @@ export const CAMERA_MAX_ZOOM = 10;
 // Mouse interaction threshold (pixels moved before considering it a drag)
 export const DRAG_THRESHOLD_PIXELS = 5;
 
+// How near an edge a click has to land to count, as a radius around the edge's
+// centre line: the drawn cylinders are thin enough that hitting one exactly is
+// fiddly, especially on a phone. Twice the drawn radius, so the target is
+// effectively twice as wide.
+//
+// Applied as raycaster.params.Line.threshold against a LineSegments standing in
+// for the edges -- threshold only exists for Line and Points, never for Mesh,
+// whose raycast is exact triangle intersection. Being a raycaster parameter
+// rather than geometry, it can be changed at any time without rebuilding
+// anything, which is what would make a zoom-dependent (constant on screen)
+// tolerance easy: scale it by camera distance. It's in world units today, so it
+// covers fewer pixels when zoomed out.
+export const PICK_RADIUS_FACTOR = 2;
+export const PICK_RADIUS = EDGE_RADIUS * PICK_RADIUS_FACTOR;
+
 // How much farther than the nearest face an edge may be and still count as
 // picked. The solid is opaque, so an edge behind it must not be clickable
-// (see pickAt); but an edge cylinder straddles the surface it lies on, so a
-// front edge's hit point can be a hair deeper than the face plane beside it,
-// especially near the silhouette. One edge radius of slack covers that. The
-// margin to a BACK edge is on the order of the solid's diameter -- solids are
-// normalized to a circumradius near 1 -- so this can't let one through.
-export const PICK_DEPTH_TOLERANCE = EDGE_RADIUS;
+// (see pickAt); but an edge's centre line lies ON the surface, and a tolerant
+// pick reports the depth where the ray passes closest to that line, which can
+// be a little beyond the face beside it -- especially at a grazing angle near
+// the silhouette. Two pick radii of slack covers that, while the margin to a
+// BACK edge is on the order of the solid's diameter -- solids are normalized to
+// a circumradius near 1 -- so this can't let one through except right at the
+// rim, where near and far surfaces meet and the distinction stops meaning much.
+export const PICK_DEPTH_TOLERANCE = PICK_RADIUS * 2;
 
 // How long a touch must be held to count as a long press, which cycles an
 // edge's state backwards -- the touch equivalent of shift+click, since a phone
