@@ -3,14 +3,14 @@ Note, some of these items may be already done even if they're not checked off.
     what's possible & easy for players. I have several that I use experientially in
     solving variety slitherlink puzzles.
 - [ ] Tweak for mobile:
-  - [ ] quick: Debug panel overlaps main panel. Move it to lower right.
-  - [ ] quick: Shift+click isn't available; use long-tap instead.
+  - [x] quick: Debug panel overlaps main panel. Move it to lower right.
+  - [x] quick: Shift+click isn't available; use long-tap instead.
   - [ ] broader margin for picking an edge? In that case do we also need to allow the tap ray
         to intersect multiple edges and pick the closest?
   - [ ] The main panel is way too big. Will need to collapse it to a small button.
 - [ ] quick: let initial (default) puzzle be the simple T? A bigger poly is more impressive,
     but the T is a better place for beginners to start.
-- [ ] make trackball the default control.
+- [ ] quick: make trackball the default control.
 - [ ] Make the info about the polyhedra and their categories more front-and-center.
     Each grid file already includes categories (many-to-many), but we don't show them yet.
     Include a link to info about each polyhedron, and each category. Wikipedia would be a
