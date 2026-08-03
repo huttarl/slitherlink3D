@@ -1,0 +1,8 @@
+# Node dev dependencies (only @playwright/test, for `npm run test:mobile`;
+# the app itself ships no dependencies). package-lock.json IS committed, so
+# the pinned version is reproducible.
+node_modules/
+
+# Playwright output: traces, screenshots and reports from failing runs.
+test-results/
+playwright-report/

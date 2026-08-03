@@ -65,6 +65,13 @@ test.describe('check results reach the player', () => {
 });
 
 test.describe('touch input', () => {
+    // Phone project only. Not merely because touchscreen.tap needs a
+    // touch-capable context, but because the behaviour under test is
+    // touch-specific by design: long press is offered to fingers and pens and
+    // withheld from a mouse, which has a shift key. Driving these with a mouse
+    // would assert the opposite of what the code intends.
+    test.skip(({hasTouch}) => !hasTouch, 'needs a touch-capable context');
+
     test('a tap cycles an edge forward', async ({page}) => {
         const edgeId = await someVisibleEdge(page);
         expect(edgeId, 'no camera-facing edge found').not.toBeNull();
