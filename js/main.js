@@ -1,8 +1,15 @@
 import {updateTextVisibility} from './clueRenderer.js';
 import {createGameState} from "./scene.js";
-import {setupUI} from "./ui.js";
+import {initPanelLayout, setupUI} from "./ui.js";
 
 async function main() {
+    // Get the panel into its right shape before anything slow: loading the grid
+    // and puzzle takes long enough that a phone would otherwise sit there
+    // showing the full panel, then snap to the strip once the board appeared.
+    // (main.html's inline script has already set the collapsed class, before the
+    // first paint; this moves the strip's buttons and wires the toggle.)
+    initPanelLayout();
+
     // Create the game state with all necessary objects
     const gameState = await createGameState();
     

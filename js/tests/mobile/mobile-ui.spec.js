@@ -15,12 +15,21 @@ import {
 
 const LONG_PRESS_MS = 500;   // keep in step with js/constants.js
 
-test.beforeEach(async ({page}) => {
+/**
+ * Loads the default puzzle and waits for the scene.
+ *
+ * Deliberately NOT a top-level beforeEach: the tests that navigate somewhere
+ * else themselves (the smoke tests, the slow-load test) would then build a
+ * whole scene twice, and on an emulated phone with several workers competing
+ * for the CPU that was enough to blow the timeout.
+ */
+async function openDefaultPuzzle(page) {
     await page.goto('/main.html');
     await waitForScene(page);
-});
+}
 
 test.describe('check results reach the player', () => {
+    test.beforeEach(({page}) => openDefaultPuzzle(page));
     test('a mistake is reported somewhere visible', async ({page}) => {
         await makeOneMistake(page);
         await page.getByRole('button', {name: /check/i}).click();
@@ -65,6 +74,8 @@ test.describe('check results reach the player', () => {
 });
 
 test.describe('touch input', () => {
+    test.beforeEach(({page}) => openDefaultPuzzle(page));
+
     // Phone project only. Not merely because touchscreen.tap needs a
     // touch-capable context, but because the behaviour under test is
     // touch-specific by design: long press is offered to fingers and pens and
@@ -109,6 +120,65 @@ test.describe('touch input', () => {
 });
 
 test.describe('the collapsed panel', () => {
+    // No shared navigation: the first test here drives its own slowed-down load.
+    test('never paints expanded on a phone, even on a slow load',
+        async ({page}, testInfo) => {
+            // The panel used to come up full-size and snap to the strip once
+            // loading finished, because the JS that collapses it only ran after
+            // the grid and puzzle JSON had been fetched and the geometry built.
+            // main.html now collapses it in a synchronous inline script, before
+            // the first paint, and main.js moves the strip's buttons before the
+            // slow work rather than after.
+            //
+            // Holding the JSON back exaggerates a slow phone connection, so the
+            // window where the old code showed the wrong layout is wide open. A
+            // fast local server would hide the bug.
+            await page.route('**/data/*.json', async route => {
+                await new Promise(r => setTimeout(r, 800));
+                await route.continue();
+            });
+
+            const wantCollapsed = testInfo.project.name === 'phone';
+            const samples = [];
+            const navigation = page.goto('/main.html', {waitUntil: 'commit'});
+            for (let i = 0; i < 8; i++) {
+                await page.waitForTimeout(120);
+                samples.push(await page.evaluate(() => {
+                    const info = document.getElementById('info');
+                    if (!info) return null;
+                    return {collapsed: info.classList.contains('collapsed'),
+                            width: Math.round(info.getBoundingClientRect().width),
+                            boardUp: !!document.querySelector('canvas')};
+                }).catch(() => null));
+            }
+            await navigation;
+
+            const seen = samples.filter(Boolean);
+            expect(seen.length, 'never managed to sample the panel').toBeGreaterThan(3);
+            expect(seen.some(s => s.boardUp),
+                'the board never appeared, so the slow-load window was missed')
+                .toBe(true);
+            for (const s of seen) {
+                expect(s.collapsed,
+                    `panel was ${s.collapsed ? 'collapsed' : 'EXPANDED'} mid-load; `
+                    + `samples: ${JSON.stringify(seen)}`).toBe(wantCollapsed);
+            }
+            // And the strip mustn't visibly resize as its buttons arrive --
+            // hence the fixed width on #info.collapsed. Collapsed only: the
+            // expanded panel is content-sized, so it legitimately grows a little
+            // when the polyhedron picker's options arrive from grids.json.
+            if (wantCollapsed) {
+                const widths = new Set(seen.map(s => s.width));
+                expect(widths.size,
+                    `the strip changed width during loading: ${[...widths].join(', ')}`)
+                    .toBe(1);
+            }
+        });
+
+    // The rest want an ordinary, fully-loaded page.
+    test.describe('once loaded', () => {
+    test.beforeEach(({page}) => openDefaultPuzzle(page));
+
     test('starts collapsed on a phone and expanded on a desktop',
         async ({page}, testInfo) => {
             const collapsed = await page.evaluate(() =>
@@ -137,6 +207,7 @@ test.describe('the collapsed panel', () => {
                      || a.bottom < b.top || b.bottom < a.top);
         });
         expect(overlap, 'the info panel and the debug panel overlap').toBe(false);
+    });
     });
 });
 

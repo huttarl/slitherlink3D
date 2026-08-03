@@ -19,7 +19,19 @@ const STRIP_BUTTON_IDS = ['undoMove', 'redoMove', 'levelCamera', 'checkSolution'
 
 // Below this viewport width the panel starts collapsed. Chosen to catch
 // phones in both orientations while leaving tablets and desktops expanded.
-const NARROW_SCREEN_QUERY = '(max-width: 700px)';
+//
+// The value lives on #info as data-narrow-query, because main.html's inline
+// script needs the same breakpoint to collapse the panel before the first
+// paint, and two copies would eventually disagree. The literal here is only a
+// fallback for a page that somehow lacks the attribute.
+const NARROW_SCREEN_QUERY_FALLBACK = '(max-width: 700px)';
+
+/** The narrow-screen media query, as declared in main.html. */
+function narrowScreenQuery() {
+    const info = document.getElementById('info');
+    return (info && info.getAttribute('data-narrow-query'))
+        || NARROW_SCREEN_QUERY_FALLBACK;
+}
 
 // How long an informational check result stays up. One carrying the
 // Clear-errors button ignores this and waits to be used instead.
@@ -129,7 +141,8 @@ export function setupUI(gameState) {
 
     document.getElementById('toastDismiss').addEventListener('click', hideToast);
 
-    setupCollapsiblePanel();
+    // The panel's layout is set up before this, by initPanelLayout, so that a
+    // phone never shows the full panel while the puzzle loads.
 
     const undoButton = document.getElementById('undoMove');
     undoButton.addEventListener('click', () => {
@@ -392,8 +405,14 @@ function isConfirmDialogOpen() {
  *
  * Picking a polyhedron or puzzle needs no auto-collapse: those navigate, and
  * the fresh page applies the same starting rule.
+ *
+ * Exported and called FIRST, before the grid and puzzle are loaded: this only
+ * needs the DOM, and doing it after loading meant a phone showed the full panel
+ * through the whole load and then snapped to the strip. main.html's inline
+ * script sets the collapsed class earlier still, before the first paint; this
+ * agrees with it and moves the buttons.
  */
-function setupCollapsiblePanel() {
+export function initPanelLayout() {
     const info = document.getElementById('info');
     const toggle = document.getElementById('panelToggle');
     const strip = document.getElementById('stripButtons');
@@ -429,7 +448,7 @@ function setupCollapsiblePanel() {
     // the listener, a phone rotated to landscape would stay collapsed, and a
     // page that happened to load at zero width (a hidden container, say) would
     // stay collapsed even once it became wide.
-    const narrowScreen = window.matchMedia(NARROW_SCREEN_QUERY);
+    const narrowScreen = window.matchMedia(narrowScreenQuery());
     let playerChoseState = false;
 
     narrowScreen.addEventListener('change', () => {

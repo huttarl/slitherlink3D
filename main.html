@@ -64,6 +64,15 @@
                the strip would hang past the right edge, clipping its last
                button (10px inset on each side is already accounted for). */
             box-sizing: border-box;
+            /* A fixed width, not max-width: the strip's buttons arrive a moment
+               after the first paint (the inline script sets the collapsed class,
+               ui.js moves the buttons), and a content-sized strip would visibly
+               widen as they land. This reserves the room up front, and
+               where-am-I flexes to fill whatever the buttons don't use.
+               max-width too, to override the 300px the expanded panel wants --
+               otherwise the strip is capped at 300px and stops short of the
+               right edge. */
+            width: calc(100vw - 20px);
             max-width: calc(100vw - 20px);
         }
 
@@ -370,7 +379,9 @@
 </head>
 <body>
     <div id="canvas-container">
-        <div id="info">
+        <!-- data-narrow-query is the single source for the breakpoint: the
+             inline script below and ui.js both read it, so they can't drift. -->
+        <div id="info" data-narrow-query="(max-width: 700px)">
             <!-- The always-visible strip. On a phone this is the whole panel
                  most of the time (see #info.collapsed): the verbs you need
                  mid-puzzle, plus where-am-I, plus a way to open the rest.
@@ -454,6 +465,30 @@
             </div>
             </div><!-- /#infoDrawer -->
         </div>
+        <script>
+            /* Collapse the panel BEFORE the first paint, on the screens that
+               want it collapsed.
+
+               ui.js does this properly -- it also moves the in-play buttons
+               into the strip -- but it can't run this early: it's a module, so
+               it's deferred, and it only reaches the panel after createGameState
+               has fetched the grid and puzzle JSON and built the geometry. Until
+               then a phone showed the full panel, covering a third of the
+               screen, and then snapped to the strip once loading finished. This
+               is deliberately a plain, synchronous, parser-blocking script,
+               which is what makes it beat the paint.
+
+               Only the class: the buttons move when ui.js runs. The strip is a
+               fixed width (see #info.collapsed) so they arrive into space
+               already reserved, without shifting anything. */
+            (function () {
+                var info = document.getElementById('info');
+                var query = info.getAttribute('data-narrow-query');
+                if (window.matchMedia && window.matchMedia(query).matches) {
+                    info.classList.add('collapsed');
+                }
+            })();
+        </script>
         <!-- Check results while the panel is collapsed: a full-width bar along
              the bottom, so the board stays visible and the messages don't need
              abbreviating. Informational ones fade; one carrying the

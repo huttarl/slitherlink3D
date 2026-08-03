@@ -14,9 +14,13 @@ const PORT = 8123;
 
 export default defineConfig({
     testDir: '.',
-    // Layout assertions are cheap; a slow test here means something hung.
-    timeout: 15_000,
-    expect: {timeout: 4_000},
+    // The assertions are cheap, but getting to them isn't: each test loads a
+    // page that builds a polyhedron and starts WebGL, under device emulation,
+    // with several workers competing for the CPU. The truncated icosahedron took
+    // 13.8s on one run and blew a 15s budget on the next -- flakiness, not a
+    // hang -- so there's room here now.
+    timeout: 45_000,
+    expect: {timeout: 5_000},
     fullyParallel: true,
     reporter: process.env.CI ? 'line' : 'list',
     use: {
@@ -40,6 +44,10 @@ export default defineConfig({
         cwd: '../../..',
         reuseExistingServer: !process.env.CI,
         stdout: 'ignore',
-        stderr: 'pipe',
+        // Also ignore stderr: http.server logs every single request there, and
+        // a module graph is ~25 requests per page load, so piping it buries the
+        // test results under hundreds of [WebServer] lines. A server that fails
+        // to start still fails the run, via the url check above.
+        stderr: 'ignore',
     },
 });
