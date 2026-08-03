@@ -13,7 +13,7 @@ Note, some of these items may be already done even if they're not checked off.
         to intersect multiple edges and pick the closest?
   - [x] The main panel is way too big. Will need to collapse it to a small button.
     - [ ] The buttons are of uneven sizes, and it especially looks bad in the collapsed strip.
-        E.g. the "upright" button looks a little shorter on top than the others.
+        E.g. the "upright" and "Reset" buttons look a little shorter on top than the others.
     - [x] In the collapsed strip, and the expanded panel, the upper padding looks bigger than the lower. It looks funny.
 - [x] quick: let initial (default) puzzle be the simple T? A bigger poly is more impressive,
     but the T is a better place for beginners to start.
@@ -42,7 +42,7 @@ Note, some of these items may be already done even if they're not checked off.
     Maybe a bird, a cloud, an airplane... milky way...
     - [ ] I was thinking just part of the background texture, but we could do actual 3D models,
       if they're close enough for that to matter. It's just harder to find good ones free.
-- [ ] puzzle generation: try to make sure that puzzles are fun, not just uniquely solvable.
+- [x] puzzle generation: try to make sure that puzzles are fun, not just uniquely solvable.
     Can we measure whether they're trivially propagatable or require deep trial and error?
     This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt
     One way to measure difficulty is: how many paths forward are available (inferences that can be made) at each step along the way,
@@ -65,12 +65,12 @@ Note, some of these items may be already done even if they're not checked off.
       solver," and it's measured over whole generation runs (many uniqueness checks
       on random clue orderings), not per puzzle. Worth measuring deliberately rather
       than inferring from these numbers.
-    - [ ] Also, it would be nice to be able to verify that no two puzzles for the same grid
+    - [x] Also, it would be nice to be able to verify that no two puzzles for the same grid
       are the same -- or the same under rotation & reflection.
 - [~] quick: add a link from the web UI to the github repo, and vice versa from the README to where the app is hosted online.
     - [x] UI -> repo: "source code" link on the panel's title line.
-    - [ ] README -> hosted app: still needs a URL.
-    - requires uploading the code to our web site
+    - [x] README -> hosted app: still needs a URL.
+    - [x] requires uploading the code to our web site
 - [ ] Celebration:
     - [ ] Add some "confetti" at the beginning.
     - [ ] Besides just rotating the shape, "gyrate" it, i.e. also rotate the axis of rotation (slowly) so that we get to see all sides equally well.

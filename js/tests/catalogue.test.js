@@ -5,7 +5,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 
-import { nextPuzzleLocation } from '../catalogue.js';
+import { nextPuzzleLocation, playableGrids } from '../catalogue.js';
 
 /** A stand-in catalogue: only the fields nextPuzzleLocation reads. */
 const CATALOGUE = {
@@ -16,6 +16,49 @@ const CATALOGUE = {
         { file: 'D', numPuzzles: 2 },
     ],
 };
+
+describe('playableGrids', () => {
+    test('leaves out grids that have no puzzles', () => {
+        assert.deepStrictEqual(playableGrids(CATALOGUE).map(g => g.file),
+            ['T', 'cube', 'D']);
+    });
+
+    test('keeps catalogue (progression) order', () => {
+        const files = playableGrids(CATALOGUE).map(g => g.file);
+        assert.deepStrictEqual(files, ['T', 'cube', 'D']);
+    });
+
+    test('keeps the current grid even when it has no puzzles', () => {
+        // Reachable with an explicit ?grid=empty. Dropping it would leave the
+        // picker naming a different polyhedron than the one on screen.
+        assert.deepStrictEqual(playableGrids(CATALOGUE, 'empty').map(g => g.file),
+            ['T', 'cube', 'empty', 'D']);
+    });
+
+    test('does not duplicate the current grid when it has puzzles', () => {
+        assert.deepStrictEqual(playableGrids(CATALOGUE, 'cube').map(g => g.file),
+            ['T', 'cube', 'D']);
+    });
+
+    test('agrees with nextPuzzleLocation about which grids exist', () => {
+        // Both skip empty grids; if they disagreed, Next could land on a grid
+        // the picker refuses to show, or vice versa.
+        const reachable = new Set();
+        let at = { file: 'T', puzzle: 1 };
+        reachable.add(at.file);
+        while (at) {
+            at = nextPuzzleLocation(CATALOGUE, at.file, at.puzzle);
+            if (at) reachable.add(at.file);
+        }
+        assert.deepStrictEqual([...reachable],
+            playableGrids(CATALOGUE).map(g => g.file));
+    });
+
+    test('handles a catalogue with nothing playable', () => {
+        const barren = { grids: [{ file: 'a', numPuzzles: 0 }] };
+        assert.deepStrictEqual(playableGrids(barren), []);
+    });
+});
 
 describe('nextPuzzleLocation', () => {
     test('advances within a grid that has more puzzles', () => {

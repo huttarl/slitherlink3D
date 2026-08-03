@@ -4,7 +4,7 @@
 import {makeInteraction} from "./interaction.js";
 import {GameState} from "./GameState.js";
 import {DEFAULT_GRID} from "./constants.js";
-import {nextPuzzleLocation} from "./catalogue.js";
+import {nextPuzzleLocation, playableGrids} from "./catalogue.js";
 
 // Set true once the current puzzle has been solved, so that navigating away
 // from it doesn't pointlessly ask whether to discard the player's marks.
@@ -188,9 +188,12 @@ async function setupSelectors(puzzleGrid) {
     const params = new URLSearchParams(window.location.search);
     const currentGrid = params.get('grid') || DEFAULT_GRID;
 
-    // Grid picker.
+    // Grid picker. Only grids that have puzzles: there is nothing to play on
+    // one that doesn't, so offering it would be a dead end. (The '(no puzzles)'
+    // handling further down still stands, for a grid reached by an explicit
+    // ?grid= -- which is why the current grid is kept in the list regardless.)
     const gridSelect = document.getElementById('gridSelect');
-    for (const grid of catalogue.grids) {
+    for (const grid of playableGrids(catalogue, currentGrid)) {
         const option = document.createElement('option');
         option.value = grid.file;
         option.textContent = `${grid.gridName} (${grid.faces} faces)`;

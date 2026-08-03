@@ -10,6 +10,30 @@
  */
 
 /**
+ * The grids worth offering the player: those that actually have puzzles.
+ *
+ * A grid can be in the catalogue with none -- its data/<id>-puzzles.json
+ * missing, empty, or not generated yet -- and there is nothing to do on such a
+ * grid, so it doesn't belong in the polyhedron picker. nextPuzzleLocation skips
+ * the same grids when advancing, so the picker and the Next button agree on
+ * what exists.
+ *
+ * @param {Object} catalogue - the parsed data/grids.json
+ * @param {string|null} alwaysInclude - a grid file stem to keep regardless.
+ *     Pass the currently loaded grid, so the picker can never name a different
+ *     polyhedron than the one on screen. Belt and braces today: loading a
+ *     puzzleless grid with an explicit ?grid= fails before the UI is built (a
+ *     missing puzzle file 404s; an empty puzzles array trips "puzzle index out
+ *     of range"), so there is no such grid to keep. It matters the moment that
+ *     path is made to fail gracefully.
+ * @returns {Array<Object>} catalogue entries, in catalogue (progression) order
+ */
+export function playableGrids(catalogue, alwaysInclude = null) {
+    return catalogue.grids.filter(
+        grid => grid.numPuzzles > 0 || grid.file === alwaysInclude);
+}
+
+/**
  * Finds the puzzle that follows the given one in progression order.
  *
  * Advances within the current grid while it has more puzzles, then moves to
