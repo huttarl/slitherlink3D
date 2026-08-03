@@ -12,8 +12,11 @@ Note, some of these items may be already done even if they're not checked off.
   - [ ] broader margin for picking an edge? In that case do we also need to allow the tap ray
         to intersect multiple edges and pick the closest?
   - [x] The main panel is way too big. Will need to collapse it to a small button.
-    - [ ] The buttons are of uneven sizes, and it especially looks bad in the collapsed strip.
+- [ ] The buttons are of uneven sizes.
         E.g. the "upright" and "Reset" buttons look a little shorter on top than the others.
+        Actually on careful inspection, the buttons with icons (Unicode symbols) are slightly *taller* than the icons with words.
+        (In general, the disabled buttons look taller, probably because their grayed edge contrasts more with the dark background.
+        But that's not what I'm talking about. The buttons with icons are actually taller by measurement.)
     - [x] In the collapsed strip, and the expanded panel, the upper padding looks bigger than the lower. It looks funny.
 - [x] quick: let initial (default) puzzle be the simple T? A bigger poly is more impressive,
     but the T is a better place for beginners to start.
@@ -23,9 +26,6 @@ Note, some of these items may be already done even if they're not checked off.
     Include a link to info about each polyhedron, and each category. Wikipedia would be a
     defensible standard, but I don't really want to support that anymore. What to use instead?
     - [ ] A serious geometer would even want to browse or filter by category, e.g. Johnson solids.
-- [x] quick: fix "black" to "dark blue" in instructions.
-- [x] quick: brighten lighting on the faces that the camera can see. Sometimes the polyhedron appears
-    backlit, and it can be hard to distinguish edge colors.
 - [ ] quick?: highlight the "Check Solution" button automatically when it's ready to check.
     Not sure if that's when all clues are satisfied and no mistakes are highlighted ... or only
     when the puzzle is completely & correctly solved.
@@ -42,6 +42,9 @@ Note, some of these items may be already done even if they're not checked off.
     Maybe a bird, a cloud, an airplane... milky way...
     - [ ] I was thinking just part of the background texture, but we could do actual 3D models,
       if they're close enough for that to matter. It's just harder to find good ones free.
+- [x] quick: fix "black" to "dark blue" in instructions.
+- [x] quick: brighten lighting on the faces that the camera can see. Sometimes the polyhedron appears
+    backlit, and it can be hard to distinguish edge colors.
 - [x] puzzle generation: try to make sure that puzzles are fun, not just uniquely solvable.
     Can we measure whether they're trivially propagatable or require deep trial and error?
     This could be similar to the "adjustable difficulty" idea in ideas/puzzle gen algorithm.txt

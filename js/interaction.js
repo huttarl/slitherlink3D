@@ -6,7 +6,7 @@
 
 import * as THREE from './three/three.module.min.js';
 import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES,
-         LONG_PRESS_MS } from './constants.js';
+         LONG_PRESS_MS, PICK_DEPTH_TOLERANCE } from './constants.js';
 
 /**
  * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
@@ -166,15 +166,32 @@ export function makeInteraction(gameState) {
         mouse.y = -(clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, sceneManager.camera);
 
-        // Check for edge clicks first.
-        const edgeIntersects = raycaster.intersectObjects(edgeMeshes);
-        if (edgeIntersects.length > 0) {
-            handleEdgeClick(edgeIntersects[0].object, reverseDirection);
+        // Where the ray meets the solid, which is opaque: anything beyond this
+        // is hidden from the player and must not be clickable.
+        //
+        // This is what stops a click that misses a near edge from carrying on
+        // through the solid and toggling an edge on the FAR side -- a mark the
+        // player never asked for and can't even see, which is easy to do
+        // because the near edges are thin and the misses are silent. The edge
+        // meshes and the face mesh are separate objects, so raycasting the
+        // edges alone never gave the faces a chance to block the ray: the far
+        // edge wasn't winning a race, it was the only runner.
+        //
+        // The face mesh is DoubleSide, so this hit is the near surface.
+        const faceIntersects = raycaster.intersectObject(sceneManager.polyhedronMesh);
+        const surfaceDistance = faceIntersects.length > 0
+            ? faceIntersects[0].distance : Infinity;
+
+        // Nearest edge that isn't behind the surface. Hits come back sorted by
+        // distance, so the first one that passes is the nearest such edge.
+        const edgeHit = raycaster.intersectObjects(edgeMeshes).find(
+            hit => hit.distance <= surfaceDistance + PICK_DEPTH_TOLERANCE);
+        if (edgeHit) {
+            handleEdgeClick(edgeHit.object, reverseDirection);
             return true;
         }
 
-        // Check for face clicks if no edge was clicked.
-        const faceIntersects = raycaster.intersectObject(sceneManager.polyhedronMesh);
+        // No edge under the pointer: treat it as a click on the face behind it.
         if (faceIntersects.length > 0) {
             const faceIndex = faceIntersects[0].faceIndex * 3;
             const faceId = puzzleGrid.faceMap.get(faceIndex);
