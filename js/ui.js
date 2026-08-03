@@ -25,6 +25,10 @@ const NARROW_SCREEN_QUERY = '(max-width: 700px)';
 // Clear-errors button ignores this and waits to be used instead.
 const TOAST_SECONDS = 4;
 
+// Longer, for the "that grid isn't available" notice at startup: it's a
+// sentence, it's unexpected, and the player has just arrived.
+const STARTUP_NOTICE_SECONDS = 8;
+
 /** Where each strip button lives when the panel is expanded, so it can be put
  *  back exactly where it was. Keyed by element id. */
 const buttonHomes = new Map();
@@ -62,6 +66,15 @@ export function setupUI(gameState) {
     setupSelectors(puzzleGrid).catch(err => {
         console.error('Could not set up the grid/puzzle selectors:', err);
     });
+
+    // If loading fell back to another grid (see createGameState), tell the
+    // player why they're looking at something other than what they asked for.
+    // The toast rather than the drawer's status line: it's visible whether the
+    // panel is open or collapsed, and it isn't a check result. Given longer
+    // than a check message, since it's unexpected and worth reading.
+    if (gameState.startupNotice) {
+        showToast(gameState.startupNotice, false, STARTUP_NOTICE_SECONDS);
+    }
 
     // Wire up checkbox toggles and buttons
     const showIDsToggle = document.getElementById('showIDs');
@@ -466,7 +479,7 @@ function setWhereAmI(gridName, puzzleNumber) {
  * @param {string} message
  * @param {boolean} offerClear - Show the Clear-errors button.
  */
-function showToast(message, offerClear) {
+function showToast(message, offerClear, seconds = TOAST_SECONDS) {
     const toast = document.getElementById('checkToast');
     document.getElementById('toastStatus').textContent = message;
     document.getElementById('toastClearErrors').classList.toggle('hidden', !offerClear);
@@ -477,7 +490,7 @@ function showToast(message, offerClear) {
     // A toast offering an action has to wait for it; one that only reports
     // gets out of the way on its own.
     if (!offerClear) {
-        toastTimer = setTimeout(hideToast, TOAST_SECONDS * 1000);
+        toastTimer = setTimeout(hideToast, seconds * 1000);
     }
 }
 

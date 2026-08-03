@@ -9,8 +9,6 @@
  * @param {string} relPath - Relative path to the puzzle JSON URL (e.g., 'data/T-puzzles.json')
  * @returns {Promise<Object>} Puzzle data with gridId and puzzles array
  * @throws {Error} If file cannot be loaded or contains invalid data
- *
- * TODO: Degrade more gracefully if the file isn't valid.
  */
 export async function loadPuzzleData(relPath) {
     // no-cache: revalidate rather than trusting a cached copy, since puzzle
@@ -28,8 +26,12 @@ export async function loadPuzzleData(relPath) {
         throw new Error('Invalid or missing gridId in puzzle file');
     }
     if (!data.puzzles || !Array.isArray(data.puzzles) || data.puzzles.length === 0) {
-        // throw new Error('Invalid or missing puzzles array (must be non-empty)');
-        console.log('Invalid or missing puzzles array (must be non-empty)');
+        // Throwing again, having been softened to a console.log at some point:
+        // continuing left the caller with nothing to load and the page died a
+        // few steps later, showing an empty panel and no board. createGameState
+        // now catches this and falls back to the default grid, which is the
+        // graceful degradation the log was reaching for.
+        throw new Error(`No puzzles in ${relPath}`);
     }
 
     return data;
