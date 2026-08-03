@@ -26,7 +26,7 @@ export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44); // Used for debug
 // How fast the view spins while celebrating a solved puzzle.
 export const CELEBRATION_SPIN_DEGREES_PER_SEC = 30;
 
-// Trackball controls (?controls=trackball). Both are feel settings; tune here.
+// Trackball controls (the default style). Both are feel settings; tune here.
 // How much rotation a drag produces. TrackballControls' own default is 1.0,
 // where dragging the full width of the canvas turns the view roughly 115 deg.
 export const TRACKBALL_ROTATE_SPEED = 3.0;
@@ -43,7 +43,10 @@ export const LEVEL_CAMERA_SECONDS = 0.5;
 // Grid (polyhedron) shown when the URL has no ?grid= parameter.
 // The value is a data/ filename stem (see data/grids.json), which can
 // differ from the grid's internal gridId.
-export const DEFAULT_GRID = 'tI';
+// The tetrahedron: the simplest possible board, the right place for a
+// newcomer to learn the rules. Revisit once progress is saved (start where
+// the player left off), or if a title screen wants a showier solid.
+export const DEFAULT_GRID = 'T';
 
 // Edge state machine configuration
 export const EDGE_COLORS = {

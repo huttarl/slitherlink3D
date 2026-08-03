@@ -80,8 +80,8 @@ export class SceneManager {
         );
 
         // Set up controls
-        // ?controls=trackball opts into free rotation; anything else (or
-        // nothing) gets the default orbit controls. See setupControls.
+        // ?controls=orbit opts into the level-locked orbit style; anything
+        // else (or nothing) gets the default trackball. See setupControls.
         const controlsStyle = new URLSearchParams(window.location.search).get('controls');
         this.setupControls({minDistance: CAMERA_MIN_ZOOM, maxDistance: CAMERA_MAX_ZOOM,
                             style: controlsStyle});
@@ -122,15 +122,15 @@ export class SceneManager {
      *
      * Two schemes, chosen by config.style:
      *
-     * - 'orbit' (default): OrbitControls keeps the camera's up direction
-     *   pointing at world +Y, so the view never rolls and the player can't get
+     * - 'trackball' (default): TrackballControls rotates freely in any
+     *   direction, with no up direction maintained, so the polyhedron can be
+     *   tumbled to any orientation (including upside-down). The view can end up
+     *   rolled, hence the "Right side up" button that ui.js shows in this mode.
+     * - 'orbit': OrbitControls keeps the camera's up direction pointing at
+     *   world +Y, so the view never rolls and the player can't get
      *   disoriented. The cost is that dragging stops at the poles -- you can
      *   still reach every face by dragging sideways, but the vertical motion
      *   hits a wall, which players read as "I can't turn it that way."
-     * - 'trackball': TrackballControls rotates freely in any direction, with no
-     *   up direction maintained, so the polyhedron can be tumbled to any
-     *   orientation (including upside-down). The view can end up rolled, hence
-     *   the "Right side up" button that ui.js shows in this mode.
      *
      * Clue digits stay legible either way: clueRenderer rolls them toward the
      * camera every frame.
@@ -142,7 +142,7 @@ export class SceneManager {
             throw new Error('Camera and renderer must be set up before controls');
         }
 
-        this.controlsStyle = config.style === 'trackball' ? 'trackball' : 'orbit';
+        this.controlsStyle = config.style === 'orbit' ? 'orbit' : 'trackball';
         const minDistance = config.minDistance || 3;
         const maxDistance = config.maxDistance || 20;
 

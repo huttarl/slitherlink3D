@@ -204,8 +204,9 @@
             <button id="redoMove" style="margin-top: 1ex" title="Redo (Ctrl+Shift+Z or Ctrl+Y)"
                     aria-label="Redo" disabled>&#x21BB;</button>
             <button id="resetPuzzle" style="margin-top: 1ex">Reset</button>
-            <!-- Shown by ui.js only with ?controls=trackball, where the view
-                 can end up rolled; orbit controls never roll. -->
+            <!-- Shown by ui.js only with trackball controls (the default),
+                 where the view can end up rolled; ?controls=orbit never
+                 rolls, so there it stays hidden. -->
             <button id="levelCamera" class="hidden" style="margin-top: 1ex"
                     title="Right side up: turn the view upright again"
                     aria-label="Right side up">&#x21E7;</button>
