@@ -6,6 +6,7 @@
  * clue digits painted onto faces -- now lives in clueRenderer.js.)
  */
 import * as THREE from './three/three.module.min.js';
+import { findCentroid } from './geometryUtils.js';
 
 /**
  * Creates ID labels for vertices, edges, or faces.
@@ -79,16 +80,13 @@ export function createEdgeLabels(gameState) {
  * */
 export function createFaceLabels(gameState) {
     const grid = gameState.getPuzzleGrid();
-    const getFaceCenter = function (edge) {
-        // TODO implement this!
-        // const vertices = gameState.getPuzzleGrid().vertices;
-        // const v1p = vertices.get(edge.vertexIDs[0]).position;
-        // const v2p = vertices.get(edge.vertexIDs[1]).position;
-        // // Average the two vertex positions.
-        // return v1p.clone().add(v2p).multiplyScalar(0.5);
-        return new THREE.Vector3();
+    const getFaceCenter = function (face) {
+        // The face's centroid -- the same position clueRenderer paints a clue
+        // digit at. (This used to be a "TODO implement this!" returning the
+        // origin, which would have stacked every label at the center.)
+        return findCentroid(face.vertexIDs.map(vId => grid.vertices.get(vId)));
     }
-    return createIdLabels(gameState, gameState.getPuzzleGrid().faces, getFaceCenter,
+    return createIdLabels(gameState, grid.faces, getFaceCenter,
         'diamond', {r: 255, g: 255, b: 100, a: 1});
 }
 
@@ -170,7 +168,20 @@ function makeTextSprite(message, parameters)
             context.stroke();
             break;
         case 'diamond':
-            // TODO: implement diamond shape
+            // A rhombus around the text: corners at the midpoints of the sides
+            // of the box the rect case would have drawn, grown by half so the
+            // text still fits inside the narrowing corners.
+            const cx = canvas.width / 2, cy = canvas.height / 2;
+            const dx = Math.min(w * 0.75, cx - 1), dy = Math.min(h * 0.75, cy - 1);
+            context.beginPath();
+            context.moveTo(cx, cy - dy);
+            context.lineTo(cx + dx, cy);
+            context.lineTo(cx, cy + dy);
+            context.lineTo(cx - dx, cy);
+            context.closePath();
+            context.fill();
+            context.stroke();
+            break;
         default:
             console.error(`Unimplemented shape: ${shape}`);
     }

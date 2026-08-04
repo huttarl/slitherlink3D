@@ -13,8 +13,10 @@ import {
     someVisibleEdge, stopTumbling, touchPress, visibleWithinViewport,
     waitForScene,
 } from './helpers.js';
-
-const LONG_PRESS_MS = 500;   // keep in step with js/constants.js
+// The app's own value, rather than a copy that would drift out of step with it.
+// (constants.js pulls in THREE, which imports fine under Node -- the headless
+// unit tests do the same.)
+import { LONG_PRESS_MS } from '../../constants.js';
 
 /**
  * Loads the default puzzle and waits for the scene.

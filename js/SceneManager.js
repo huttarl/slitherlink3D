@@ -69,13 +69,20 @@ export class SceneManager {
         // Set by addEdgePickLines.
         this.pickLines = null;
         this.pickEdgeIds = [];
-        // this.edgeMeshes = []; // unused?
-        // this.vertexGroup = null; // unused?
+        // Handles on the edge cylinders and the group of vertex spheres, set by
+        // addEdgeMeshes/addVertexGroup when the scene is built. Nothing reads
+        // them at present -- edge picking goes through pickLines, and recoloring
+        // through PuzzleGrid's edgeMeshMap -- but they're what a dispose() or a
+        // scene swap would need, so they're declared here rather than appearing
+        // out of nowhere in those two methods.
+        this.edgeMeshes = [];
+        this.vertexGroup = null;
 
         // Text elements
         this.clueTexts = null;
         this.vertexLabels = null;
         this.edgeLabels = null;
+        this.faceLabels = null;
         
         // Lighting
         this.ambientLight = null;
@@ -99,8 +106,16 @@ export class SceneManager {
     }
 
     /**
-     * Initializes the THREE.js scene with basic setup
-     * TODO: this function is probably not helpful. Refactor.
+     * Creates the THREE.js Scene, and returns it.
+     *
+     * Separate from both the constructor and setupStuff because of when it has
+     * to happen: createGameState needs the Scene early, to add the skybox and
+     * the polyhedron to, while setupStuff (camera, renderer, controls) can only
+     * run later, once the canvas container is in the DOM. So this is the point
+     * where the scene begins, and hence where the timer is re-baselined.
+     *
+     * (A "TODO: this function is probably not helpful" sat here for a while.
+     * The answer turned out to be that it is: the sequence above needs it.)
      */
     initializeScene() {
         this.scene = new THREE.Scene();
@@ -504,14 +519,17 @@ export class SceneManager {
      * @param {THREE.Group} clueTexts - Group containing clue text objects
      * @param {THREE.Group} vertexLabels - Group containing vertex label objects
      * @param {THREE.Group} edgeLabels - Group containing edge label objects
+     * @param {THREE.Group} faceLabels - Group containing face label objects
      */
-    addTextElements(clueTexts, vertexLabels, edgeLabels) {
+    addTextElements(clueTexts, vertexLabels, edgeLabels, faceLabels) {
         this.clueTexts = clueTexts;
         this.vertexLabels = vertexLabels;
         this.edgeLabels = edgeLabels;
-        
+        this.faceLabels = faceLabels;
+
         this.scene.add(clueTexts);
-        // Note: vertexLabels and edgeLabels are only added upon request.
+        // Note: the three ID label groups are only added upon request
+        // (GameState.toggleShowIDs).
     }
 
     /**

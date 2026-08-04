@@ -16,7 +16,7 @@ async function main() {
     
     // Get references to scene manager for easier access
     const sceneManager = gameState.getSceneManager();
-    sceneManager.setupStuff(sceneManager);
+    sceneManager.setupStuff();
 
     setupUI(gameState);
 
