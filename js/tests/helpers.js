@@ -58,6 +58,35 @@ export function makeCubePuzzleGrid(clues, solution) {
     return pg;
 }
 
+/** Builds a grid from a list of faces, each a list of vertex IDs. */
+function makeGridFromFaces(faceList, numVertices) {
+    const grid = new Grid();
+    for (let v = 0; v < numVertices; v++) {
+        grid.addVertex(stubPosition(), {}, v);
+    }
+    faceList.forEach((face, i) => grid.addFace(face, { index: i, clue: -1 }, i));
+    return grid;
+}
+
+/**
+ * A tetrahedron Grid: 4 vertices, 4 triangles, 6 edges. Every vertex alike
+ * (3.3.3), so it exercises the uniform-vertex case with triangles.
+ */
+export function makeTetrahedronGrid() {
+    return makeGridFromFaces([[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]], 4);
+}
+
+/**
+ * A square pyramid Grid (Johnson solid J1): a square base and 4 triangles.
+ * Its vertices are NOT all alike -- the apex meets four triangles, each base
+ * corner two triangles and the square -- which is what makes it the useful
+ * negative case for vertexConfiguration.
+ */
+export function makeSquarePyramidGrid() {
+    return makeGridFromFaces(
+        [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]], 5);
+}
+
 /**
  * Set the guess state of the edge between two vertices, directly
  * (bypassing undo history).

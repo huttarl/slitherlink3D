@@ -3,7 +3,8 @@
  * buttons, and the "are you sure?" that guards leaving a part-worked board.
  */
 import {DEFAULT_GRID} from "./constants.js";
-import {nextPuzzleLocation, playableGrids} from "./catalogue.js";
+import {groupGridsByFamily, loadCatalogue, nextPuzzleLocation,
+        playableGrids} from "./catalogue.js";
 import {confirmDialog} from "./confirmDialog.js";
 import {setWhereAmI} from "./panelLayout.js";
 
@@ -26,17 +27,7 @@ export function markPuzzleSolved() {
  * objects. Fine for playtesting; an in-place scene swap can replace it later.
  */
 export async function setupSelectors(puzzleGrid) {
-    // cache: 'no-cache' forces a conditional request rather than trusting a
-    // cached copy. Static servers (including python -m http.server) send no
-    // Cache-Control for data files, so browsers guess a freshness lifetime and
-    // can serve a stale catalogue for a long time -- and because this fetch
-    // happens after page load, even a hard reload doesn't necessarily bypass
-    // it. The server answers 304 when nothing changed, so this stays cheap.
-    const response = await fetch('data/grids.json', {cache: 'no-cache'});
-    if (!response.ok) {
-        throw new Error(`Failed to load data/grids.json: ${response.statusText}`);
-    }
-    const catalogue = await response.json();
+    const catalogue = await loadCatalogue();
     const params = new URLSearchParams(window.location.search);
     const currentGrid = params.get('grid') || DEFAULT_GRID;
 
@@ -44,13 +35,22 @@ export async function setupSelectors(puzzleGrid) {
     // one that doesn't, so offering it would be a dead end. (The '(no puzzles)'
     // handling further down still stands, for a grid reached by an explicit
     // ?grid= -- which is why the current grid is kept in the list regardless.)
+    //
+    // Grouped into "Platonic solids", "Archimedean solids" and so on, so that
+    // choosing a puzzle quietly teaches the families -- no prose, nothing to
+    // dismiss. See groupGridsByFamily.
     const gridSelect = document.getElementById('gridSelect');
-    for (const grid of playableGrids(catalogue, currentGrid)) {
-        const option = document.createElement('option');
-        option.value = grid.file;
-        option.textContent = `${grid.gridName} (${grid.faces} faces)`;
-        option.selected = (grid.file === currentGrid);
-        gridSelect.appendChild(option);
+    for (const group of groupGridsByFamily(playableGrids(catalogue, currentGrid))) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = group.label;
+        for (const grid of group.grids) {
+            const option = document.createElement('option');
+            option.value = grid.file;
+            option.textContent = `${grid.gridName} (${grid.faces} faces)`;
+            option.selected = (grid.file === currentGrid);
+            optgroup.appendChild(option);
+        }
+        gridSelect.appendChild(optgroup);
     }
     gridSelect.addEventListener('change', async () => {
         // Keep the picker showing the puzzle that's actually loaded until the

@@ -22,6 +22,16 @@ export default defineConfig({
     timeout: 45_000,
     expect: {timeout: 5_000},
     fullyParallel: true,
+    // Two workers, not the default (half the cores). Every test builds a
+    // polyhedron and a WebGL context under device emulation, and past about two
+    // at once they starve each other enough to make the timing-sensitive tests
+    // -- the taps, the long press, anything that computes a screen position and
+    // then aims at it -- fail intermittently. Measured over five runs at five
+    // workers: three of them had a failure, a different test each time, none of
+    // which reproduced when run alone. Two workers costs about 1m instead of
+    // 45s, which is cheaper than re-running the suite to find out whether a
+    // failure was real.
+    workers: 2,
     reporter: process.env.CI ? 'line' : 'list',
     use: {
         baseURL: `http://localhost:${PORT}`,

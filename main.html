@@ -344,6 +344,53 @@
             text-overflow: ellipsis;
         }
 
+        /* --- "About this solid" ------------------------------------------
+           A few facts about the current polyhedron, in the drawer behind the
+           ⓘ and on the celebration overlay. Quiet by design: smaller and
+           dimmer than the controls, so it reads as an aside rather than
+           something demanding attention. */
+        .about-solid {
+            margin-top: 0.75ex;
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 0.85;
+        }
+
+        .about-solid .about-name {
+            font-weight: bold;
+        }
+
+        .about-solid .about-categories {
+            font-style: italic;
+        }
+
+        .about-solid .about-euler {
+            opacity: 0.75;
+        }
+
+        /* The "...but that isn't enough" aside: a step further in than the
+           facts above it. */
+        .about-solid .about-note {
+            margin-top: 0.5ex;
+            opacity: 0.75;
+        }
+
+        /* The ⓘ toggle sits on the picker's row, so it must not take the
+           button margins that the drawer's rows use. */
+        #aboutSolidToggle {
+            margin: 0 0 0 0.3em;
+            padding: 0.1em 0.4em;
+            font-size: 12px;
+        }
+
+        /* In the celebration box the card is centered with everything else,
+           and separated from the Next button above it. */
+        .about-solid-overlay {
+            margin-top: 2ex;
+            border-top: 1px solid rgba(0, 0, 0, 0.15);
+            padding-top: 1ex;
+        }
+
         /* Make the celebration box semitransparent. */
         #overlayMessage {
             opacity: 0.8;
@@ -435,6 +482,12 @@
             <div style="margin-top: 1ex">
                 <label for="gridSelect">Polyhedron:</label>
                 <select id="gridSelect" title="Choose a polyhedron to play on"></select>
+                <!-- Filled in and wired by aboutSolid.js. Starts hidden: the
+                     facts are there for the curious, not in anyone's way. -->
+                <button id="aboutSolidToggle" class="about-toggle" aria-expanded="false"
+                        aria-controls="aboutSolid"
+                        title="A few facts about this polyhedron">&#x24D8; About</button>
+                <div id="aboutSolid" class="about-solid hidden"></div>
             </div>
             <div style="margin-top: 1ex">
                 <label for="puzzleSelect">Puzzle:</label>
@@ -527,6 +580,11 @@
                 <button id="overlayNextPuzzle" class="hidden">Next puzzle &#x25B8;</button>
                 <p id="overlayEndNote" class="hidden">You've solved your way to the
                     end of the available puzzles!</p>
+                <!-- Facts about the solid just solved (aboutSolid.js). BELOW the
+                     Next button on purpose: many players want to move straight
+                     on, and on a phone anything above it pushes it toward the
+                     fold. -->
+                <div id="overlayAboutSolid" class="about-solid about-solid-overlay"></div>
             </div>
         </div>
         <!-- Themed stand-in for window.confirm(); driven by confirmDialog()

@@ -147,6 +147,17 @@ The Python utilities under `util/` have a pytest suite:
   guards leaving a part-worked board. Navigating reloads the page with new
   `?grid=`/`?puzzle=` parameters.
 - `confirmDialog.js` — our own yes/no dialog, in place of `window.confirm()`.
+- `aboutSolid.js` — the opt-in "About this solid" card: family and categories,
+  V/E/F, the face census, the vertex configuration where every vertex is alike,
+  and Euler's formula. Shown behind the ⓘ beside the polyhedron picker and
+  below the Next button on the celebration overlay (never above it — see
+  ideas/learning-about-polys.md). Facts come from the loaded grid, so the card
+  can't disagree with what's on screen; only the categories come from the
+  catalogue.
+- `solidFacts.js` — the pure topology behind that card: `faceCensus`,
+  `facesAroundVertex` (walks the fan of faces round a vertex), and
+  `vertexConfiguration`, which returns the shared cycle only when every vertex
+  has the same one. No DOM, no THREE; unit-tested headless.
 - `constants.js` — colors, radii, zoom limits, `EDGE_STATES` array.
 - `debug.js::debug(...)` — `console.log` gated off by default; on with
   `?debug=1` in the URL, or `SLI_DEBUG=1` in the environment for the Node
@@ -180,6 +191,8 @@ main.js
         ├── puzzlePicker.js ─┬─ panelLayout.js
         │                    ├── confirmDialog.js
         │                    └── catalogue.js
+        ├── aboutSolid.js ───┬─ catalogue.js
+        │                    └── solidFacts.js
         └── confirmDialog.js
 
 main.js also calls panelLayout.js::initPanelLayout() directly, first of all.
@@ -197,7 +210,9 @@ those layers subscribe to its observer callbacks instead.
   - Rendering: `SceneManager.js`, `scene.js`, `geometry.js`,
     `geometryUtils.js`, `clueRenderer.js`, `idLabels.js`, `skybox.js`
   - Input/UI: `interaction.js`, `ui.js`, `panelLayout.js`,
-    `checkFeedback.js`, `puzzlePicker.js`, `confirmDialog.js`
+    `checkFeedback.js`, `puzzlePicker.js`, `confirmDialog.js`, `aboutSolid.js`
+  - Polyhedron facts: `solidFacts.js`, plus `categories` in the grid data
+    and `groupGridsByFamily` in `catalogue.js`
   - Configuration: `constants.js`; `debug.js` (gated tracing)
   - Data loading: `puzzleLoader.js` (puzzle JSON), plus
     `loadPolyhedronFromJSON()` in `geometry.js`

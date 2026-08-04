@@ -90,6 +90,22 @@ export async function makeOneMistake(page) {
     });
 }
 
+/**
+ * Fills in the whole solution loop, so the next check finds the puzzle solved
+ * and the celebration appears.
+ */
+export async function solvePuzzle(page) {
+    await page.evaluate(async () => {
+        const {GameState} = await import('/js/GameState.js');
+        const grid = GameState.getInstance().getPuzzleGrid();
+        const loop = grid.getCurrentPuzzle().solution;
+        for (let i = 0; i < loop.length; i++) {
+            grid.setEdgeState(
+                grid.findEdgeByVertices(loop[i], loop[(i + 1) % loop.length]), 1);
+        }
+    });
+}
+
 /** Sets every edge back to unknown, without disturbing the undo history. */
 export async function clearAllMarks(page) {
     await page.evaluate(async () => {

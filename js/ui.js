@@ -11,6 +11,7 @@ import {GameState} from "./GameState.js";
 import {hideCheckFeedback, initCheckFeedback, showStartupNotice} from "./checkFeedback.js";
 import {markPuzzleSolved, setupSelectors} from "./puzzlePicker.js";
 import {isConfirmDialogOpen} from "./confirmDialog.js";
+import {initAboutSolid} from "./aboutSolid.js";
 
 /**
  * Sets up the UI event listeners for the game.
@@ -31,6 +32,12 @@ export function setupUI(gameState) {
     // buttons, in the background; the rest of the UI doesn't depend on them.
     setupSelectors(puzzleGrid).catch(err => {
         console.error('Could not set up the grid/puzzle selectors:', err);
+    });
+
+    // Likewise the "About this solid" card: it waits on the catalogue, and
+    // nothing else waits on it.
+    initAboutSolid(gameState).catch(err => {
+        console.error('Could not set up the About-this-solid card:', err);
     });
 
     // If loading fell back to another grid (see createGameState), tell the

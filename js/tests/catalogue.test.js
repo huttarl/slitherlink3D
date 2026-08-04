@@ -5,7 +5,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 
-import { nextPuzzleLocation, playableGrids } from '../catalogue.js';
+import { groupGridsByFamily, nextPuzzleLocation, playableGrids } from '../catalogue.js';
 
 /** A stand-in catalogue: only the fields nextPuzzleLocation reads. */
 const CATALOGUE = {
@@ -98,5 +98,60 @@ describe('nextPuzzleLocation', () => {
         const trailing = { grids: [{ file: 'a', numPuzzles: 1 },
                                    { file: 'b', numPuzzles: 0 }] };
         assert.strictEqual(nextPuzzleLocation(trailing, 'a', 1), null);
+    });
+});
+
+/** Catalogue entries with the categories the real data carries. */
+const CATEGORIZED = [
+    { file: 'T', categories: ['Platonic solid', 'deltahedron'] },
+    { file: 'J1', categories: ['Johnson solid'] },
+    { file: 'aC', categories: ['Archimedean solid', 'quasiregular polyhedron'] },
+    { file: 'cube', categories: ['Platonic solid', 'parallelohedron'] },
+    { file: 'tI', categories: ['Archimedean solid'] },
+];
+
+describe('groupGridsByFamily', () => {
+    test('groups by family, in the order a player meets them', () => {
+        assert.deepStrictEqual(
+            groupGridsByFamily(CATEGORIZED).map(g => [g.label, g.grids.map(x => x.file)]),
+            [['Platonic solids', ['T', 'cube']],
+             ['Archimedean solids', ['aC', 'tI']],
+             ['Johnson solids', ['J1']]]);
+    });
+
+    test('a family wins over a cross-cutting category', () => {
+        // The tetrahedron is a Platonic solid AND a deltahedron; it belongs
+        // under the family, not in a deltahedron group of its own.
+        const groups = groupGridsByFamily(CATEGORIZED);
+        assert.ok(!groups.some(g => g.family === 'deltahedron'));
+    });
+
+    test('keeps catalogue order within a group', () => {
+        const platonic = groupGridsByFamily(CATEGORIZED)[0];
+        assert.deepStrictEqual(platonic.grids.map(g => g.file), ['T', 'cube']);
+    });
+
+    test('an unknown category becomes its own group, after the known families', () => {
+        // So adding a family to the data shows up immediately, rather than
+        // being silently lumped in with something else.
+        const grids = [...CATEGORIZED, { file: 'x', categories: ['zonohedron'] }];
+        const labels = groupGridsByFamily(grids).map(g => g.label);
+        assert.deepStrictEqual(labels, ['Platonic solids', 'Archimedean solids',
+                                        'Johnson solids', 'Zonohedra']);
+    });
+
+    test('-hedron pluralizes to -hedra', () => {
+        const groups = groupGridsByFamily([{ file: 'x', categories: ['zonohedron'] }]);
+        assert.strictEqual(groups[0].label, 'Zonohedra');
+    });
+
+    test('a grid with no categories still lands somewhere', () => {
+        const groups = groupGridsByFamily([{ file: 'x' }, { file: 'y', categories: [] }]);
+        assert.deepStrictEqual(groups.map(g => [g.label, g.grids.length]),
+                               [['Others', 2]]);
+    });
+
+    test('an empty list gives no groups', () => {
+        assert.deepStrictEqual(groupGridsByFamily([]), []);
     });
 });

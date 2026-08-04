@@ -10,8 +10,8 @@ import { test, expect } from '@playwright/test';
 import {
     clearAllMarks, collectConsoleErrors, edgeMidpointOnScreen, edgeState,
     inflateCanvasContainer, makeOneMistake, restoreCanvasContainer,
-    someVisibleEdge, stopTumbling, touchPress, visibleWithinViewport,
-    waitForScene,
+    someVisibleEdge, solvePuzzle, stopTumbling, touchPress,
+    visibleWithinViewport, waitForScene,
 } from './helpers.js';
 // The app's own value, rather than a copy that would drift out of step with it.
 // (constants.js pulls in THREE, which imports fine under Node -- the headless
@@ -286,6 +286,45 @@ test.describe('the collapsed panel', () => {
         });
         expect(overlap, 'the info panel and the debug panel overlap').toBe(false);
     });
+    });
+});
+
+test.describe('the celebration overlay', () => {
+    test.beforeEach(({page}) => openDefaultPuzzle(page));
+
+    test('Next puzzle stays on screen with the About card below it',
+        async ({page}) => {
+            // The About-this-solid card is deliberately BELOW the Next button
+            // (see aboutSolid.js): many players want to move straight on, and on
+            // a phone anything added above the button pushes it toward the fold.
+            // This is the guard on that ordering.
+            await solvePuzzle(page);
+            await page.getByRole('button', {name: /check/i}).click();
+
+            const next = await visibleWithinViewport(page, '#overlayNextPuzzle');
+            expect(next.rendered, 'the Next puzzle button is not shown').toBe(true);
+            expect(next.insideViewport,
+                `Next puzzle is off screen: ${JSON.stringify(next.rect)} in a `
+                + `${JSON.stringify(next.viewport)} viewport -- has something been `
+                + 'added above it in the overlay?').toBe(true);
+
+            const card = await visibleWithinViewport(page, '#overlayAboutSolid');
+            expect(card.rendered, 'the About card is missing').toBe(true);
+            expect(card.rect.top,
+                'the About card must sit below the Next button')
+                .toBeGreaterThanOrEqual(next.rect.bottom);
+            // It says something real about the solid on screen.
+            expect(card.text).toMatch(/vertices, \d+ edges/);
+        });
+
+    test('the whole overlay fits the screen', async ({page}) => {
+        await solvePuzzle(page);
+        await page.getByRole('button', {name: /check/i}).click();
+        const box = await visibleWithinViewport(page, '.message-box');
+        expect(box.rendered).toBe(true);
+        expect(box.insideViewport,
+            `the celebration box overflows the screen: ${JSON.stringify(box.rect)} `
+            + `in a ${JSON.stringify(box.viewport)} viewport`).toBe(true);
     });
 });
 
