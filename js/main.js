@@ -38,9 +38,6 @@ async function main() {
         sceneManager.timer.update();
         const delta = sceneManager.timer.getDelta();
 
-        // Spin the view while celebrating a solved puzzle (a no-op otherwise).
-        sceneManager.updateCelebrationSpin(delta);
-
         // Animate the "Right side up" turn, if one is running. While it is, the
         // controls must stand down: their update() calls lookAt(), which would
         // overwrite the orientation being interpolated.
@@ -50,6 +47,18 @@ async function main() {
             // ignores the argument; orbit uses it.)
             sceneManager.controls.update(delta);
         }
+
+        // Tumble the view while celebrating a solved puzzle (a no-op otherwise).
+        //
+        // AFTER the controls, deliberately: TrackballControls.update() ends by
+        // recomputing the position from its own state and calling
+        // lookAt(target), so anything that moved the camera earlier in the frame
+        // is simply overwritten. It has no `enabled` check either -- that guard
+        // is only in its event handlers -- so switching the controls off cannot
+        // hold it back. Going last is what makes the tumble stick, and it still
+        // leaves the controls' zoom in effect, since the tumble takes the
+        // camera's current distance as given.
+        sceneManager.updateTumble(delta);
 
         // Now that the camera is final for this frame, orient/cull the clues
         // and move the headlight to where the camera ended up.

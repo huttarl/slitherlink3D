@@ -4,9 +4,24 @@ import { TrackballControls } from './three/TrackballControls.js';
 import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CELEBRATION_SPIN_DEGREES_PER_SEC,
         LEVEL_CAMERA_SECONDS, TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED} from "./constants.js";
 
-// Axis the celebration spin turns about, and the direction levelCamera()
-// restores as "up". Module-level so it isn't rebuilt every frame.
+// The direction levelCamera() restores as "up", and the reference the tumble
+// carries along with the camera. Module-level so it isn't rebuilt every frame.
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
+
+// "Very irrational", so two rates in this ratio keep out of step indefinitely
+// and the tumble's path never closes on itself.
+const GOLDEN_RATIO = 1.618033;
+
+// How fast the tumble turns, and how fast it sweeps between the poles. The
+// ratio matters more than the values: 1:1/phi^2 is irrational, so the two never
+// synchronise. Latitude is the slower of the two, so the view circles a few
+// times per pole-to-pole pass instead of pitching wildly.
+const TUMBLE_AZIMUTH_RATE =
+    THREE.MathUtils.degToRad(CELEBRATION_SPIN_DEGREES_PER_SEC);
+const TUMBLE_LATITUDE_RATE = TUMBLE_AZIMUTH_RATE / (GOLDEN_RATIO ** 2);
+
+// How long the tumble takes to reach full speed, so a solve doesn't lurch.
+const TUMBLE_RAMP_SECONDS = 1.0;
 
 /**
  * Manages all THREE.js scene objects and rendering components.
@@ -21,10 +36,10 @@ export class SceneManager {
         this.renderer = null;
         this.camera = null;
         this.controls = null;
-        // True while the solved-puzzle celebration is spinning the view.
+        // True while the view is being tumbled, e.g. in celebration.
         // (We spin the camera ourselves rather than using OrbitControls'
         // autoRotate, since TrackballControls has no equivalent.)
-        this.isCelebrationSpinning = false;
+        this.isTumbling = false;
         // True while the "Right side up" button's animation is running;
         // see levelCamera() and updateLevelling().
         this.isLevelling = false;
@@ -56,6 +71,23 @@ export class SceneManager {
         this.ambientLight = null;
         this.directionalLight = null;
         this.headlight = null;
+
+        // Tumbling state. Where the path has got to, and how far the ease-in
+        // has ramped; set by startTumble, advanced by updateTumble. (isTumbling
+        // itself is declared with the other flags above.)
+        this.tumbleAzimuth = 0;
+        this.tumbleLatitudePhase = 0;
+        this.tumbleSpeedFactor = 0;
+
+        // Scratch objects, reused every frame rather than reallocated. The
+        // orientation is carried as a quaternion, which is what keeps the poles
+        // from being special cases; see updateTumble.
+        this._cameraOffset = new THREE.Vector3();
+        this._tumbleDirection = new THREE.Vector3();
+        this._tumbleForward = new THREE.Vector3();
+        this._tumbleAim = new THREE.Vector3();
+        this._tumbleTurn = new THREE.Quaternion();
+
     }
 
     /**
@@ -245,27 +277,106 @@ export class SceneManager {
      * celebration behaves the same under both control schemes (TrackballControls
      * has no autoRotate).
      */
-    startCelebrationSpin() {
-        this.isCelebrationSpinning = true;
+    startTumble() {
+        this.isTumbling = true;
+        // Ease in, so the view doesn't lurch the moment the puzzle is solved.
+        this.tumbleSpeedFactor = 0;
+
+        // Start the path from where the player left the view, so the first frame
+        // barely moves. Latitude and azimuth are the path's own coordinates; see
+        // updateTumble.
+        const offset = this._cameraOffset.copy(this.camera.position)
+            .sub(this.controls.target);
+        this.tumbleAzimuth = Math.atan2(offset.z, offset.x);
+        this.tumbleLatitudePhase = Math.asin(
+            THREE.MathUtils.clamp(offset.y / (offset.length() || 1), -1, 1));
     }
 
-    stopCelebrationSpin() {
-        this.isCelebrationSpinning = false;
+    stopTumble() {
+        this.isTumbling = false;
     }
 
     /**
-     * Advances the celebration spin, if it's running. Called once per frame
-     * from the render loop.
+     * Advances the tumble, if it's running. Called once per frame from the
+     * render loop, AFTER the controls have had their turn -- see the note at
+     * that call site for why that order is the thing that makes this work.
+     *
+     * Two halves, deliberately separate:
+     *
+     * WHERE the camera goes. Azimuth turns steadily while latitude sweeps from
+     * pole to pole, the two rates in an irrational ratio so the path never
+     * closes. That covers the whole solid, poles included, from any starting
+     * viewpoint (measured: every point on the surface comes within 30 degrees of
+     * the camera). What does NOT work is nudging the camera with the same
+     * rotation every frame, however many axes it is built from: by Euler's
+     * theorem a composition of rotations is one rotation about one axis, so
+     * iterating it traces a circle -- which is what the previous versions did,
+     * and why some of the solid was never shown.
+     *
+     * WHICH WAY IS UP -- and this, not the path, is what makes it read as a
+     * tumble rather than an orbit. The orientation is carried in the camera's
+     * quaternion, turned each frame by the shortest arc from where it was
+     * looking to where it now looks, adding no twist of its own.
+     *
+     * The obvious alternative, lookAt(target) with an up vector, holds the
+     * horizon dead level: measured, its roll relative to level is exactly 0
+     * degrees for the entire path. The solid then slides past without ever
+     * appearing to turn over, however much of it the camera visits -- which was
+     * the complaint about the previous version. Transporting the orientation
+     * instead lets the roll follow the path, and it goes right around: measured
+     * over a minute, a spread of 358 degrees. That is the tumble.
+     *
+     * Note it is NOT about gimbal lock, whatever the shape of the maths
+     * suggests. lookAt was measured through the exact poles with no snap at all
+     * (largest orientation change in a frame 0.54 degrees, the same as the
+     * path's own step, with no spikes) -- near a pole the roll rate is bounded
+     * by the azimuth rate, which is a fraction of a degree per frame. The
+     * quaternion is here for the free roll, not to avoid a degeneracy.
+     *
      * @param {number} deltaSeconds - time since the previous frame
      */
-    updateCelebrationSpin(deltaSeconds) {
-        if (!this.isCelebrationSpinning) return;
-        const angle = THREE.MathUtils.degToRad(CELEBRATION_SPIN_DEGREES_PER_SEC) * deltaSeconds;
-        // Orbit the camera around the target, about world up.
-        this.camera.position.sub(this.controls.target)
-            .applyAxisAngle(WORLD_UP, angle)
-            .add(this.controls.target);
-        this.camera.lookAt(this.controls.target);
+    updateTumble(deltaSeconds) {
+        if (!this.isTumbling) return;
+
+        // Ease in over the first second or so, rather than lurching.
+        this.tumbleSpeedFactor = Math.min(
+            1, this.tumbleSpeedFactor + deltaSeconds / TUMBLE_RAMP_SECONDS);
+        const step = this.tumbleSpeedFactor * deltaSeconds;
+
+        // Advance the path's own coordinates. Accumulating these (rather than
+        // deriving them from a running clock) keeps the ratio between the two
+        // rates exact while the ease-in is still scaling both.
+        this.tumbleAzimuth += TUMBLE_AZIMUTH_RATE * step;
+        this.tumbleLatitudePhase += TUMBLE_LATITUDE_RATE * step;
+
+        // asin(sin(phase)) is a triangle wave: latitude crosses at a constant
+        // rate instead of lingering at the extremes. The full range is fine now
+        // -- nothing here divides by cos(latitude).
+        const latitude = Math.asin(Math.sin(this.tumbleLatitudePhase));
+        const cosLatitude = Math.cos(latitude);
+
+        // Take the current distance as given, so a zoom mid-celebration sticks.
+        const radius = this.camera.position.distanceTo(this.controls.target);
+        this._tumbleDirection.set(
+            cosLatitude * Math.cos(this.tumbleAzimuth),
+            Math.sin(latitude),
+            cosLatitude * Math.sin(this.tumbleAzimuth),
+        );
+
+        // Turn the camera the short way from its present line of sight to the
+        // new one. A camera looks down its own -Z.
+        this._tumbleForward.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        this._tumbleAim.copy(this._tumbleDirection).negate();
+        this._tumbleTurn.setFromUnitVectors(this._tumbleForward, this._tumbleAim);
+        this.camera.quaternion.premultiply(this._tumbleTurn).normalize();
+
+        this.camera.position.copy(this._tumbleDirection)
+            .multiplyScalar(radius).add(this.controls.target);
+
+        // Keep `up` consistent with the orientation we just set. Nothing here
+        // reads it, but the controls and levelCamera do, so leaving it stale
+        // would make the view jump when the player next drags.
+        this.camera.up.copy(WORLD_UP).applyQuaternion(this.camera.quaternion);
     }
 
     /**

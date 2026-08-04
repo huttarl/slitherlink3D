@@ -625,7 +625,7 @@ export function updateUndoRedoButtons(puzzleGrid) {
  * @param {GameState} gameState
  */
 function celebrateSolved(gameState) {
-    gameState.sceneManager.startCelebrationSpin();
+    gameState.sceneManager.startTumble();
 
     const name = gameState.getPuzzleGrid().gridName;
     const elapsedTimeSec = Math.round(gameState.sceneManager.timer.getElapsed());
@@ -660,5 +660,5 @@ function hideOverlay() {
     document.getElementById('overlayMessage').classList.add('hidden');
 
     // Stop the celebration spin, if it was running.
-    GameState.getInstance().sceneManager.stopCelebrationSpin();
+    GameState.getInstance().sceneManager.stopTumble();
 }
