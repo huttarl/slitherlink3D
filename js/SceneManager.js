@@ -4,6 +4,7 @@ import { TrackballControls } from './three/TrackballControls.js';
 import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS,
         TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED,
         TUMBLE_DEGREES_PER_SEC} from "./constants.js";
+import {debug} from "./debug.js";
 
 // The direction levelCamera() restores as "up", and the reference the tumble
 // carries along with the camera. Module-level so it isn't rebuilt every frame.
@@ -478,7 +479,7 @@ export class SceneManager {
         // createGameState, and the camera isn't built until setupStuff, later.
         this.scene.add(this.headlight);
 
-        console.log("setupLighting done");
+        debug("setupLighting done");
     }
 
     /**

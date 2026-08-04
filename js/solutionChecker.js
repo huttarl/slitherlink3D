@@ -3,8 +3,8 @@
  * guesses violate the Slitherlink rules, and do they form a complete,
  * correct solution?
  *
- * These functions only inspect the grid and report findings (plus console
- * diagnostics); acting on the findings -- highlighting errors, celebrating
+ * These functions only inspect the grid and report findings (plus debug
+ * diagnostics -- see debug.js for turning those on); acting on the findings -- highlighting errors, celebrating
  * a win -- is up to the caller (PuzzleGrid.checkUserSolution). This keeps
  * the module free of DOM and THREE.js dependencies.
  *
@@ -15,6 +15,7 @@
  *     checkSingleLoop      ~ is_valid_loop
  * Keeping the two implementations parallel makes them easier to compare.
  */
+import {debug} from "./debug.js";
 
 /** Count the number of elements in an iterable that satisfy a predicate. */
 function count(iter, pred) {
@@ -162,18 +163,18 @@ export function checkSingleLoop(grid) {
     }
     // If no edges are filled in, the puzzle is not solved.
     if (startEdgeId == null) {
-        console.log(`checkSingleLoop: no edges are filled in`);
+        debug(`checkSingleLoop: no edges are filled in`);
         return { ok: false, reason: 'noEdges' };
     }
 
     let startVertexId = startEdge.vertexIDs[0], currentVertexId = startEdge.vertexIDs[1];
-    console.log(`checkSingleLoop: tracing from v${startVertexId} along e${startEdgeId}`);
+    debug(`checkSingleLoop: tracing from v${startVertexId} along e${startEdgeId}`);
     let currentVertex = grid.vertices.get(currentVertexId);
     let currentEdge = startEdge, currentEdgeId = startEdgeId;
     let loopLength = 1;
     // Trace the route
     do {
-        console.log(`checkSingleLoop: tracing to v${currentVertexId} via e${currentEdgeId}`);
+        debug(`checkSingleLoop: tracing to v${currentVertexId} via e${currentEdgeId}`);
         // Find an edge of currentVertex besides currentEdge that is filled in.
         let nextEdge = null, nextEdgeId = null;
         for (const edgeId of currentVertex.edgeIDs) {
@@ -188,7 +189,7 @@ export function checkSingleLoop(grid) {
         }
         // If no such edge exists, the puzzle is not solved.
         if (nextEdge == null) {
-            console.log(`checkSingleLoop: Incomplete loop.\n   No edge of v${currentVertexId} is filled in except e${currentEdgeId}.`);
+            debug(`checkSingleLoop: Incomplete loop.\n   No edge of v${currentVertexId} is filled in except e${currentEdgeId}.`);
             return { ok: false, reason: 'incomplete', vertexId: currentVertexId };
         }
 
@@ -196,18 +197,18 @@ export function checkSingleLoop(grid) {
         currentVertexId = (nextEdge.vertexIDs[0] === currentVertexId ? nextEdge.vertexIDs[1] : nextEdge.vertexIDs[0]);
         currentVertex = grid.vertices.get(currentVertexId);
         currentEdgeId = nextEdgeId;
-        console.log(`checkSingleLoop: got to vertex ${currentVertexId} via edge ${currentEdgeId}`);
+        debug(`checkSingleLoop: got to vertex ${currentVertexId} via edge ${currentEdgeId}`);
         currentEdge = nextEdge;
         loopLength++; // Will this give us an off-by-one error?
     } while (currentVertexId !== startVertexId);
 
-    console.log(`checkSingleLoop: loop length ${loopLength}`);
+    debug(`checkSingleLoop: loop length ${loopLength}`);
 
     /// Is there only one loop?
     const numEdgesFilledTotal = count(grid.edges,
         (([_edgeId, edge]) => edge.metadata.userGuess === 1));
     if (numEdgesFilledTotal > loopLength) {
-        console.log("checkSingleLoop: More than a single loop.");
+        debug("checkSingleLoop: More than a single loop.");
         return { ok: false, reason: 'multipleLoops', loopLength };
     }
 

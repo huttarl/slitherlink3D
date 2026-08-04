@@ -1,6 +1,7 @@
 import {updateTextVisibility} from './clueRenderer.js';
 import {createGameState} from "./scene.js";
-import {initPanelLayout, setupUI} from "./ui.js";
+import {setupUI} from "./ui.js";
+import {initPanelLayout} from "./panelLayout.js";
 
 async function main() {
     // Get the panel into its right shape before anything slow: loading the grid

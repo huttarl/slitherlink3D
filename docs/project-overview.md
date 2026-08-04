@@ -57,8 +57,10 @@ The Python utilities under `util/` have a pytest suite:
 5. Builds edge cylinders (`createEdgeGeometry()`), vertex spheres, clue
    digits (`clueRenderer.js`), and debugging ID labels (`idLabels.js`).
 6. `setupUI(gameState)` (in `ui.js`) registers PuzzleGrid's UI observers,
-   populates the grid/puzzle pickers, wires the DOM buttons, and constructs
-   the `interaction` object.
+   wires the DOM buttons, constructs the `interaction` object, and hands the
+   pickers and the check-reporting to `puzzlePicker.js` and `checkFeedback.js`.
+   (The panel's layout was already set up, before step 1, by
+   `panelLayout.js::initPanelLayout()`.)
 
 `main.js` then drives `requestAnimationFrame` → `updateTextVisibility()` →
 `timer.update()` → `controls.update()` → `gameState.render()`.
@@ -117,14 +119,32 @@ The Python utilities under `util/` have a pytest suite:
   the edge backwards (the touch stand-in for shift+click). Tracks pointer
   travel in pixels to suppress click-on-drag (deliberately NOT the
   controls' start/change events; see the comment in the file).
-- `ui.js::setupUI(gameState)` — registers PuzzleGrid's observers
-  (undo/redo button states; the solved celebration), populates the
-  polyhedron/puzzle pickers from `data/grids.json`, and wires the controls:
-  Check solution (status line + contextual Clear-errors button), Undo/Redo
-  (with Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y shortcuts), Reset, the
-  "Auto-highlight mistakes" checkbox, the debug toggles, and the
-  dismissable overlay (`displayOverlay(title, message)`).
+- `ui.js::setupUI(gameState)` — registers PuzzleGrid's observers (undo/redo
+  button states; the solved celebration), and wires the controls it still owns:
+  Undo/Redo (with Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y shortcuts), Reset,
+  "Right side up", the "Auto-highlight mistakes" checkbox, the debug toggles,
+  and the dismissable overlay (`displayOverlay(title, message)`). The bulkier
+  UI concerns live in their own modules, which `setupUI` calls:
+- `panelLayout.js::initPanelLayout()` — the main panel's two shapes: the full
+  drawer, and the one-line strip a phone collapses to (which the in-play
+  buttons are *moved* into, so each keeps one set of listeners). Also
+  `isPanelCollapsed()`, which decides where a message should go, and
+  `setWhereAmI()`, the strip's label. Called before the puzzle loads, so a
+  phone never shows the full panel while waiting. No imports.
+- `checkFeedback.js` — reporting how the solution is doing: the drawer's status
+  line when the panel is open, a bottom toast bar when it's collapsed. Owns the
+  Check and Clear-errors buttons, and the spoiler policy (mismatches reported
+  as a count only).
+- `puzzlePicker.js` — the polyhedron/puzzle pickers, populated from
+  `data/grids.json`; the "Next puzzle" buttons; and the "are you sure?" that
+  guards leaving a part-worked board. Navigating reloads the page with new
+  `?grid=`/`?puzzle=` parameters.
+- `confirmDialog.js` — our own yes/no dialog, in place of `window.confirm()`.
 - `constants.js` — colors, radii, zoom limits, `EDGE_STATES` array.
+- `debug.js::debug(...)` — `console.log` gated off by default; on with
+  `?debug=1` in the URL, or `SLI_DEBUG=1` in the environment for the Node
+  tests. The checker's and scene builder's traces go through it, so a genuine
+  console warning isn't lost among them.
 
 ### Cross-reference structures (interaction critical)
 
@@ -149,6 +169,14 @@ main.js
     ├── clueRenderer.js ── geometryUtils.js
     ├── idLabels.js
     └── ui.js (setupUI → interaction.js; registers PuzzleGrid's observers)
+        ├── checkFeedback.js ── panelLayout.js
+        ├── puzzlePicker.js ─┬─ panelLayout.js
+        │                    ├── confirmDialog.js
+        │                    └── catalogue.js
+        └── confirmDialog.js
+
+main.js also calls panelLayout.js::initPanelLayout() directly, first of all.
+debug.js is imported wherever there are traces to gate; it imports nothing.
 ```
 
 The graph is acyclic: PuzzleGrid never imports upward (GameState/ui);
@@ -161,8 +189,9 @@ those layers subscribe to its observer callbacks instead.
     `Face.js`, `Edge.js`, `Vertex.js`, `GameState.js`
   - Rendering: `SceneManager.js`, `scene.js`, `geometry.js`,
     `geometryUtils.js`, `clueRenderer.js`, `idLabels.js`, `skybox.js`
-  - Input/UI: `interaction.js`, `ui.js`
-  - Configuration: `constants.js`
+  - Input/UI: `interaction.js`, `ui.js`, `panelLayout.js`,
+    `checkFeedback.js`, `puzzlePicker.js`, `confirmDialog.js`
+  - Configuration: `constants.js`; `debug.js` (gated tracing)
   - Data loading: `puzzleLoader.js` (puzzle JSON), plus
     `loadPolyhedronFromJSON()` in `geometry.js`
   - Tests: `tests/` — headless unit tests for the game logic

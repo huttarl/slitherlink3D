@@ -8,6 +8,7 @@
  * (Split out of geometry.js, which keeps the polyhedron/scene construction.)
  */
 import * as THREE from './three/three.module.min.js';
+import {debug} from './debug.js';
 
 /**
  * Find the center-ish of a polygon, by averaging its vertices.
@@ -100,7 +101,7 @@ export function normalizeVertices(vertices) {
     );
     // Find the average position.
     const center = totalPosition.divideScalar(vertices.length); // destructively modify totalPosition
-    console.debug("polyhedron centroid: ", center);
+    debug("polyhedron centroid: ", center);
     // Move each vertex so that the average is at the origin, and compute max distance from origin.
     const maxDistance = vertices.reduce((max, v) => {
         v.sub(center); // modify vector in-place
@@ -108,7 +109,7 @@ export function normalizeVertices(vertices) {
         const length = v.length();
         return length > max ? length : max;
     }, 0);
-    console.debug("max distance to vertex: ", maxDistance);
+    debug("max distance to vertex: ", maxDistance);
     if (maxDistance > 0) {
         // Scale all vertices so that the max distance is 1.
         vertices.forEach(v => v.divideScalar(maxDistance));

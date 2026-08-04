@@ -1,6 +1,7 @@
 import { Grid } from './Grid.js';
 import {EDGE_COLORS, EDGE_STATES} from './constants.js';
 import {checkSingleLoop, findClueViolations, findSolutionMismatches, findVertexViolations} from './solutionChecker.js';
+import {debug} from './debug.js';
 // NOTE: deliberately no imports of ui.js or GameState.js here. This class is
 // the puzzle model; reaching up into the UI/coordinator layer above it created
 // import cycles (PuzzleGrid -> GameState -> PuzzleGrid, and
@@ -284,7 +285,7 @@ export class PuzzleGrid extends Grid {
     undo() {
         const move = this.undoStack.pop();
         if (!move) {
-            console.log('undo: nothing to undo');
+            debug('undo: nothing to undo');
             return false;
         }
         this.redoStack.push(move);
@@ -305,7 +306,7 @@ export class PuzzleGrid extends Grid {
     redo() {
         const move = this.redoStack.pop();
         if (!move) {
-            console.log('redo: nothing to redo');
+            debug('redo: nothing to redo');
             return false;
         }
         this.undoStack.push(move);
@@ -363,7 +364,7 @@ export class PuzzleGrid extends Grid {
         }
 
         const edgeId = edgeMesh?.userData.edgeId;
-        console.log(`checkUserSolution, activeMode ${isActiveMode} edgeId ${edgeId}`);
+        debug(`checkUserSolution, activeMode ${isActiveMode} edgeId ${edgeId}`);
 
         const result = {
             status: 0, // 0 = unknown, 1 = failed, 2 = solved
@@ -404,7 +405,7 @@ export class PuzzleGrid extends Grid {
         result.vertexViolations = findVertexViolations(this, vIDsToCheck);
         for (const vId of result.vertexViolations) {
             result.status = 1; // failed
-            console.log(`checkUserSolution: loop intersects itself at vertex ${vId}`);
+            debug(`checkUserSolution: loop intersects itself at vertex ${vId}`);
             if (!isActiveMode && !this.highlightRuleViolations) {
                 continue; // The player has passive highlighting turned off.
             }
@@ -419,7 +420,7 @@ export class PuzzleGrid extends Grid {
                 const vertex = this.vertices.get(vId);
                 for (const vEdgeId of vertex.edgeIDs) {
                     const vEdge = this.edges.get(vEdgeId);
-                    console.log(`   e${vEdgeId} has userGuess ${vEdge.metadata.userGuess}`);
+                    debug(`   e${vEdgeId} has userGuess ${vEdge.metadata.userGuess}`);
                     if (vEdge.metadata.userGuess === 1) {
                         clearedEdgeHighlights = this.highlightEdgeError(this.getEdgeMesh(vEdgeId), clearedEdgeHighlights);
                     }
@@ -432,7 +433,7 @@ export class PuzzleGrid extends Grid {
         result.clueViolations = findClueViolations(this, faceIDsToCheck, isActiveMode);
         for (const violation of result.clueViolations) {
             result.status = 1; // failed
-            console.log(`checkUserSolution: face ${violation.faceId} ${violation.message}`);
+            debug(`checkUserSolution: face ${violation.faceId} ${violation.message}`);
             // TODO: highlight clue as error
         }
 
@@ -457,7 +458,7 @@ export class PuzzleGrid extends Grid {
 
         // If we haven't failed yet, we passed!
         // Success! Puzzle is solved!
-        console.log("checkUserSolution: Puzzle is solved!");
+        debug("checkUserSolution: Puzzle is solved!");
         result.status = 2;
         this.celebrateSolved();
         return result;
@@ -500,7 +501,7 @@ export class PuzzleGrid extends Grid {
      * color, removing any red or green highlighting.
      */
     clearEdgeHighlights() {
-        console.log("clearEdgeHighlights");
+        debug("clearEdgeHighlights");
         for (const [edgeId, edgeMesh] of this.edgeMeshMap) {
             const edge = this.edges.get(edgeId);
             // console.log(`   clearing edge ${edgeId} to state ${edge.metadata.userGuess}`);

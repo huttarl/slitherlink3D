@@ -7,6 +7,7 @@ import {createClueTexts} from "./clueRenderer.js";
 import {createEdgeLabels, createVertexLabels} from "./idLabels.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
+import { debug } from "./debug.js";
 
 /**
  * Loads a grid's geometry and its puzzles, in parallel.
@@ -78,7 +79,7 @@ export async function createGameState() {
     }
 
     polyhedronData.grid.gridName = polyhedronData.gridName;
-    console.log(`createGameState: phD.gridName = ${polyhedronData.gridName}`);
+    debug(`createGameState: phD.gridName = ${polyhedronData.gridName}`);
 
     // Create materials
     const materials = {
