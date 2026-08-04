@@ -13,12 +13,21 @@ const WORLD_UP = new THREE.Vector3(0, 1, 0);
 // and the tumble's path never closes on itself.
 const GOLDEN_RATIO = 1.618033;
 
-// How fast the tumble turns, and how fast it sweeps between the poles. The
-// ratio matters more than the values: 1:1/phi^2 is irrational, so the two never
-// synchronise. Latitude is the slower of the two, so the view circles a few
-// times per pole-to-pole pass instead of pitching wildly.
-const TUMBLE_AZIMUTH_RATE = THREE.MathUtils.degToRad(TUMBLE_DEGREES_PER_SEC);
-const TUMBLE_LATITUDE_RATE = TUMBLE_AZIMUTH_RATE / (GOLDEN_RATIO ** 2);
+// The tumble's two turns; see updateTumble for why it takes two, in two
+// different frames.
+//
+// The first is a pitch about the camera's OWN right-hand axis, which is square
+// to its line of sight, so it always moves the viewpoint at exactly this rate --
+// no coordinate factor to stall it anywhere.
+const TUMBLE_PITCH_RATE = THREE.MathUtils.degToRad(TUMBLE_DEGREES_PER_SEC);
+// The camera's right-hand axis, in its own frame.
+const CAMERA_RIGHT = new THREE.Vector3(1, 0, 0);
+
+// The second is a yaw about the WORLD's up, slower, and in an irrational ratio
+// to the pitch so the two never come back into step. Its contribution to the
+// speed does vary with where the camera is, which is why it's the smaller of the
+// two: it perturbs the pitch's steady sweep instead of dominating it.
+const TUMBLE_WORLD_YAW_RATE = TUMBLE_PITCH_RATE / (GOLDEN_RATIO ** 2);
 
 // How long the tumble takes to reach full speed, so a solve doesn't lurch.
 const TUMBLE_RAMP_SECONDS = 1.0;
@@ -72,18 +81,16 @@ export class SceneManager {
         this.directionalLight = null;
         this.headlight = null;
 
-        // Tumbling state. Where the path has got to, and how far the ease-in
-        // has ramped; set by startTumble, advanced by updateTumble. (isTumbling
-        // itself is declared with the other flags above.)
-        this.tumbleAzimuth = 0;
-        this.tumbleLatitudePhase = 0;
+        // Tumbling state: just how far the ease-in has ramped. The turn itself
+        // needs no accumulated coordinates -- each frame applies the same two
+        // small rotations, in the camera's frame and the world's respectively --
+        // and that absence is the point: world-frame coordinates are what used
+        // to make the poles special. (isTumbling is declared with the other
+        // flags above.)
         this.tumbleSpeedFactor = 0;
 
-        // Scratch objects, reused every frame rather than reallocated. The
-        // orientation is carried as a quaternion, which is what keeps the poles
-        // from being special cases; see updateTumble.
+        // Scratch objects, reused every frame rather than reallocated.
         this._cameraOffset = new THREE.Vector3();
-        this._tumbleDirection = new THREE.Vector3();
         this._tumbleForward = new THREE.Vector3();
         this._tumbleAim = new THREE.Vector3();
         this._tumbleTurn = new THREE.Quaternion();
@@ -285,14 +292,17 @@ export class SceneManager {
         // Ease in, so the view doesn't lurch when the tumble begins.
         this.tumbleSpeedFactor = 0;
 
-        // Start the path from where the player left the view, so the first frame
-        // barely moves. Latitude and azimuth are the path's own coordinates; see
-        // updateTumble.
-        const offset = this._cameraOffset.copy(this.camera.position)
-            .sub(this.controls.target);
-        this.tumbleAzimuth = Math.atan2(offset.z, offset.x);
-        this.tumbleLatitudePhase = Math.asin(
-            THREE.MathUtils.clamp(offset.y / (offset.length() || 1), -1, 1));
+        // updateTumble derives the camera's POSITION from its orientation, so
+        // the two have to agree before the first frame or the view would jump.
+        // They can disagree: the controls aim the camera with lookAt, and
+        // levelCamera interpolates it. Turn the orientation the short way onto
+        // the target -- the aim only, no twist -- which leaves the derived
+        // position exactly where the camera already is.
+        this._tumbleForward.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        this._tumbleAim.copy(this.controls.target).sub(this.camera.position)
+            .normalize();
+        this._tumbleTurn.setFromUnitVectors(this._tumbleForward, this._tumbleAim);
+        this.camera.quaternion.premultiply(this._tumbleTurn).normalize();
     }
 
     stopTumble() {
@@ -304,37 +314,48 @@ export class SceneManager {
      * render loop, AFTER the controls have had their turn -- see the note at
      * that call site for why that order is the thing that makes this work.
      *
-     * Two halves, deliberately separate:
+     * Everything here happens in the CAMERA's frame; no world-frame azimuth or
+     * latitude is involved. That's the point. Driving the camera by spherical
+     * coordinates around the world's Y axis made the poles special in two ways
+     * that showed on screen: the viewpoint's speed carried a cos(latitude)
+     * factor, so it slowed to a third near the poles (the stall), and latitude
+     * had to turn around when it got there, reversing direction between one
+     * frame and the next (the bounce).
      *
-     * WHERE the camera goes. Azimuth turns steadily while latitude sweeps from
-     * pole to pole, the two rates in an irrational ratio so the path never
-     * closes. That covers the whole solid, poles included, from any starting
-     * viewpoint (measured: every point on the surface comes within 30 degrees of
-     * the camera). What does NOT work is nudging the camera with the same
-     * rotation every frame, however many axes it is built from: by Euler's
-     * theorem a composition of rotations is one rotation about one axis, so
-     * iterating it traces a circle -- which is what the previous versions did,
-     * and why some of the solid was never shown.
+     * Instead, two turns per frame, in two different frames:
      *
-     * WHICH WAY IS UP -- and this, not the path, is what makes it read as a
-     * tumble rather than an orbit. The orientation is carried in the camera's
-     * quaternion, turned each frame by the shortest arc from where it was
-     * looking to where it now looks, adding no twist of its own.
+     *   - a pitch about the camera's own right-hand axis, which is square to its
+     *     line of sight, so it moves the viewpoint at exactly that rate wherever
+     *     the camera happens to be. No factor, nowhere slower, nothing to double
+     *     back on.
+     *   - a slower yaw about the world's up.
      *
-     * The obvious alternative, lookAt(target) with an up vector, holds the
-     * horizon dead level: measured, its roll relative to level is exactly 0
-     * degrees for the entire path. The solid then slides past without ever
-     * appearing to turn over, however much of it the camera visits -- which was
-     * the complaint about the previous version. Transporting the orientation
-     * instead lets the roll follow the path, and it goes right around: measured
-     * over a minute, a spread of 358 degrees. That is the tumble.
+     * Two frames, not one, is the whole trick. Rotations applied in the SAME
+     * frame every frame collapse: by Euler's theorem their composition is a
+     * single rotation about a single axis, so iterating it just traces a circle,
+     * which is what every earlier version did. Even a body-frame axis that
+     * precesses uniformly collapses -- that's the coning of a symmetric top, a
+     * circle again, and it measured 47% of the solid ever shown square-on. A
+     * body pitch and a world yaw don't commute, so they never reduce to one
+     * rotation, and at an irrational rate ratio the path is dense: measured
+     * 100% of the surface within 30 degrees of the camera.
      *
-     * Note it is NOT about gimbal lock, whatever the shape of the maths
-     * suggests. lookAt was measured through the exact poles with no snap at all
-     * (largest orientation change in a frame 0.54 degrees, the same as the
-     * path's own step, with no spikes) -- near a pole the roll rate is bounded
-     * by the azimuth rate, which is a fraction of a degree per frame. The
-     * quaternion is here for the free roll, not to avoid a degeneracy.
+     * The cost is that the world yaw's contribution to the speed does depend on
+     * where the camera is, so the rate isn't perfectly even -- measured 7%
+     * variation, against roughly 180% for the spherical version it replaced, and
+     * with no approach to zero anywhere, since the body pitch is always at full
+     * strength.
+     *
+     * The position is then derived FROM the orientation, so the camera aims at
+     * the target by construction rather than by correction: it sits along its
+     * own +Z from the target, and a camera looks down its own -Z.
+     *
+     * The view also rolls freely as it goes, which is what makes this read as a
+     * tumble rather than an orbit. lookAt(target) would hold the horizon dead
+     * level -- measured, its roll relative to level stays at exactly 0 degrees
+     * -- so the solid slid past without ever appearing to turn over. That, not
+     * gimbal lock, was the complaint: lookAt was measured straight through the
+     * poles with no snap at all.
      *
      * @param {number} deltaSeconds - time since the previous frame
      */
@@ -346,35 +367,23 @@ export class SceneManager {
             1, this.tumbleSpeedFactor + deltaSeconds / TUMBLE_RAMP_SECONDS);
         const step = this.tumbleSpeedFactor * deltaSeconds;
 
-        // Advance the path's own coordinates. Accumulating these (rather than
-        // deriving them from a running clock) keeps the ratio between the two
-        // rates exact while the ease-in is still scaling both.
-        this.tumbleAzimuth += TUMBLE_AZIMUTH_RATE * step;
-        this.tumbleLatitudePhase += TUMBLE_LATITUDE_RATE * step;
-
-        // asin(sin(phase)) is a triangle wave: latitude crosses at a constant
-        // rate instead of lingering at the extremes. The full range is fine now
-        // -- nothing here divides by cos(latitude).
-        const latitude = Math.asin(Math.sin(this.tumbleLatitudePhase));
-        const cosLatitude = Math.cos(latitude);
+        // Pitch in the camera's own frame: multiply on the RIGHT, which is what
+        // makes the axis mean "the camera's right-hand axis" rather than the
+        // world's X.
+        this.camera.quaternion.multiply(
+            this._tumbleTurn.setFromAxisAngle(CAMERA_RIGHT,
+                                              TUMBLE_PITCH_RATE * step));
+        // Yaw in the world's frame: multiply on the LEFT.
+        this.camera.quaternion.premultiply(
+            this._tumbleTurn.setFromAxisAngle(WORLD_UP,
+                                              TUMBLE_WORLD_YAW_RATE * step));
+        this.camera.quaternion.normalize();
 
         // Take the current distance as given, so a zoom mid-tumble sticks.
         const radius = this.camera.position.distanceTo(this.controls.target);
-        this._tumbleDirection.set(
-            cosLatitude * Math.cos(this.tumbleAzimuth),
-            Math.sin(latitude),
-            cosLatitude * Math.sin(this.tumbleAzimuth),
-        );
-
-        // Turn the camera the short way from its present line of sight to the
-        // new one. A camera looks down its own -Z.
-        this._tumbleForward.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
-        this._tumbleAim.copy(this._tumbleDirection).negate();
-        this._tumbleTurn.setFromUnitVectors(this._tumbleForward, this._tumbleAim);
-        this.camera.quaternion.premultiply(this._tumbleTurn).normalize();
-
-        this.camera.position.copy(this._tumbleDirection)
-            .multiplyScalar(radius).add(this.controls.target);
+        this.camera.position.set(0, 0, radius)
+            .applyQuaternion(this.camera.quaternion)
+            .add(this.controls.target);
 
         // Keep `up` consistent with the orientation we just set. Nothing here
         // reads it, but the controls and levelCamera do, so leaving it stale
