@@ -353,18 +353,19 @@ export class PuzzleGrid extends Grid {
      * Rule violations are highlighted in red: always in active mode, but
      * passively only if the highlightRuleViolations setting is on.
      *
-     * The rule checks themselves are pure queries in solutionChecker.js;
-     * this method chooses their scope (local vs. global) and acts on their
-     * findings (highlighting, celebration). Reporting to the player is up
-     * to the caller (see showCheckResults in ui.js).
+     * The rule checks themselves are pure queries in solutionChecker.js; the
+     * per-rule methods here (checkSelfCrossings, checkClues) choose their scope
+     * (local vs. global) and act on their findings by highlighting. This method
+     * runs them in order, stops where the mode says to, and decides the overall
+     * status. Reporting to the player is up to the caller (see showCheckResults
+     * in checkFeedback.js).
      */
     checkUserSolution(isActiveMode, edgeMesh = null, edge = null) {
         if (!this.puzzleData) {
             throw new Error('No puzzle data available');
         }
 
-        const edgeId = edgeMesh?.userData.edgeId;
-        debug(`checkUserSolution, activeMode ${isActiveMode} edgeId ${edgeId}`);
+        debug(`checkUserSolution, activeMode ${isActiveMode} edgeId ${edgeMesh?.userData.edgeId}`);
 
         const result = {
             status: 0, // 0 = unknown, 1 = failed, 2 = solved
@@ -377,17 +378,8 @@ export class PuzzleGrid extends Grid {
             // thing) because an early return on a rule violation skips that
             // check -- and an untouched board violates every unsatisfied clue,
             // so that early return is exactly the case that needs it.
-            hasFilledEdges: false,
+            hasFilledEdges: this.hasAnyFilledEdges(),
         };
-        for (const edge of this.edges.values()) {
-            if (edge.metadata.userGuess === 1) {   // 1 = filledIn
-                result.hasFilledEdges = true;
-                break;
-            }
-        }
-
-        // Keep track of whether we've already reset highlighting on edges and faces.
-        let clearedEdgeHighlights = false, clearedFaceHighlights = false;
 
         // Things to check:
         // - loop doesn't intersect self (no vertex has > 2 edges filled in)
@@ -396,46 +388,8 @@ export class PuzzleGrid extends Grid {
         // - Loop is a cycle
         // - only one loop
 
-        // Does loop intersect itself?
-        const vIDsToCheck = (edge && !isActiveMode ?
-            // If edge is marked as filled in, check attached vertices.
-            (edge.metadata.userGuess === 1 ? edge.vertexIDs : []) :
-            // If global, check all vertices.
-            this.vertices.keys());
-        result.vertexViolations = findVertexViolations(this, vIDsToCheck);
-        for (const vId of result.vertexViolations) {
-            result.status = 1; // failed
-            debug(`checkUserSolution: loop intersects itself at vertex ${vId}`);
-            if (!isActiveMode && !this.highlightRuleViolations) {
-                continue; // The player has passive highlighting turned off.
-            }
-            if (edge) {
-                if (edge.metadata.userGuess === 1) {
-                    // Highlight the just-clicked edge in red.
-                    clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
-                }
-            } else {
-                // Highlight all filled-in edges of the vertex in red.
-                debug(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
-                const vertex = this.vertices.get(vId);
-                for (const vEdgeId of vertex.edgeIDs) {
-                    const vEdge = this.edges.get(vEdgeId);
-                    debug(`   e${vEdgeId} has userGuess ${vEdge.metadata.userGuess}`);
-                    if (vEdge.metadata.userGuess === 1) {
-                        clearedEdgeHighlights = this.highlightEdgeError(this.getEdgeMesh(vEdgeId), clearedEdgeHighlights);
-                    }
-                }
-            }
-        }
-
-        // Does each face have a number of edges filled in / ruled out compatible with its clue?
-        const faceIDsToCheck = (edge && !isActiveMode ? edge.faceIDs : this.faces.keys());
-        result.clueViolations = findClueViolations(this, faceIDsToCheck, isActiveMode);
-        for (const violation of result.clueViolations) {
-            result.status = 1; // failed
-            debug(`checkUserSolution: face ${violation.faceId} ${violation.message}`);
-            // TODO: highlight clue as error
-        }
+        this.checkSelfCrossings(result, isActiveMode, edgeMesh, edge);
+        this.checkClues(result, isActiveMode, edge);
 
         // Passive checks stop here.
         if (!isActiveMode) return result;
@@ -462,6 +416,113 @@ export class PuzzleGrid extends Grid {
         result.status = 2;
         this.celebrateSolved();
         return result;
+    }
+
+    /**
+     * Has the player filled in any edge at all?
+     * @returns {boolean}
+     */
+    hasAnyFilledEdges() {
+        for (const edge of this.edges.values()) {
+            if (edge.metadata.userGuess === 1) return true;   // 1 = filledIn
+        }
+        return false;
+    }
+
+    /**
+     * Rule check: does the loop cross itself -- that is, has any vertex more
+     * than two edges filled in? Records what it finds in `result` (setting
+     * status to failed) and highlights the offending edges in red.
+     *
+     * Scope: everything, except in passive mode with a just-changed edge, where
+     * only that edge's own vertices can have become crossings -- and not even
+     * those if the edge was ruled OUT, since removing an edge can't create one.
+     *
+     * @private
+     * @param {Object} result - accumulating return value of checkUserSolution
+     * @param {boolean} isActiveMode
+     * @param {THREE.Mesh|null} edgeMesh - mesh of the just-changed edge
+     * @param {Edge|null} edge - the just-changed edge
+     */
+    checkSelfCrossings(result, isActiveMode, edgeMesh, edge) {
+        const vIDsToCheck = (edge && !isActiveMode ?
+            // If edge is marked as filled in, check attached vertices.
+            (edge.metadata.userGuess === 1 ? edge.vertexIDs : []) :
+            // If global, check all vertices.
+            this.vertices.keys());
+        result.vertexViolations = findVertexViolations(this, vIDsToCheck);
+
+        // Highlighting starts by clearing what's already red, but only once per
+        // check, however many violations we go on to mark.
+        let clearedEdgeHighlights = false;
+        for (const vId of result.vertexViolations) {
+            result.status = 1; // failed
+            debug(`checkUserSolution: loop intersects itself at vertex ${vId}`);
+            if (!isActiveMode && !this.highlightRuleViolations) {
+                continue; // The player has passive highlighting turned off.
+            }
+            if (edge) {
+                if (edge.metadata.userGuess === 1) {
+                    // Highlight the just-clicked edge in red.
+                    clearedEdgeHighlights = this.highlightEdgeError(edgeMesh, clearedEdgeHighlights);
+                }
+            } else {
+                clearedEdgeHighlights =
+                    this.highlightFilledEdgesAt(vId, clearedEdgeHighlights);
+            }
+        }
+    }
+
+    /**
+     * Highlights in red every filled-in edge meeting at the given vertex --
+     * the whole crossing, since which of the edges is the wrong one is the
+     * player's to work out.
+     *
+     * @private
+     * @param {number} vId
+     * @param {boolean} clearedEdgeHighlights - have stale highlights already
+     *     been cleared during this check?
+     * @returns {boolean} true, for the caller to assign back to
+     *     clearedEdgeHighlights (see highlightEdgeError)
+     */
+    highlightFilledEdgesAt(vId, clearedEdgeHighlights) {
+        debug(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
+        const vertex = this.vertices.get(vId);
+        for (const vEdgeId of vertex.edgeIDs) {
+            const vEdge = this.edges.get(vEdgeId);
+            debug(`   e${vEdgeId} has userGuess ${vEdge.metadata.userGuess}`);
+            if (vEdge.metadata.userGuess === 1) {
+                clearedEdgeHighlights =
+                    this.highlightEdgeError(this.getEdgeMesh(vEdgeId), clearedEdgeHighlights);
+            }
+        }
+        return clearedEdgeHighlights;
+    }
+
+    /**
+     * Rule check: does each face have a number of edges filled in / ruled out
+     * compatible with its clue? Records what it finds in `result`.
+     *
+     * Scope: as checkSelfCrossings -- in passive mode a changed edge can only
+     * affect the clues of its own two faces.
+     *
+     * @private
+     * @param {Object} result - accumulating return value of checkUserSolution
+     * @param {boolean} isActiveMode - clues must match EXACTLY in active mode;
+     *     passively it's enough that they still can be satisfied
+     * @param {Edge|null} edge - the just-changed edge
+     */
+    checkClues(result, isActiveMode, edge) {
+        const faceIDsToCheck = (edge && !isActiveMode ? edge.faceIDs : this.faces.keys());
+        result.clueViolations = findClueViolations(this, faceIDsToCheck, isActiveMode);
+        for (const violation of result.clueViolations) {
+            result.status = 1; // failed
+            debug(`checkUserSolution: face ${violation.faceId} ${violation.message}`);
+            // TODO: highlight clue as error. That will want the same
+            // clear-stale-highlights-once bookkeeping the edges have
+            // (checkSelfCrossings' clearedEdgeHighlights); a `clearedFaceHighlights`
+            // flag used to sit in checkUserSolution unused, awaiting it.
+        }
     }
 
     /**
