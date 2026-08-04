@@ -416,7 +416,7 @@ export class PuzzleGrid extends Grid {
                 }
             } else {
                 // Highlight all filled-in edges of the vertex in red.
-                // console.log(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
+                debug(`checkUserSolution: highlighting all filled edges of v${vId} in red`);
                 const vertex = this.vertices.get(vId);
                 for (const vEdgeId of vertex.edgeIDs) {
                     const vEdge = this.edges.get(vEdgeId);
@@ -504,7 +504,7 @@ export class PuzzleGrid extends Grid {
         debug("clearEdgeHighlights");
         for (const [edgeId, edgeMesh] of this.edgeMeshMap) {
             const edge = this.edges.get(edgeId);
-            // console.log(`   clearing edge ${edgeId} to state ${edge.metadata.userGuess}`);
+            debug(`   clearing edge ${edgeId} to state ${edge.metadata.userGuess}`);
             // TODO this double lookup seems wasteful. Maybe have a map directly from userGuess values to colors?
             edgeMesh.material.color = EDGE_COLORS[EDGE_STATES[edge.metadata.userGuess]];
         }
@@ -517,7 +517,9 @@ export class PuzzleGrid extends Grid {
      * @returns {boolean} true - a convenience for setting clearedEdgeHighlights in the caller.
      */
     highlightEdgeError(edgeMesh, clearedEdgeHighlights) {
-        // console.log(`highlightEdgeError: edge ${edgeMesh.userData.edgeId}`);
+        // Optional chaining: edgeMesh is null when running headless (see below),
+        // and debug()'s arguments are built whether or not it prints them.
+        debug(`highlightEdgeError: edge ${edgeMesh?.userData.edgeId}`);
         if (!clearedEdgeHighlights) this.clearEdgeHighlights();
         if (edgeMesh) {  // null when running headless (e.g. unit tests): no meshes exist
             edgeMesh.material.color = EDGE_COLORS.error;

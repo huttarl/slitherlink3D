@@ -33,6 +33,13 @@ let enabled = debugRequested();
  *
  * Arguments are passed straight through, so `debug('centroid:', vector)` still
  * gets the browser's inspectable object rather than a stringified one.
+ *
+ * Mind that the arguments are BUILT whichever way the switch is set -- the gate
+ * is inside this function, not around the call. So a message must be safe to
+ * construct unconditionally (no dereferencing something that may be null), and
+ * anything expensive to compute belongs behind isDebugEnabled(). It's also why
+ * the traces in hot inner loops are left commented out rather than converted:
+ * their cost would be paid on every frame or every edge, for nothing.
  */
 export function debug(...args) {
     if (enabled) console.log(...args);

@@ -1,6 +1,7 @@
 import {Face} from "./Face.js";
 import {Vertex} from "./Vertex.js";
 import {Edge} from "./Edge.js";
+import {debug} from "./debug.js";
 
 /** Graph-based topology and geometry representation for polyhedron.
  * Maintains relationships between vertices, edges, and faces.
@@ -120,7 +121,10 @@ export class Grid {
             
             if (edgeId === null) {
                 edgeId = this.addEdge(v1Id, v2Id);
-                // console.log(`Face ${id}: Created new edge ${edgeId} for vertices ${v1}-${v2}`);
+                // (v1/v2 in the disabled version of this line: those names never
+                // existed here, which is what happens to a log line that sits
+                // commented out while the code around it is edited.)
+                debug(`Face ${id}: Created new edge ${edgeId} for vertices ${v1Id}-${v2Id}`);
             }
             
             edgeIDs.push(edgeId);

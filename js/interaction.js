@@ -6,6 +6,7 @@
 
 import * as THREE from './three/three.module.min.js';
 import { findCentroid, findFaceNormal } from './geometryUtils.js';
+import { debug } from './debug.js';
 import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES,
          LONG_PRESS_MS, PICK_DEPTH_TOLERANCE, PICK_RADIUS } from './constants.js';
 
@@ -87,7 +88,7 @@ export function makeInteraction(gameState) {
         // and avoids a negative operand to %.
         const step = reverse ? EDGE_STATES.length - 1 : 1;
         const newState = (edge.metadata.userGuess + step) % EDGE_STATES.length;
-        // console.log(`cycleEdgeState: userGuess = ${newState}`);
+        debug(`cycleEdgeState: edge ${edgeId} userGuess = ${newState}`);
         // setEdgeState updates the mesh color and records the move for undo.
         puzzleGrid.setEdgeState(edgeId, newState);
 
