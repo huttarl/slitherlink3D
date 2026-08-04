@@ -107,10 +107,16 @@ export async function createGameState() {
 
     // Create text elements
     const clueTexts = createClueTexts(gameState);
-    const vertexLabels = createVertexLabels(gameState);
-    const edgeLabels = createEdgeLabels(gameState);
-    const faceLabels = createFaceLabels(gameState);
-    gameState.setupTextElements(clueTexts, vertexLabels, edgeLabels, faceLabels);
+    // The ID labels are a debugging aid, and "Show IDs" starts off, so hand over
+    // the recipe rather than the labels: a player who never ticks the box never
+    // pays for building them. It isn't a trivial cost -- one canvas and texture
+    // per label, which on the truncated icosahedron is 60 + 90 + 32 of them.
+    const makeIdLabelGroups = () => [
+        createVertexLabels(gameState),
+        createEdgeLabels(gameState),
+        createFaceLabels(gameState),
+    ];
+    gameState.setupTextElements(clueTexts, makeIdLabelGroups);
 
     // Set up lighting
     gameState.setupLighting();

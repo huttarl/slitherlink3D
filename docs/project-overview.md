@@ -54,8 +54,9 @@ The Python utilities under `util/` have a pytest suite:
    the page with new parameters.
 4. Hands the loaded data to `GameState.setupScene()`, which copies grid topology
    into the `PuzzleGrid`, applies clues, and validates the solution.
-5. Builds edge cylinders (`createEdgeGeometry()`), vertex spheres, clue
-   digits (`clueRenderer.js`), and debugging ID labels (`idLabels.js`).
+5. Builds edge cylinders (`createEdgeGeometry()`), vertex spheres and clue
+   digits (`clueRenderer.js`). The debugging ID labels (`idLabels.js`) are
+   only registered here, and built if the player ever asks for them.
 6. `setupUI(gameState)` (in `ui.js`) registers PuzzleGrid's UI observers,
    wires the DOM buttons, constructs the `interaction` object, and hands the
    pickers and the check-reporting to `puzzlePicker.js` and `checkFeedback.js`.
@@ -110,9 +111,12 @@ The Python utilities under `util/` have a pytest suite:
   Uses `Intl.NumberFormat(gameState.numberLocale)` for the digits.
 - `idLabels.js` — sprite-based debugging ID labels for vertices, edges and
   faces (the "Show IDs" checkbox), one shape and color per kind: green
-  ellipse, pink rectangle, yellow diamond. All three groups are built with
-  the scene but belong to it only while the checkbox is on
-  (`GameState.toggleShowIDs`).
+  ellipse, pink rectangle, yellow diamond. Built on the first toggle rather
+  than with the scene — a canvas and texture per label is ~100 ms on the
+  truncated icosahedron's 182 of them — then kept, and added to or removed
+  from the scene as the checkbox goes on and off. `createGameState` passes
+  `SceneManager` the builder function; see `getIdLabelGroups()` and
+  `GameState.toggleShowIDs`.
 - `skybox.js` — procedural underwater backdrop (canvas gradient + caustics).
 
 ### Input & UI

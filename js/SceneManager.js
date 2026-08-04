@@ -69,20 +69,22 @@ export class SceneManager {
         // Set by addEdgePickLines.
         this.pickLines = null;
         this.pickEdgeIds = [];
-        // Handles on the edge cylinders and the group of vertex spheres, set by
-        // addEdgeMeshes/addVertexGroup when the scene is built. Nothing reads
-        // them at present -- edge picking goes through pickLines, and recoloring
-        // through PuzzleGrid's edgeMeshMap -- but they're what a dispose() or a
-        // scene swap would need, so they're declared here rather than appearing
-        // out of nowhere in those two methods.
-        this.edgeMeshes = [];
-        this.vertexGroup = null;
+        // Handles on the edge cylinders and the group of vertex spheres. Kept
+        // commented out, along with the assignments in addEdgeMeshes and
+        // addVertexGroup, because nothing reads them: edge picking goes through
+        // pickLines, and recoloring through PuzzleGrid's edgeMeshMap. They're
+        // the sort of thing a dispose() or an in-place scene swap would want,
+        // so they stay here in comments rather than being forgotten.
+        // this.edgeMeshes = [];
+        // this.vertexGroup = null;
 
         // Text elements
         this.clueTexts = null;
-        this.vertexLabels = null;
-        this.edgeLabels = null;
-        this.faceLabels = null;
+        // The vertex/edge/face ID label groups, and the function that builds
+        // them; both set up by addTextElements. Null until first shown -- see
+        // getIdLabelGroups.
+        this.idLabelGroups = null;
+        this.makeIdLabelGroups = null;
         
         // Lighting
         this.ambientLight = null;
@@ -425,7 +427,7 @@ export class SceneManager {
      * @param {THREE.Mesh[]} edgeMeshes - Array of edge meshes
      */
     addEdgeMeshes(edgeMeshes) {
-        this.edgeMeshes = edgeMeshes;
+        // this.edgeMeshes = edgeMeshes;   // see the constructor: nothing reads it
         const edgeGroup = new THREE.Group();
         edgeMeshes.forEach(mesh => edgeGroup.add(mesh));
         this.scene.add(edgeGroup);
@@ -453,7 +455,7 @@ export class SceneManager {
      * @param {THREE.Group} vertexGroup - Group containing vertex meshes
      */
     addVertexGroup(vertexGroup) {
-        this.vertexGroup = vertexGroup;
+        // this.vertexGroup = vertexGroup;   // see the constructor: nothing reads it
         this.scene.add(vertexGroup);
         return vertexGroup;
     }
@@ -515,21 +517,37 @@ export class SceneManager {
     }
 
     /**
-     * Adds text elements to the scene
+     * Adds the clue digits to the scene, and registers how to build the ID
+     * labels if they're ever asked for.
+     *
      * @param {THREE.Group} clueTexts - Group containing clue text objects
-     * @param {THREE.Group} vertexLabels - Group containing vertex label objects
-     * @param {THREE.Group} edgeLabels - Group containing edge label objects
-     * @param {THREE.Group} faceLabels - Group containing face label objects
+     * @param {function(): THREE.Group[]} makeIdLabelGroups - see
+     *     getIdLabelGroups
      */
-    addTextElements(clueTexts, vertexLabels, edgeLabels, faceLabels) {
+    addTextElements(clueTexts, makeIdLabelGroups) {
         this.clueTexts = clueTexts;
-        this.vertexLabels = vertexLabels;
-        this.edgeLabels = edgeLabels;
-        this.faceLabels = faceLabels;
+        this.makeIdLabelGroups = makeIdLabelGroups;
 
         this.scene.add(clueTexts);
-        // Note: the three ID label groups are only added upon request
+        // Note: the ID label groups are neither built nor added until requested
         // (GameState.toggleShowIDs).
+    }
+
+    /**
+     * The ID label groups -- vertices, edges and faces -- building them on the
+     * first request and keeping them thereafter.
+     *
+     * Building costs a canvas and a texture per label, which is why it waits:
+     * see the note in createGameState. Rebuilding on every toggle instead of
+     * caching would put that cost in the player's way each time.
+     *
+     * @returns {THREE.Group[]} the groups, in vertex/edge/face order
+     */
+    getIdLabelGroups() {
+        if (this.idLabelGroups === null) {
+            this.idLabelGroups = this.makeIdLabelGroups();
+        }
+        return this.idLabelGroups;
     }
 
     /**

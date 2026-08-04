@@ -157,13 +157,11 @@ export class GameState {
     /**
      * Sets up text elements
      * @param {THREE.Group} clueTexts - Group containing clue text objects
-     * @param {THREE.Group} vertexLabels - Group containing vertex label objects
-     * @param {THREE.Group} edgeLabels - Group containing edge label objects
-     * @param {THREE.Group} faceLabels - Group containing face label objects
+     * @param {function(): THREE.Group[]} makeIdLabelGroups - builds the ID
+     *     label groups (vertices, edges, faces); called on first use
      */
-    setupTextElements(clueTexts, vertexLabels, edgeLabels, faceLabels) {
-        this.sceneManager.addTextElements(clueTexts, vertexLabels, edgeLabels,
-                                         faceLabels);
+    setupTextElements(clueTexts, makeIdLabelGroups) {
+        this.sceneManager.addTextElements(clueTexts, makeIdLabelGroups);
     }
 
     /**
@@ -180,14 +178,16 @@ export class GameState {
     toggleShowIDs(enable) {
         this.showIDsMode = enable;
 
-        // The label groups are built once, with the scene, but belong to it only
-        // while the setting is on. One loop over all three kinds, so adding a
-        // fourth needs no new branch.
         const sceneManager = this.sceneManager;
-        const labelGroups = [sceneManager.vertexLabels, sceneManager.edgeLabels,
-                             sceneManager.faceLabels];
-        for (const group of labelGroups) {
-            if (!group) continue;
+        if (!enable && sceneManager.idLabelGroups === null) {
+            // Never shown, so there is nothing to hide -- and no reason to build
+            // the labels merely to take them back out of the scene.
+            return;
+        }
+        // The groups are built on this first request, then kept, and belong to
+        // the scene only while the setting is on. One loop over all three kinds,
+        // so a fourth would need no new branch.
+        for (const group of sceneManager.getIdLabelGroups()) {
             if (enable) {
                 sceneManager.scene.add(group);
             } else {
