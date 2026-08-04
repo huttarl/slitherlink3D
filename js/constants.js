@@ -49,8 +49,11 @@ export const LONG_PRESS_MS = 500;
 export const FACE_DEFAULT_COLOR = new THREE.Color(0xeeeeee);
 export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44); // Used for debugging
 
-// How fast the view spins while celebrating a solved puzzle.
-export const CELEBRATION_SPIN_DEGREES_PER_SEC = 30;
+// How fast the view turns while tumbling (see SceneManager.updateTumble).
+// Celebrating a solve is one caller of the tumble. If some
+// other use wants a different speed, that belongs in a parameter to
+// startTumble rather than a second constant here.
+export const TUMBLE_DEGREES_PER_SEC = 30;
 
 // Trackball controls (the default style). Both are feel settings; tune here.
 // How much rotation a drag produces. TrackballControls' own default is 1.0,

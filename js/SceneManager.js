@@ -1,8 +1,9 @@
 import * as THREE from './three/three.module.min.js';
 import { OrbitControls } from './three/OrbitControls.js';
 import { TrackballControls } from './three/TrackballControls.js';
-import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, CELEBRATION_SPIN_DEGREES_PER_SEC,
-        LEVEL_CAMERA_SECONDS, TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED} from "./constants.js";
+import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS,
+        TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED,
+        TUMBLE_DEGREES_PER_SEC} from "./constants.js";
 
 // The direction levelCamera() restores as "up", and the reference the tumble
 // carries along with the camera. Module-level so it isn't rebuilt every frame.
@@ -16,8 +17,7 @@ const GOLDEN_RATIO = 1.618033;
 // ratio matters more than the values: 1:1/phi^2 is irrational, so the two never
 // synchronise. Latitude is the slower of the two, so the view circles a few
 // times per pole-to-pole pass instead of pitching wildly.
-const TUMBLE_AZIMUTH_RATE =
-    THREE.MathUtils.degToRad(CELEBRATION_SPIN_DEGREES_PER_SEC);
+const TUMBLE_AZIMUTH_RATE = THREE.MathUtils.degToRad(TUMBLE_DEGREES_PER_SEC);
 const TUMBLE_LATITUDE_RATE = TUMBLE_AZIMUTH_RATE / (GOLDEN_RATIO ** 2);
 
 // How long the tumble takes to reach full speed, so a solve doesn't lurch.
@@ -272,14 +272,17 @@ export class SceneManager {
     }
 
     /**
-     * Starts/stops the celebration spin. We rotate the camera about world up
-     * ourselves rather than using OrbitControls' autoRotate, so that the
-     * celebration behaves the same under both control schemes (TrackballControls
-     * has no autoRotate).
+     * Starts/stops tumbling the view: a slow turn that brings every side of the
+     * solid into sight in turn. Celebrating a solve is one caller (see
+     * celebrateSolved in ui.js); this knows nothing about why it's running.
+     *
+     * We move the camera ourselves rather than using OrbitControls' autoRotate,
+     * so the tumble behaves the same under both control schemes -- and because
+     * autoRotate only spins about one axis, which is not a tumble.
      */
     startTumble() {
         this.isTumbling = true;
-        // Ease in, so the view doesn't lurch the moment the puzzle is solved.
+        // Ease in, so the view doesn't lurch when the tumble begins.
         this.tumbleSpeedFactor = 0;
 
         // Start the path from where the player left the view, so the first frame
@@ -355,7 +358,7 @@ export class SceneManager {
         const latitude = Math.asin(Math.sin(this.tumbleLatitudePhase));
         const cosLatitude = Math.cos(latitude);
 
-        // Take the current distance as given, so a zoom mid-celebration sticks.
+        // Take the current distance as given, so a zoom mid-tumble sticks.
         const radius = this.camera.position.distanceTo(this.controls.target);
         this._tumbleDirection.set(
             cosLatitude * Math.cos(this.tumbleAzimuth),

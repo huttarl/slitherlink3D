@@ -48,7 +48,8 @@ async function main() {
             sceneManager.controls.update(delta);
         }
 
-        // Tumble the view while celebrating a solved puzzle (a no-op otherwise).
+        // Tumble the view, if something has asked for it (a no-op otherwise).
+        // Solving a puzzle is one such caller; the tumble itself is general.
         //
         // AFTER the controls, deliberately: TrackballControls.update() ends by
         // recomputing the position from its own state and calling
