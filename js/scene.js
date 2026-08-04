@@ -4,7 +4,7 @@ import { createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
 import {DEFAULT_GRID, EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
 import {createClueTexts} from "./clueRenderer.js";
-import {createEdgeLabels, createVertexLabels} from "./idLabels.js";
+import {createEdgeLabels, createFaceLabels, createVertexLabels} from "./idLabels.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
 import { debug } from "./debug.js";
@@ -109,7 +109,8 @@ export async function createGameState() {
     const clueTexts = createClueTexts(gameState);
     const vertexLabels = createVertexLabels(gameState);
     const edgeLabels = createEdgeLabels(gameState);
-    gameState.setupTextElements(clueTexts, vertexLabels, edgeLabels);
+    const faceLabels = createFaceLabels(gameState);
+    gameState.setupTextElements(clueTexts, vertexLabels, edgeLabels, faceLabels);
 
     // Set up lighting
     gameState.setupLighting();

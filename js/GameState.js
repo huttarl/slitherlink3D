@@ -159,9 +159,11 @@ export class GameState {
      * @param {THREE.Group} clueTexts - Group containing clue text objects
      * @param {THREE.Group} vertexLabels - Group containing vertex label objects
      * @param {THREE.Group} edgeLabels - Group containing edge label objects
+     * @param {THREE.Group} faceLabels - Group containing face label objects
      */
-    setupTextElements(clueTexts, vertexLabels, edgeLabels) {
-        this.sceneManager.addTextElements(clueTexts, vertexLabels, edgeLabels);
+    setupTextElements(clueTexts, vertexLabels, edgeLabels, faceLabels) {
+        this.sceneManager.addTextElements(clueTexts, vertexLabels, edgeLabels,
+                                         faceLabels);
     }
 
     /**
@@ -177,22 +179,19 @@ export class GameState {
      */
     toggleShowIDs(enable) {
         this.showIDsMode = enable;
-        
-        if (enable) {
-            // Add ID labels to scene
-            if (this.sceneManager.vertexLabels) {
-                this.sceneManager.scene.add(this.sceneManager.vertexLabels);
-            }
-            if (this.sceneManager.edgeLabels) {
-                this.sceneManager.scene.add(this.sceneManager.edgeLabels);
-            }
-        } else {
-            // Remove ID labels from scene
-            if (this.sceneManager.vertexLabels) {
-                this.sceneManager.scene.remove(this.sceneManager.vertexLabels);
-            }
-            if (this.sceneManager.edgeLabels) {
-                this.sceneManager.scene.remove(this.sceneManager.edgeLabels);
+
+        // The label groups are built once, with the scene, but belong to it only
+        // while the setting is on. One loop over all three kinds, so adding a
+        // fourth needs no new branch.
+        const sceneManager = this.sceneManager;
+        const labelGroups = [sceneManager.vertexLabels, sceneManager.edgeLabels,
+                             sceneManager.faceLabels];
+        for (const group of labelGroups) {
+            if (!group) continue;
+            if (enable) {
+                sceneManager.scene.add(group);
+            } else {
+                sceneManager.scene.remove(group);
             }
         }
     }

@@ -108,8 +108,11 @@ The Python utilities under `util/` have a pytest suite:
   "painted" onto faces, each sized to its face's inscribed circle; plus
   per-frame culling of clues on faces turned away from the camera.
   Uses `Intl.NumberFormat(gameState.numberLocale)` for the digits.
-- `idLabels.js` — sprite-based debugging ID labels for vertices and edges
-  (the "Show IDs" checkbox).
+- `idLabels.js` — sprite-based debugging ID labels for vertices, edges and
+  faces (the "Show IDs" checkbox), one shape and color per kind: green
+  ellipse, pink rectangle, yellow diamond. All three groups are built with
+  the scene but belong to it only while the checkbox is on
+  (`GameState.toggleShowIDs`).
 - `skybox.js` — procedural underwater backdrop (canvas gradient + caustics).
 
 ### Input & UI
