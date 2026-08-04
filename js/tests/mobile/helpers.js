@@ -101,6 +101,22 @@ export async function clearAllMarks(page) {
     });
 }
 
+/**
+ * Stops the tumble, so the camera holds still.
+ *
+ * Any test that works out a screen position and then aims at it needs this: the
+ * tumble starts on load and turns at 30 deg/s, so between computing an edge's
+ * coordinates and dispatching a tap the edge has moved and the tap misses. A
+ * player doesn't hit that -- their press stops the tumble in the same instant
+ * they aim -- but a test's two steps are hundreds of milliseconds apart.
+ */
+export async function stopTumbling(page) {
+    await page.evaluate(async () => {
+        const {GameState} = await import('/js/GameState.js');
+        GameState.getInstance().getSceneManager().stopTumble();
+    });
+}
+
 /** The guess state of one edge: 0 unknown, 1 filled in, 2 ruled out. */
 export async function edgeState(page, edgeId) {
     return await page.evaluate(async id => {

@@ -10,7 +10,8 @@ import { test, expect } from '@playwright/test';
 import {
     clearAllMarks, collectConsoleErrors, edgeMidpointOnScreen, edgeState,
     inflateCanvasContainer, makeOneMistake, restoreCanvasContainer,
-    someVisibleEdge, touchPress, visibleWithinViewport, waitForScene,
+    someVisibleEdge, stopTumbling, touchPress, visibleWithinViewport,
+    waitForScene,
 } from './helpers.js';
 
 const LONG_PRESS_MS = 500;   // keep in step with js/constants.js
@@ -74,7 +75,13 @@ test.describe('check results reach the player', () => {
 });
 
 test.describe('touch input', () => {
-    test.beforeEach(({page}) => openDefaultPuzzle(page));
+    // Hold the camera still: these tests aim at coordinates worked out a moment
+    // earlier, and the tumble would have moved the target by then. See
+    // stopTumbling.
+    test.beforeEach(async ({page}) => {
+        await openDefaultPuzzle(page);
+        await stopTumbling(page);
+    });
 
     // Phone project only. Not merely because touchscreen.tap needs a
     // touch-capable context, but because the behaviour under test is
@@ -117,6 +124,75 @@ test.describe('touch input', () => {
                 'a press that wanders is a drag, so no mark should be made')
                 .toBe(0);
         });
+});
+
+test.describe('the tumble', () => {
+    // These are the tests that need a real browser most of all: the tumble is
+    // driven by the render loop, whose Timer is connected to the Page Visibility
+    // API, so it only advances when the page is genuinely visible. Poking at it
+    // from a hidden context yields zero deltas and a camera that never moves.
+    test.beforeEach(({page}) => openDefaultPuzzle(page));
+
+    /** Where the camera is, as a direction from the target. */
+    const viewpoint = page => page.evaluate(async () => {
+        const {GameState} = await import('/js/GameState.js');
+        const sm = GameState.getInstance().getSceneManager();
+        const d = sm.camera.position.clone().sub(sm.controls.target).normalize();
+        return {x: d.x, y: d.y, z: d.z, tumbling: sm.isTumbling};
+    });
+
+    const degreesApart = (a, b) => {
+        const dot = Math.min(1, Math.max(-1, a.x * b.x + a.y * b.y + a.z * b.z));
+        return Math.acos(dot) * 180 / Math.PI;
+    };
+
+    test('starts by itself when the puzzle loads', async ({page}) => {
+        const before = await viewpoint(page);
+        expect(before.tumbling, 'the tumble should be running on load').toBe(true);
+        await page.waitForTimeout(1500);
+        const after = await viewpoint(page);
+        // 30 deg/s, easing in over the first second, so well over a degree.
+        expect(degreesApart(before, after),
+            'the view should have moved on its own').toBeGreaterThan(5);
+    });
+
+    test('any press on the board stops it, drag or click', async ({page}) => {
+        const canvas = page.locator('canvas');
+        const box = await canvas.boundingBox();
+        // A plain click, no movement: the point is that a tap counts too, not
+        // just a drag.
+        await page.mouse.click(Math.round(box.x + box.width * 0.8),
+                              Math.round(box.y + box.height * 0.2));
+
+        expect((await viewpoint(page)).tumbling,
+            'a press on the board should hand the view back to the player')
+            .toBe(false);
+
+        // And it stays put afterwards.
+        const settled = await viewpoint(page);
+        await page.waitForTimeout(700);
+        expect(degreesApart(settled, await viewpoint(page)),
+            'the view should be still once the tumble has been stopped')
+            .toBeLessThan(0.5);
+    });
+
+    test('keeps the camera aimed at the solid while it runs', async ({page}) => {
+        // The position is derived from the orientation, so this should hold by
+        // construction rather than by correction -- worth pinning, since an
+        // aiming bug would be invisible in a still screenshot.
+        await page.waitForTimeout(1200);
+        const aimErrorDeg = await page.evaluate(async () => {
+            const {GameState} = await import('/js/GameState.js');
+            const THREE = await import('/js/three/three.module.min.js');
+            const sm = GameState.getInstance().getSceneManager();
+            const toTarget = sm.controls.target.clone()
+                .sub(sm.camera.position).normalize();
+            const forward = new THREE.Vector3(0, 0, -1)
+                .applyQuaternion(sm.camera.quaternion);
+            return forward.angleTo(toTarget) * 180 / Math.PI;
+        });
+        expect(aimErrorDeg).toBeLessThan(0.5);
+    });
 });
 
 test.describe('the collapsed panel', () => {

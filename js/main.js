@@ -19,6 +19,12 @@ async function main() {
 
     setupUI(gameState);
 
+    // Tumble from the moment the puzzle appears: it shows the player that the
+    // solid turns, and which sides it has, before they've touched anything. The
+    // first press on the board stops it (see onPointerDown in interaction.js),
+    // so it costs nothing once they start playing.
+    sceneManager.startTumble();
+
     // Render loop.
     //
     // ORDER MATTERS: everything that moves the camera runs first, then the

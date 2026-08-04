@@ -341,6 +341,16 @@ export function makeInteraction(gameState) {
         maxPointerMovement = 0;
         cancelLongPress();
 
+        // Touching the board hands the view back to the player: a drag would
+        // otherwise fight the tumble and lose (the tumble runs last in the frame
+        // and overwrites the camera), and a click would be aiming at an edge
+        // that is still drifting. Any press counts, drag or click, and it's
+        // pointerdown rather than click so the view stops the instant a finger
+        // lands rather than when it lifts.
+        if (event.target === sceneManager.renderer.domElement) {
+            sceneManager.stopTumble();
+        }
+
         // Long press is the touch stand-in for shift+click, so it's offered to
         // fingers and pens but NOT to a mouse: a mouse has a shift key, and
         // arming it there would turn any deliberately slow click into a reverse
