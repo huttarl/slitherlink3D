@@ -134,11 +134,36 @@ so "other things made from the Cube" is a query rather than data entry.
 Category text is the best value: eight paragraphs cover all 26 solids and
 everything added later.
 
-For outbound links, Wikipedia is the reliable default; **dmccooey.com/polyhedra**
-(Visual Polyhedra) is better than Wikipedia for the Johnson solids
-specifically, and polyHédronisme is an interactive Conway-operator playground
-worth sending someone who has just learned what *ambo* means. Verify the exact
-URLs before wiring them up — those are from memory.
+## Sources (settled)
+
+Wikipedia is deliberately **not** used. What the card links to instead, all
+checked (every URL HTTP 200 on 2026-08-04) and recorded in
+`js/polyhedronLinks.js`:
+
+| what | source | why |
+|---|---|---|
+| the individual solid | [Visual Polyhedra](https://dmccooey.com/polyhedra/) (dmccooey.com) | a page per polyhedron: interactive model you can spin, plus vital statistics |
+| the family / property | [Virtual Polyhedra](https://www.georgehart.com/virtual-polyhedra/vp.html) (George Hart) | tutorial prose with exercises — what someone meeting "Archimedean" needs |
+| Euler's formula | [Plus Magazine](https://plus.maths.org/eulers-polyhedron-formula) | Cambridge's Millennium Mathematics Project; authoritative *and* for general readers |
+
+Two traps found while wiring this up:
+
+- **Hart has no readable per-solid pages.** His individual links are raw
+  `.wrl` VRML model files, so he's the family source, not the solid source.
+- **The URLs can't be derived from names.** Chiral solids have separate laevo
+  and dextro pages at Visual Polyhedra and no plain one (`SnubCube.html` is a
+  404), so `sC` and `sD` point at the laevo page and the card claims nothing
+  about which hand our model is. Hence a hand-maintained table, with a test that
+  fails if a newly added grid isn't in it.
+
+Still unlinked, on purpose: **parallelohedron** and **chiral polyhedron**. Hart's
+glossary defines chirality but has no per-term anchors to link to, and the good
+parallelohedron write-ups are either Wikipedia or terse reference entries
+(MathWorld). Better a plain word than a disappointing link.
+
+Also worth a look if more sources are wanted later: polyHédronisme, an
+interactive Conway-operator playground, for someone who has just learned what
+*ambo* means.
 
 ## Constraints
 
@@ -152,7 +177,8 @@ URLs before wiring them up — those are from memory.
 - [x] Picker grouping by family
 - [x] About card (name, categories, V/E/F, face census, vertex configuration,
       Euler) in the drawer and on the celebration overlay
-- [ ] Outbound links (needs `wikipedia` slugs)
+- [x] Outbound links: the solid, each family/property, Euler's formula
+- [ ] A source for parallelohedron and chiral polyhedron (see Sources)
 - [ ] Category descriptions
 - [ ] Cross-links between related solids (needs `conway` or `related`)
 - [ ] Duals, "you've seen this before" blurbs, collection page

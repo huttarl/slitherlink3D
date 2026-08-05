@@ -48,8 +48,15 @@ describe('faceCensus', () => {
     test('describes the census in words, singular where count is 1', () => {
         assert.strictEqual(describeFaceCensus(faceCensus(makeSquarePyramidGrid())),
                            '4 triangles, 1 square');
+    });
+
+    test('one kind of face throughout is "all X", not a count', () => {
+        // A Platonic solid's count would only repeat the face count the card
+        // has just given ("6 faces (6 squares)").
         assert.strictEqual(describeFaceCensus(faceCensus(makeCubeGrid())),
-                           '6 squares');
+                           'all squares');
+        assert.strictEqual(describeFaceCensus(faceCensus(makeTetrahedronGrid())),
+                           'all triangles');
     });
 });
 

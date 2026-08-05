@@ -419,9 +419,11 @@
             font-style: italic;
         }
 
-        .about-solid .about-euler {
-            opacity: 0.75;
-        }
+        /* The Euler line used to be dimmed (opacity 0.75) as the least
+           essential of the facts. It isn't any more, because it now contains
+           the link to the explanation, and opacity applies to the whole element
+           as a group -- a child can't opt back out of it, so the link came out
+           fainter than any of the others. */
 
         /* The "...but that isn't enough" aside: a step further in than the
            facts above it. */
@@ -444,6 +446,16 @@
         .about-solid-overlay {
             margin-top: 2ex;
             border-color: rgba(0, 0, 0, 0.2);
+        }
+
+        /* Links out to the source sites. The page-wide link colour is picked for
+           the dark panel, so it needs replacing on the white message box. */
+        .about-solid-overlay a {
+            color: #05a;
+        }
+
+        .about-solid-overlay a:hover, .about-solid-overlay a:focus {
+            color: #08d;
         }
 
         /* Make the celebration box semitransparent. */

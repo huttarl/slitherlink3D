@@ -17,6 +17,7 @@
 import {loadCatalogue} from "./catalogue.js";
 import {describeFaceCensus, describeVertexConfiguration, faceCensus,
         vertexConfiguration, vertexConfigurationNotation} from "./solidFacts.js";
+import {categoryLink, EULER_FORMULA_LINK, solidLink} from "./polyhedronLinks.js";
 
 // The families whose definition requires every vertex to be alike (up to a
 // symmetry of the whole solid). A solid outside them that nevertheless has the
@@ -51,7 +52,7 @@ export async function initAboutSolid(gameState) {
 
     // The drawer's copy, behind the ⓘ.
     const panelHost = document.getElementById('aboutSolid');
-    panelHost.replaceChildren(buildAboutCard(facts, {withName: false}));
+    panelHost.replaceChildren(buildAboutCard(facts));
     const toggle = document.getElementById('aboutSolidToggle');
     toggle.addEventListener('click', () => {
         const nowHidden = panelHost.classList.toggle('hidden');
@@ -59,10 +60,9 @@ export async function initAboutSolid(gameState) {
     });
 
     // The celebration's copy, built now so it's ready whenever the player
-    // solves the puzzle. It names the solid: it sits below the Next button,
-    // away from the sentence that would otherwise have said which solid.
+    // solves the puzzle.
     document.getElementById('overlayAboutSolid')
-        .replaceChildren(buildAboutCard(facts, {withName: true}));
+        .replaceChildren(buildAboutCard(facts));
 }
 
 /**
@@ -78,6 +78,7 @@ export async function initAboutSolid(gameState) {
 function collectFacts(puzzleGrid, categories) {
     return {
         name: puzzleGrid.gridName,
+        gridId: puzzleGrid.gridId,
         categories,
         // The families defined BY every vertex being alike. Used to spot the
         // solids that manage the same arrangement at every vertex without
@@ -94,37 +95,79 @@ function collectFacts(puzzleGrid, categories) {
 }
 
 /**
+ * A link out to somewhere worth reading, or plain text if we have nowhere good
+ * to send them (see polyhedronLinks.js -- an unmapped solid or category is a
+ * deliberate "no link", not an oversight).
+ *
+ * New tab, since the player is mid-puzzle and navigating away would lose the
+ * board. rel=noopener as always for target=_blank.
+ *
+ * @param {string} text
+ * @param {string|null} href
+ * @returns {Node} an <a>, or a bare text node
+ */
+function linkOrText(text, href) {
+    if (!href) return document.createTextNode(text);
+    const anchor = document.createElement('a');
+    anchor.textContent = text;
+    anchor.href = href;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    return anchor;
+}
+
+/**
  * The card itself, as a fragment (built per host: one DOM node can't be in two
  * places).
  *
  * @param {Object} facts - from collectFacts
- * @param {{withName: boolean}} options
  * @returns {DocumentFragment}
  */
-function buildAboutCard(facts, {withName}) {
+function buildAboutCard(facts) {
     const card = document.createDocumentFragment();
 
-    /** Adds one line, with optional extra styling. */
-    const line = (text, className) => {
+    /**
+     * Adds one line, with optional extra styling. Parts may be strings or
+     * nodes, so a line can mix plain text with links; strings are appended as
+     * text nodes and never as markup.
+     */
+    const line = (parts, className) => {
         const div = document.createElement('div');
-        div.textContent = text;
+        for (const part of [].concat(parts)) {
+            div.append(part);
+        }
         if (className) div.className = className;
         card.appendChild(div);
         return div;
     };
 
-    if (withName) line(facts.name, 'about-name');
+    // The name links to this solid's own page -- an interactive model and its
+    // statistics. Shown in the drawer as well as the celebration, even though
+    // the picker just above already names the solid: the line is here to be the
+    // way out to that page.
+    line(linkOrText(facts.name, solidLink(facts.gridId)), 'about-name');
+
     if (facts.categories.length > 0) {
-        line(facts.categories.join(' · '), 'about-categories');
+        // Each family or property links to its own background page. Interleave
+        // the separators rather than joining, since the parts are now nodes.
+        const parts = [];
+        for (const category of facts.categories) {
+            if (parts.length > 0) parts.push(' · ');
+            parts.push(linkOrText(category, categoryLink(category)));
+        }
+        line(parts, 'about-categories');
     }
+
     line(`${facts.vertices} vertices, ${facts.edges} edges, `
          + `${facts.faces} faces (${facts.faceCensus})`);
 
     // Euler's formula. Different arithmetic on every solid, the same answer
     // every time: the cheapest way to hand someone a theorem to notice for
     // themselves. (Minus signs, not hyphens.)
-    line(`${facts.vertices} − ${facts.edges} + ${facts.faces} = `
-         + `${facts.vertices - facts.edges + facts.faces} (Euler's Formula)`,
+    line([`${facts.vertices} − ${facts.edges} + ${facts.faces} = `
+          + `${facts.vertices - facts.edges + facts.faces} (`,
+          linkOrText("Euler's Formula", EULER_FORMULA_LINK),
+          ')'],
          'about-euler');
 
     if (facts.vertexConfig) {

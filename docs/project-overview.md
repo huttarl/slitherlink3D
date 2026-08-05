@@ -154,6 +154,12 @@ The Python utilities under `util/` have a pytest suite:
   ideas/learning-about-polys.md). Facts come from the loaded grid, so the card
   can't disagree with what's on screen; only the categories come from the
   catalogue.
+- `polyhedronLinks.js` — where the card's links go: Visual Polyhedra
+  (dmccooey.com) per solid, George Hart's Virtual Polyhedra per family, Plus
+  Magazine for Euler's formula. Deliberately not Wikipedia. Hand-maintained,
+  because the URLs can't be derived from names (chiral solids have separate
+  laevo/dextro pages); `js/tests/polyhedronLinks.test.js` fails if a grid in the
+  catalogue has no entry.
 - `solidFacts.js` — the pure topology behind that card: `faceCensus`,
   `facesAroundVertex` (walks the fan of faces round a vertex), and
   `vertexConfiguration`, which returns the shared cycle only when every vertex
@@ -211,8 +217,8 @@ those layers subscribe to its observer callbacks instead.
     `geometryUtils.js`, `clueRenderer.js`, `idLabels.js`, `skybox.js`
   - Input/UI: `interaction.js`, `ui.js`, `panelLayout.js`,
     `checkFeedback.js`, `puzzlePicker.js`, `confirmDialog.js`, `aboutSolid.js`
-  - Polyhedron facts: `solidFacts.js`, plus `categories` in the grid data
-    and `groupGridsByFamily` in `catalogue.js`
+  - Polyhedron facts: `solidFacts.js`, `polyhedronLinks.js`, plus `categories`
+    in the grid data and `groupGridsByFamily` in `catalogue.js`
   - Configuration: `constants.js`; `debug.js` (gated tracing)
   - Data loading: `puzzleLoader.js` (puzzle JSON), plus
     `loadPolyhedronFromJSON()` in `geometry.js`
