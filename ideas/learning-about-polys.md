@@ -142,30 +142,45 @@ checked (every URL HTTP 200 on 2026-08-04) and recorded in
 
 | what | source | why |
 |---|---|---|
-| the individual solid | [Visual Polyhedra](https://dmccooey.com/polyhedra/) (dmccooey.com) | a page per polyhedron: interactive model you can spin, plus vital statistics |
+| the individual solid | [Polytope Wiki](https://polytope.miraheze.org/wiki/Cuboctahedron) | an article each: prose, pictures, a "Related polyhedra" section, hundreds of cross-links to wander |
 | the family / property | [Virtual Polyhedra](https://www.georgehart.com/virtual-polyhedra/vp.html) (George Hart) | tutorial prose with exercises — what someone meeting "Archimedean" needs |
 | Euler's formula | [Plus Magazine](https://plus.maths.org/eulers-polyhedron-formula) | Cambridge's Millennium Mathematics Project; authoritative *and* for general readers |
 
-Two traps found while wiring this up:
+Rejected for the per-solid link: **Visual Polyhedra** (dmccooey.com), which was
+the first choice and is more precise, but its pages are a table of vital
+statistics — accurate and dry, the wrong note to end a puzzle on. Kept in mind as
+a data reference. **qfbox.info/4d/&lt;name&gt;** is the fallback for a solid
+Polytope Wiki lacks, but its naming is irregular (`/cuboctahedron` exists,
+`/truncated_icosahedron` doesn't), so each such link needs checking by hand.
+
+Notes from wiring this up:
 
 - **Hart has no readable per-solid pages.** His individual links are raw
   `.wrl` VRML model files, so he's the family source, not the solid source.
-- **The chiral solids break the URL rule.** Visual Polyhedra names its pages
-  after the solid in PascalCase, which holds for 24 of our 26 grids — but chiral
-  solids get separate laevo and dextro pages and no plain one (`SnubCube.html`
-  is a 404). So the page name is derived from the polyhedron's name, with a
-  two-entry exception table for `sC` and `sD` pointing at the laevo page; the
-  card claims nothing about which hand our model is.
+- **Per-solid URLs are derived, not tabulated.** MediaWiki titles are the plain
+  name with underscores for spaces, which is the form the gridNames are already
+  in (minus the `(J37)` suffix), so all 26 come out right and the exception table
+  is empty. It stays in place because the rule is a convention, not a guarantee.
+- **Chirality is a non-issue here.** Polytope Wiki has one article per snub
+  solid; Visual Polyhedra splits them laevo/dextro with no plain page, which
+  would have needed two exceptions.
 
-  A polyhedron added later therefore gets its link for free, but an unverified
-  one. `npm run test:links` fetches every link the catalogue produces and
-  insists on 200; it's skipped by the everyday suite, which shouldn't need the
-  network.
+A polyhedron added later gets its link for free, but an unverified one.
+`npm run test:links` fetches every link the catalogue produces and insists on
+200; it's skipped by the everyday suite, which shouldn't need the network.
 
-Still unlinked, on purpose: **parallelohedron** and **chiral polyhedron**. Hart's
-glossary defines chirality but has no per-term anchors to link to, and the good
-parallelohedron write-ups are either Wikipedia or terse reference entries
-(MathWorld). Better a plain word than a disappointing link.
+`CATEGORY_PAGES` holds full URLs, so each category can go wherever it's covered
+best: the families to Hart, **chiral** to Polytope Wiki's
+[Chirality](https://polytope.miraheze.org/wiki/Chirality) (Hart's glossary has an
+entry but no per-term anchor, so a link would land at the top of a long page).
+
+Still unlinked, on purpose: **parallelohedron**. The good write-ups are either
+Wikipedia or terse reference entries (MathWorld). Better a plain word than a
+disappointing link.
+
+Category names are kept short — `chiral`, not `chiral polyhedron` — since the
+card has already given the solid's name and family by the time you read them.
+(`quasiregular polyhedron` is the remaining long one.)
 
 Also worth a look if more sources are wanted later: polyHédronisme, an
 interactive Conway-operator playground, for someone who has just learned what

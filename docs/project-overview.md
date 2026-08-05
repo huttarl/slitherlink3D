@@ -158,13 +158,13 @@ The Python utilities under `util/` have a pytest suite:
   ideas/learning-about-polys.md). Facts come from the loaded grid, so the card
   can't disagree with what's on screen; only the categories come from the
   catalogue.
-- `polyhedronLinks.js` — where the card's links go: Visual Polyhedra
-  (dmccooey.com) per solid, George Hart's Virtual Polyhedra per family, Plus
-  Magazine for Euler's formula. Deliberately not Wikipedia. Per-solid URLs are
-  derived from the polyhedron's name, with a small exception table for the
-  chiral solids, whose pages are split laevo/dextro. A polyhedron added later is
-  linked automatically; `npm run test:links` then confirms the pages exist (it
-  needs the network, so the everyday suite skips it).
+- `polyhedronLinks.js` — where the card's links go: Polytope Wiki per solid,
+  George Hart's Virtual Polyhedra per family, Plus Magazine for Euler's formula.
+  Deliberately not Wikipedia. Per-solid URLs are derived from the polyhedron's
+  name (a MediaWiki title is the name with underscores for spaces), with an
+  exception table that happens to be empty. A polyhedron added later is linked
+  automatically; `npm run test:links` then confirms the pages exist (it needs the
+  network, so the everyday suite skips it).
 - `solidFacts.js` — the pure topology behind that card: `faceCensus`,
   `facesAroundVertex` (walks the fan of faces round a vertex), and
   `vertexConfiguration`, which returns the shared cycle only when every vertex

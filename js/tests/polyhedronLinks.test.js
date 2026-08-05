@@ -17,7 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-    categoryLink, EULER_FORMULA_LINK, solidLink, UNLINKED_CATEGORIES,
+    categoryLink, EULER_FORMULA_LINK, solidLink, SOLID_PAGE_EXCEPTION_IDS,
+    UNLINKED_CATEGORIES,
 } from '../polyhedronLinks.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -35,34 +36,45 @@ function allLinks() {
 }
 
 describe('solidLink', () => {
-    test('derives the page name from the polyhedron name', () => {
+    test('derives the article title from the polyhedron name', () => {
         assert.strictEqual(solidLink('aC', 'Cuboctahedron'),
-                           'https://dmccooey.com/polyhedra/Cuboctahedron.html');
+                           'https://polytope.miraheze.org/wiki/Cuboctahedron');
         assert.strictEqual(solidLink('tI', 'Truncated icosahedron'),
-                           'https://dmccooey.com/polyhedra/TruncatedIcosahedron.html');
+                           'https://polytope.miraheze.org/wiki/Truncated_icosahedron');
     });
 
     test('drops a Johnson number', () => {
         assert.strictEqual(solidLink('J37', 'Elongated square gyrobicupola (J37)'),
-            'https://dmccooey.com/polyhedra/ElongatedSquareGyrobicupola.html');
+            'https://polytope.miraheze.org/wiki/Elongated_square_gyrobicupola');
     });
 
-    test('the chiral solids are exceptions, pointing at the page that exists', () => {
-        // Visual Polyhedra splits these into laevo and dextro and has no plain
-        // page -- SnubCube.html is a 404 -- so the rule alone would break them.
-        assert.match(solidLink('sC', 'Snub cube'), /LsnubCube\.html$/);
-        assert.match(solidLink('sD', 'Snub dodecahedron'), /LsnubDodecahedron\.html$/);
+    test('the chiral solids need no exception on this wiki', () => {
+        // Polytope Wiki has one article each, unlike Visual Polyhedra, which
+        // splits them into laevo and dextro with no plain page.
+        assert.strictEqual(solidLink('sC', 'Snub cube'),
+                           'https://polytope.miraheze.org/wiki/Snub_cube');
+        assert.strictEqual(solidLink('sD', 'Snub dodecahedron'),
+                           'https://polytope.miraheze.org/wiki/Snub_dodecahedron');
     });
 
-    test('an exception wins over the derived name', () => {
-        assert.doesNotMatch(solidLink('sC', 'Snub cube'), /SnubCube\.html$/);
+    test('any exception overrides the derived title', () => {
+        // The table is empty today; this starts asserting the moment an entry is
+        // added, so the override can't quietly stop working.
+        for (const gridId of SOLID_PAGE_EXCEPTION_IDS) {
+            const entry = catalogue.grids.find(grid => grid.gridId === gridId);
+            assert.ok(entry, `exception for unknown gridId ${gridId}`);
+            assert.notStrictEqual(solidLink(gridId, entry.gridName),
+                                  solidLink('no-exception', entry.gridName),
+                                  `the exception for ${gridId} has no effect`);
+        }
     });
 
-    test('a hyphenated or punctuated name still gives a clean filename', () => {
-        // No current grid needs this; it's here so a name like "Para-biaugmented
-        // ..." can't put a hyphen or an apostrophe in a URL.
+    test('a name with punctuation still gives a usable URL', () => {
+        // No current grid needs this; it's here so a name like
+        // "Para-biaugmented ..." can't produce a broken URL. Hyphens are legal
+        // in MediaWiki titles and are kept; only the spaces become underscores.
         assert.strictEqual(solidLink('x', 'Para-biaugmented truncated cube'),
-            'https://dmccooey.com/polyhedra/ParaBiaugmentedTruncatedCube.html');
+            'https://polytope.miraheze.org/wiki/Para-biaugmented_truncated_cube');
     });
 
     test('null without a name to derive from', () => {
@@ -70,12 +82,13 @@ describe('solidLink', () => {
     });
 
     test('every grid in the catalogue yields a well-formed URL', () => {
-        // The guard on the derivation rule: letters and digits only, so a name
-        // the rule mishandles shows up here rather than as a 404 for a player.
+        // The guard on the derivation rule: a title of word characters and
+        // hyphens, so a name the rule mishandles (a stray bracket, an unencoded
+        // space) shows up here rather than as a 404 for a player.
         const bad = catalogue.grids
             .map(grid => [grid.gridName, solidLink(grid.gridId, grid.gridName)])
             .filter(([, url]) =>
-                !/^https:\/\/dmccooey\.com\/polyhedra\/[A-Za-z0-9]+\.html$/.test(url));
+                !/^https:\/\/polytope\.miraheze\.org\/wiki\/[\w-]+$/.test(url));
         assert.deepStrictEqual(bad, []);
     });
 });
@@ -97,6 +110,13 @@ describe('categoryLink', () => {
                               'Johnson solid']) {
             assert.match(categoryLink(family), /georgehart\.com/);
         }
+    });
+
+    test('a category can point at a different site from the families', () => {
+        // 'chiral' goes to Polytope Wiki, Hart's glossary having no per-term
+        // anchor -- so the table holds full URLs rather than one site's paths.
+        assert.strictEqual(categoryLink('chiral'),
+                           'https://polytope.miraheze.org/wiki/Chirality');
     });
 
     test('null for the categories we chose not to link', () => {
