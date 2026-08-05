@@ -141,23 +141,34 @@ function buildAboutCard(facts) {
         return div;
     };
 
-    // The name links to this solid's own page -- an interactive model and its
-    // statistics. Shown in the drawer as well as the celebration, even though
-    // the picker just above already names the solid: the line is here to be the
-    // way out to that page.
-    line(linkOrText(facts.name, solidLink(facts.gridId, facts.name)),
-         'about-name');
+    /** A styled run of inline content, so two of them can share a line. */
+    const span = (className, ...parts) => {
+        const element = document.createElement('span');
+        element.className = className;
+        element.append(...parts);
+        return element;
+    };
 
+    // Heading: the solid, then what it is --
+    //     Cuboctahedron — Archimedean solid · quasiregular polyhedron
+    // The name links to this solid's own page (an interactive model and its
+    // statistics), and each family or property to its own background page. Shown
+    // in the drawer as well as the celebration, even though the picker just
+    // above already names the solid: the line is here to be the way out to
+    // those pages.
+    const heading = [span('about-name',
+                          linkOrText(facts.name,
+                                     solidLink(facts.gridId, facts.name)))];
     if (facts.categories.length > 0) {
-        // Each family or property links to its own background page. Interleave
-        // the separators rather than joining, since the parts are now nodes.
-        const parts = [];
+        // Interleave the separators rather than joining, the parts being nodes.
+        const categories = [];
         for (const category of facts.categories) {
-            if (parts.length > 0) parts.push(' · ');
-            parts.push(linkOrText(category, categoryLink(category)));
+            if (categories.length > 0) categories.push(' · ');
+            categories.push(linkOrText(category, categoryLink(category)));
         }
-        line(parts, 'about-categories');
+        heading.push(' — ', span('about-categories', ...categories));
     }
+    line(heading);
 
     line(`${facts.vertices} vertices, ${facts.edges} edges, `
          + `${facts.faces} faces (${facts.faceCensus})`);

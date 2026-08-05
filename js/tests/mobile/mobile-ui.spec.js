@@ -308,6 +308,34 @@ test.describe('the collapsed panel', () => {
         }
     });
 
+    test('the solid and its categories share the card\'s first line',
+        async ({page}) => {
+            // "Cuboctahedron — Archimedean solid · quasiregular polyhedron", not
+            // a line each. Asserted on the categories' FIRST line box, since the
+            // run may well wrap after that on a narrow card -- and asserted here
+            // rather than in the browser pane, whose zero-width layout reports
+            // every box as being on its own line.
+            await page.goto('/main.html?grid=aC');
+            await waitForScene(page);
+            await expandPanel(page);
+            await page.locator('#aboutSolidToggle').click();
+
+            const heading = await page.evaluate(() => {
+                const card = document.getElementById('aboutSolid');
+                const name = card.querySelector('.about-name').getClientRects()[0];
+                const categories =
+                    card.querySelector('.about-categories').getClientRects()[0];
+                if (!name || !categories) return null;
+                return {sameLine: Math.abs(name.top - categories.top) < 2,
+                        toTheRight: categories.left >= name.right};
+            });
+            expect(heading, 'the card heading has no layout boxes').not.toBeNull();
+            expect(heading.sameLine,
+                'the categories are not on the same line as the name').toBe(true);
+            expect(heading.toTheRight,
+                'the categories do not start to the right of the name').toBe(true);
+        });
+
     test('the About toggle stays on the picker row', async ({page}) => {
         // It used to wrap onto a line of its own once the polyhedron name was
         // long. The row is flex now, so the select gives up width instead.
