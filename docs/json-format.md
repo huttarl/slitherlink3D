@@ -50,6 +50,16 @@ Puzzles (and their solutions) will appear in a separate JSON file, with the foll
       of clues is less than the number of faces, the remaining faces will have no clues.
     - "solution" property: an array of zero-based vertex indices, corresponding to the order in the
       vertices list, and tracing out the solution loop. We don't repeat the first vertex at the end.
+  - "displayPuzzles": optional array, in exactly the same format as "puzzles".
+    These are shown off, not played: the title screen loads one and draws its
+    loop on the tumbling solid (see js/titleScreen.js). They are kept out of
+    "puzzles" so that nothing a player can select is ever put on show — which is
+    also why they must be authentic puzzles (one loop, uniquely solvable): the
+    clues are visible beside the loop, and a player may well check them by eye.
+    The key is absent, rather than empty, when a grid has none; the title screen
+    then shows that grid's clues with no loop. Only the small grids should end up
+    without one: the tetrahedron has just one distinct puzzle in total, so there
+    is nothing spare to display.
 - Validation:
   - the length of a "clues" list must be <= the number of faces in the associated grid
   - the value of each clue must be in the range 0..n-1, where n is the number of edges that the corresponding face has
@@ -57,10 +67,13 @@ Puzzles (and their solutions) will appear in a separate JSON file, with the foll
   - a "solution" list must not contain any duplicates
   - adjacent vertices in the "solution" list (including the first and last)
     must appear adjacent in one or more faces
+  - the same rules apply to each entry of "displayPuzzles"; and if the key is
+    present, its array must not be empty
 - Example:
 ```JSON
   {
     "gridId": "T",
-    "puzzles": [ { "clues": [3, 1, -1], "solution": [1, 2, 3] } ]
+    "puzzles": [ { "clues": [3, 1, -1], "solution": [1, 2, 3] } ],
+    "displayPuzzles": [ { "clues": [-1, 3, 1], "solution": [0, 1, 2] } ]
   }
 ```

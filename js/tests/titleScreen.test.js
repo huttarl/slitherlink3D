@@ -9,11 +9,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { CAMERA_DISTANCE, DEFAULT_GRID, TITLE_SCREEN_FALLBACK_GRID,
+import { CAMERA_DISTANCE, DEFAULT_GRID, EDGE_STATES, TITLE_SCREEN_FALLBACK_GRID,
          TITLE_SCREEN_MIN_FACES } from '../constants.js';
-import { chooseTitleScreenGrid, gridIdFromUrl, titleScreenCameraDistance,
-         titleScreenCandidates, wantsHowToPlay,
+import { chooseTitleScreenGrid, gridIdFromUrl, showTitleLoop,
+         titleScreenCameraDistance, titleScreenCandidates, wantsHowToPlay,
          wantsTitleScreen } from '../titleScreen.js';
+import { makeCubePuzzleGrid, loopVertexPairs } from './helpers.js';
 
 /** The real catalogue, for the tests that check the pick against the data. */
 const here = dirname(fileURLToPath(import.meta.url));
@@ -109,6 +110,15 @@ describe('titleScreenCameraDistance', () => {
         assert.strictEqual(titleScreenCameraDistance(375 / 812), CAMERA_DISTANCE);
     });
 
+    test('a viewport with no size falls back to a real distance', () => {
+        // 0/0 is NaN, and a NaN reaching camera.position blanks the scene for
+        // good -- a later resize fixes the aspect ratio, not the position.
+        for (const aspect of [0 / 0, 0, -1, Infinity]) {
+            assert.strictEqual(titleScreenCameraDistance(aspect), CAMERA_DISTANCE,
+                               `aspect ${aspect} did not fall back`);
+        }
+    });
+
     test('the narrower the screen, the farther back -- up to the clamp', () => {
         // Monotonic in the aspect ratio, so no shape of window is a special case.
         const distances = [2, 1.5, 1, 0.8, 0.6].map(titleScreenCameraDistance);
@@ -147,4 +157,40 @@ describe('wantsHowToPlay', () => {
         assert.strictEqual(wantsHowToPlay('?grid=T&howto=1'), true);
         assert.strictEqual(wantsHowToPlay('?grid=T'), false);
     });
+});
+
+describe('showTitleLoop', () => {
+    const BOTTOM_LOOP = [0, 3, 2, 1];          // the cube's bottom face boundary
+    const FILLED_IN = EDGE_STATES.indexOf('filledIn');
+
+    /** A cube carrying the bottom-face loop as its (display) puzzle. */
+    function cubeShowingItsLoop() {
+        const grid = makeCubePuzzleGrid([4, -1, -1, -1, -1, -1], BOTTOM_LOOP);
+        showTitleLoop(grid);
+        return grid;
+    }
+
+    test('fills in exactly the loop\'s edges', () => {
+        const grid = cubeShowingItsLoop();
+        const loopEdges = new Set(loopVertexPairs(BOTTOM_LOOP)
+            .map(([v1, v2]) => grid.findEdgeByVertices(v1, v2)));
+        assert.strictEqual(loopEdges.size, 4);
+
+        for (const [edgeId, edge] of grid.edges) {
+            assert.strictEqual(edge.metadata.userGuess,
+                               loopEdges.has(edgeId) ? FILLED_IN : 0,
+                               `edge ${edgeId} came out wrong`);
+        }
+    });
+
+    test('leaves nothing in the undo history', () => {
+        // The marks are the picture, not the player's moves: an Undo here would
+        // rub out part of the loop, and there is no board to restore.
+        const grid = cubeShowingItsLoop();
+        assert.strictEqual(grid.undoStack.length, 0);
+        assert.strictEqual(grid.redoStack.length, 0);
+    });
+
+    // Nothing here locks the board: the loop is out of reach because the title
+    // overlay covers the canvas, which the browser suite tests directly.
 });

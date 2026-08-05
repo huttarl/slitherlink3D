@@ -15,8 +15,9 @@
  * pre-paint script, which has to hide the panel before the first frame and can't
  * wait for a module to load. It's one line in both places; keep them in step.
  */
-import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, DEFAULT_GRID, TITLE_SCREEN_FALLBACK_GRID,
-        TITLE_SCREEN_FILL, TITLE_SCREEN_MIN_FACES} from "./constants.js";
+import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, DEFAULT_GRID, EDGE_STATES,
+        TITLE_SCREEN_FALLBACK_GRID, TITLE_SCREEN_FILL,
+        TITLE_SCREEN_MIN_FACES} from "./constants.js";
 import {loadCatalogue, playableGrids} from "./catalogue.js";
 
 /**
@@ -77,6 +78,13 @@ export function chooseTitleScreenGrid(catalogue, random = Math.random) {
  * @returns {number} camera distance, in the same units as CAMERA_DISTANCE
  */
 export function titleScreenCameraDistance(aspectRatio) {
+    // A viewport with no size yet gives 0/0. Falling back to a board's distance
+    // keeps the camera somewhere real: a NaN would reach camera.position and
+    // nothing would ever be drawn again, since a later resize only corrects the
+    // aspect ratio, not the position. (Seen for real in an embedded browser pane
+    // that loaded the page before laying it out.)
+    if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return CAMERA_DISTANCE;
+
     const halfFov = (CAMERA_FOV_DEGREES / 2) * Math.PI / 180;
     // The narrower half-angle: vertical on a wide window, horizontal on a tall
     // one. (Horizontal half-angle = atan(tan(vertical) * aspect).)
@@ -85,6 +93,37 @@ export function titleScreenCameraDistance(aspectRatio) {
     // enough -- exactly fills that angle. Solids are normalized to it.
     const fittingDistance = 1 / Math.sin(halfAngle);
     return Math.min(CAMERA_DISTANCE, fittingDistance / TITLE_SCREEN_FILL);
+}
+
+/**
+ * Draws the loaded puzzle's loop on the solid, as filled-in marks.
+ *
+ * This is what makes the title screen look like a solved puzzle rather than a
+ * blank one. It's only ever called with a DISPLAY puzzle loaded (see
+ * createGameState): those exist so that the loop on show isn't the answer to
+ * anything the player can select.
+ *
+ * applyEdgeState, not setEdgeState: the marks aren't the player's moves, so they
+ * don't belong in the undo history -- which also leaves Undo with nothing to
+ * unpick the picture with.
+ *
+ * Nothing guards the loop against being edited, because nothing can reach it:
+ * the title overlay is a full-viewport element above the canvas, and both the
+ * click and long-press handlers in interaction.js ignore anything whose target
+ * isn't the canvas. That would change if the overlay were ever made
+ * click-through (to let the player spin the solid, say) -- the browser suite's
+ * "cannot be edited" test is what would notice.
+ *
+ * @param {PuzzleGrid} puzzleGrid
+ */
+export function showTitleLoop(puzzleGrid) {
+    const loop = puzzleGrid.getCurrentPuzzle().solution;
+    const filledIn = EDGE_STATES.indexOf('filledIn');
+    for (let i = 0; i < loop.length; i++) {
+        const edgeId = puzzleGrid.findEdgeByVertices(loop[i],
+                                                    loop[(i + 1) % loop.length]);
+        puzzleGrid.applyEdgeState(edgeId, filledIn);
+    }
 }
 
 /**

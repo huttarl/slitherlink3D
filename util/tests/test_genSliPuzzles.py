@@ -411,3 +411,107 @@ class TestCutClues:
         walls = num_walls_by_face(cube_with_bottom_loop, BOTTOM_LOOP)
         ordering = [(f, walls[f]) for f in [2, 3, 4, 5, 0, 1]]
         assert cut_clues(cube_with_bottom_loop, ordering) == 5
+
+
+class TestDisplayPuzzles:
+    """Display puzzles go in their own list, but they are still puzzles: they
+    mustn't repeat one we already have, playable or display, which is why the
+    duplicate check looks at both lists.
+
+    Two puzzles sharing a LOOP under different clues is fine, deliberately: the
+    title screen gives nothing away by drawing a loop that some puzzle happens to
+    share, because nothing tells the player they match."""
+
+    @pytest.fixture(autouse=True)
+    def cube_as_the_current_grid(self, cube, monkeypatch):
+        """As in TestDuplicateRejection: the dedupe helpers read the module's
+        mesh and output, so point them at a cube with nothing kept yet."""
+        monkeypatch.setattr(genSliPuzzles, 'mesh', cube)
+        monkeypatch.setattr(genSliPuzzles, 'symmetries_cache', None)
+        monkeypatch.setattr(genSliPuzzles, 'puzzles_output', {'gridId': 'C',
+                                                             'puzzles': []})
+        monkeypatch.setattr(genSliPuzzles, 'display_puzzles', [])
+
+    def test_display_puzzles_count_as_generated_too(self, cube):
+        """A second display puzzle mustn't repeat the first one either, so
+        already_generated has to see both lists."""
+        genSliPuzzles.display_puzzles.append(
+            {'clues': [4, -1, -1, -1, -1, -1], 'solution': BOTTOM_LOOP})
+        assert genSliPuzzles.already_generated([4, -1, -1, -1, -1, -1]) is True
+
+    def test_a_display_puzzle_must_differ_from_a_playable_one(self, cube):
+        """And the other direction: display puzzles are generated last, so what
+        they have to avoid is the playable list."""
+        genSliPuzzles.puzzles_output['puzzles'].append(
+            {'clues': [2, 1, -1, -1, -1, -1], 'solution': BOTTOM_LOOP})
+        # The same puzzle rotated a quarter turn (see TestDuplicateRejection).
+        assert genSliPuzzles.already_generated([-1, -1, 2, -1, 1, -1]) is True
+
+
+class TestDisplayPuzzleOutput:
+    """The key is absent, not empty, when there's nothing to display: the app
+    reads its absence as "this grid shows no loop"."""
+
+    @pytest.fixture(autouse=True)
+    def fresh_output(self, monkeypatch):
+        monkeypatch.setattr(genSliPuzzles, 'puzzles_output',
+                            {'gridId': 'C', 'puzzles': [
+                                {'clues': [4, -1, -1, -1, -1, -1],
+                                 'solution': BOTTOM_LOOP}]})
+        monkeypatch.setattr(genSliPuzzles, 'display_puzzles', [])
+
+    def written(self, capsys):
+        genSliPuzzles.output_puzzles()
+        import json
+        return json.loads(capsys.readouterr().out)
+
+    def test_no_display_puzzles_means_no_key(self, capsys):
+        assert 'displayPuzzles' not in self.written(capsys)
+
+    def test_display_puzzles_are_attached_separately(self, capsys):
+        """And they stay OUT of "puzzles", which is what keeps them away from
+        the player: the picker offers exactly that list."""
+        display = {'clues': [-1, 0, 1, -1, -1, -1], 'solution': [4, 5, 6, 7]}
+        genSliPuzzles.display_puzzles.append(display)
+
+        written = self.written(capsys)
+        assert written['displayPuzzles'] == [display]
+        assert len(written['puzzles']) == 1
+
+
+class TestDisplayOptions:
+    """The command line: --display=N and --existing=FILE."""
+
+    @pytest.fixture(autouse=True)
+    def defaults(self, monkeypatch):
+        monkeypatch.setattr(genSliPuzzles, 'num_display_wanted', 1)
+        monkeypatch.setattr(genSliPuzzles, 'existing_puzzles_path', None)
+        monkeypatch.setattr(genSliPuzzles, 'num_puzzles_wanted', 1)
+
+    def run_args(self, monkeypatch, *args):
+        monkeypatch.setattr('sys.argv', ['genSliPuzzles.py', *args])
+        genSliPuzzles.process_args()
+
+    def test_display_count_and_existing_path(self, monkeypatch):
+        self.run_args(monkeypatch, '--display=3', '--existing=data/C-puzzles.json',
+                      'data/cube.json', '0')
+        assert genSliPuzzles.num_display_wanted == 3
+        assert genSliPuzzles.existing_puzzles_path == 'data/C-puzzles.json'
+        assert genSliPuzzles.num_puzzles_wanted == 0
+        assert genSliPuzzles.grid_path == 'data/cube.json'
+
+    def test_display_zero_is_allowed(self, monkeypatch):
+        """How to regenerate a grid's puzzles without giving it a title loop."""
+        self.run_args(monkeypatch, '--display=0', 'data/cube.json')
+        assert genSliPuzzles.num_display_wanted == 0
+
+    @pytest.mark.parametrize("bad", ['--display=lots', '--display=-1'])
+    def test_a_bad_display_count_is_refused(self, monkeypatch, bad):
+        with pytest.raises(SystemExit):
+            self.run_args(monkeypatch, bad, 'data/cube.json')
+
+    def test_an_unknown_option_is_still_refused(self, monkeypatch):
+        """The new options are parsed by prefix, so make sure that didn't turn
+        into "anything starting with -- is fine"."""
+        with pytest.raises(SystemExit):
+            self.run_args(monkeypatch, '--displays=1', 'data/cube.json')

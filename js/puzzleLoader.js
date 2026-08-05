@@ -34,5 +34,15 @@ export async function loadPuzzleData(relPath) {
         throw new Error(`No puzzles in ${relPath}`);
     }
 
+    // "displayPuzzles" is optional: the loops the title screen shows off,
+    // deliberately outside "puzzles" so they can never be handed to a player
+    // (see docs/json-format.md). A malformed one is dropped rather than thrown
+    // for: it's decoration, and killing the load would cost the player the board.
+    if ('displayPuzzles' in data
+            && !(Array.isArray(data.displayPuzzles) && data.displayPuzzles.length > 0)) {
+        console.warn(`Ignoring displayPuzzles in ${relPath}: expected a non-empty array.`);
+        delete data.displayPuzzles;
+    }
+
     return data;
 }

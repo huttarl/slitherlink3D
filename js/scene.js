@@ -8,7 +8,7 @@ import {createEdgeLabels, createFaceLabels, createVertexLabels} from "./idLabels
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
 import { debug } from "./debug.js";
-import { gridIdFromUrl } from "./titleScreen.js";
+import { gridIdFromUrl, showTitleLoop, wantsTitleScreen } from "./titleScreen.js";
 
 /**
  * Loads a grid's geometry and its puzzles, in parallel.
@@ -82,6 +82,18 @@ export async function createGameState() {
             window.location.pathname + (query ? `?${query}` : ''));
     }
 
+    // On the title screen, play the grid's display puzzle instead of its first
+    // real one -- meaning show its loop, further down. Swapping the array rather
+    // than teaching PuzzleGrid about a second list keeps the rest of the
+    // machinery (indexing, validation, the solved check) exactly as it is, with
+    // the display puzzle at index 0. A grid with no displayPuzzles is left alone
+    // and simply shows its clues, as before.
+    const showingTitleLoop = wantsTitleScreen(urlParams)
+        && Array.isArray(puzzleData.displayPuzzles);
+    if (showingTitleLoop) {
+        puzzleData = {...puzzleData, puzzles: puzzleData.displayPuzzles};
+    }
+
     polyhedronData.grid.gridName = polyhedronData.gridName;
     debug(`createGameState: phD.gridName = ${polyhedronData.gridName}`);
 
@@ -104,6 +116,11 @@ export async function createGameState() {
     const {edgeMeshes, pickLines, pickEdgeIds} =
         createEdgeGeometry(gameState.getPuzzleGrid());
     gameState.setupEdges(edgeMeshes, pickLines, pickEdgeIds);
+
+    // Now that the edges have meshes to colour, draw the title screen's loop.
+    if (showingTitleLoop) {
+        showTitleLoop(gameState.getPuzzleGrid());
+    }
 
     // Create vertex group
     const vertexGroup = createVertexGroup(gameState.getPuzzleGrid(), materials.vertex);

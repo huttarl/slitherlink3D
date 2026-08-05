@@ -425,7 +425,14 @@ test.describe('the title screen', () => {
                         // distance from the solid, which is what's being framed.
                         cameraDistance: gs.getSceneManager().camera.position
                             .distanceTo(gs.getSceneManager().controls.target),
-                        tumbling: gs.getSceneManager().isTumbling};
+                        tumbling: gs.getSceneManager().isTumbling,
+                        // The loop on show, and the marks drawing it.
+                        loopLength: gs.getPuzzleGrid().getCurrentPuzzle()
+                            .solution.length,
+                        filledEdges: [...gs.getPuzzleGrid().edges.values()]
+                            .filter(e => e.metadata.userGuess === 1).length,
+                        puzzlesLoaded: gs.getPuzzleGrid().puzzleData.puzzles.length,
+                        undoDepth: gs.getPuzzleGrid().undoStack.length};
             });
             expect(scene.faces,
                 `${scene.grid} is too small for the title screen`)
@@ -444,7 +451,50 @@ test.describe('the title screen', () => {
             expect(scene.cameraDistance)
                 .toBeLessThanOrEqual(framed(CAMERA_DISTANCE) + 1e-6);
             expect(scene.tumbling).toBe(true);
+
+            // A loop is drawn on it: every edge of the display puzzle's solution
+            // filled in, and nothing in the undo history, since these marks are
+            // the picture rather than the player's moves. Every title-screen
+            // candidate ships a display puzzle, so this holds for whichever solid
+            // came up.
+            expect(scene.filledEdges,
+                `${scene.grid} shows no loop`).toBe(scene.loopLength);
+            expect(scene.undoDepth).toBe(0);
+            // The display puzzle is the only one loaded, which is what keeps a
+            // playable puzzle's answer off the title screen.
+            expect(scene.puzzlesLoaded).toBe(1);
         });
+
+    test('the loop on the title screen cannot be edited', async ({page}) => {
+        // What makes this true is that the title overlay is a full-viewport
+        // element above the canvas, and interaction.js ignores pointer events
+        // whose target isn't the canvas -- so it's a property of the layout, not
+        // of any check in the board code, and this is the test that would notice
+        // if the overlay were ever made click-through.
+        //
+        // It matters because cycling one edge through its three states comes back
+        // to the solution, which would trip the solved check and congratulate the
+        // player on a puzzle they haven't been given.
+        await page.goto('/main.html');
+        await waitForScene(page);
+
+        const marks = () => page.evaluate(async () => {
+            const {GameState} = await import('/js/GameState.js');
+            return [...GameState.getInstance().getPuzzleGrid().edges.values()]
+                .map(e => e.metadata.userGuess).join('');
+        });
+        const before = await marks();
+
+        // Several presses across the middle of the solid, which fills the frame.
+        const box = await page.locator('canvas').boundingBox();
+        for (const [fx, fy] of [[0.5, 0.2], [0.35, 0.5], [0.65, 0.8]]) {
+            await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+        }
+
+        expect(await marks(), 'a click changed the title screen loop').toBe(before);
+        const overlay = await visibleWithinViewport(page, '#overlayMessage');
+        expect(overlay.rendered, 'the celebration overlay appeared').toBe(false);
+    });
 
     test('the panel never paints during a cold launch', async ({page}) => {
         // Same argument as the collapsed-panel test above: the title screen is

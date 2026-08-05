@@ -172,8 +172,13 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   `?grid=`/`?puzzle=` parameters.
 - `confirmDialog.js` — our own yes/no dialog, in place of `window.confirm()`.
 - `titleScreen.js` — the cold-launch title screen: the app's name over a
-  tumbling solid (clues showing), zoomed in a little closer than a board, with no
-  panel. `wantsTitleScreen()` is the rule (no `?grid=`, no `?puzzle=`), and it's
+  tumbling solid, zoomed in a little closer than a board, showing a **display
+  puzzle** — its clues plus its solution loop drawn in as filled-in marks
+  (`showTitleLoop`). Display puzzles live under `displayPuzzles` in the puzzle
+  file, never in `puzzles`, so the loop on show is nothing a player can be given;
+  a grid without one shows clues and no loop. The loop can't be edited because
+  the overlay covers the canvas and `interaction.js` ignores pointer events
+  aimed anywhere else. No panel. `wantsTitleScreen()` is the rule (no `?grid=`, no `?puzzle=`), and it's
   duplicated in main.html's inline script, which has to hide the panel before
   the first paint. Which solid is a random pick per launch, from the playable
   grids with at least `TITLE_SCREEN_MIN_FACES` faces — big enough to look
@@ -413,6 +418,31 @@ util/run_gen.py data/myGrid.json > data/myGrid-puzzles.json
 
 (Add `2>/dev/null` to hide the progress chatter.) Note that generation is
 random and not seeded from the command line, so runs are not reproducible.
+
+Two more options, both passed through by `run_gen.py`:
+
+- `--display=N` also generates N puzzles under `displayPuzzles` — the loops the
+  title screen shows off, kept out of `puzzles` so they can never be handed to a
+  player (see `docs/json-format.md`). Default 1; `--display=0` turns it off.
+  They are ordinary puzzles by every other measure, generated last and checked
+  against both lists so a display puzzle isn't a copy of a playable one. Two
+  puzzles may still share a *loop* under different clues: nothing on screen tells
+  the player the loops match, so the title screen gives nothing away.
+- `--existing=FILE` keeps the puzzles already in `FILE` and generates around
+  them. That's how a display puzzle is added to a grid that already ships
+  puzzles: they come out byte-identical, so nobody's bookmarked `?puzzle=`
+  number moves. Use a temporary file, since the shell truncates the input
+  otherwise:
+
+  ```
+  util/run_gen.py -q --display=1 --existing=data/aC-puzzles.json \
+      data/aC.json 0 600 > /tmp/aC.json && mv /tmp/aC.json data/aC-puzzles.json
+  ```
+
+  A grid too small to have a spare puzzle simply gets no `displayPuzzles`, and
+  its title screen shows clues with no loop. (Only grids with fewer than
+  `TITLE_SCREEN_MIN_FACES` faces should be in that position, and those never
+  reach the title screen anyway.)
 
 ### Step 3: Rebuild the grid catalogue
 

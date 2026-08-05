@@ -30,8 +30,11 @@ TIME_BUDGET_SECONDS = 300
 
 
 def all_puzzle_cases():
-    """One test case per puzzle: (grid_path, puzzles_path, puzzle_index),
-    with a readable ID like 'cube-puzzle0'."""
+    """One test case per puzzle: (grid_path, puzzles_path, key, puzzle_index),
+    with a readable ID like 'cube-puzzle0' or 'eD-display0'.
+
+    Display puzzles are swept too: they are shown with their clues on the title
+    screen, so they hold to the same standard as a playable puzzle."""
     cases = []
     for puzzles_path in sorted(DATA_DIR.glob('*-puzzles.json')):
         stem = puzzles_path.name[:-len('-puzzles.json')]
@@ -39,10 +42,11 @@ def all_puzzle_cases():
         if not grid_path.exists():
             # Let the orphan test below report this; skip it here.
             continue
-        num_puzzles = len(json.loads(puzzles_path.read_text())['puzzles'])
-        for i in range(num_puzzles):
-            cases.append(pytest.param(grid_path, puzzles_path, i,
-                                      id=f'{stem}-puzzle{i}'))
+        data = json.loads(puzzles_path.read_text())
+        for (key, label) in (('puzzles', 'puzzle'), ('displayPuzzles', 'display')):
+            for i in range(len(data.get(key, []))):
+                cases.append(pytest.param(grid_path, puzzles_path, key, i,
+                                          id=f'{stem}-{label}{i}'))
     return cases
 
 
@@ -55,8 +59,9 @@ def test_no_orphan_puzzle_files():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize(('grid_path', 'puzzles_path', 'index'), all_puzzle_cases())
-def test_puzzle_solution_is_unique(grid_path, puzzles_path, index):
+@pytest.mark.parametrize(('grid_path', 'puzzles_path', 'key', 'index'),
+                         all_puzzle_cases())
+def test_puzzle_solution_is_unique(grid_path, puzzles_path, key, index):
     grid = json.loads(grid_path.read_text())
     mesh = Mesh.from_vertices_and_faces(grid['vertices'], grid['faces'])
     data = json.loads(puzzles_path.read_text())
@@ -64,9 +69,21 @@ def test_puzzle_solution_is_unique(grid_path, puzzles_path, index):
     assert data['gridId'] == grid['gridId'], \
         f"{puzzles_path.name} gridId {data['gridId']!r} != {grid_path.name} gridId {grid['gridId']!r}"
 
-    puzzle = data['puzzles'][index]
+    puzzle = data[key][index]
     clues = [(face, n) for (face, n) in enumerate(puzzle['clues']) if n != -1]
     unique = solution_is_unique(clues, len(clues), puzzle['solution'], mesh, None,
                                 time_budget=TIME_BUDGET_SECONDS)
-    assert unique, (f'{puzzles_path.name} puzzle {index} is not uniquely solvable '
+    assert unique, (f'{puzzles_path.name} {key}[{index}] is not uniquely solvable '
                     f'(or exceeded the {TIME_BUDGET_SECONDS}s time budget)')
+
+
+def test_display_puzzles_key_is_never_empty():
+    """An empty "displayPuzzles" would promise the title screen a loop that isn't
+    there; the key is omitted instead (see docs/json-format.md).
+
+    Fast, unlike the sweep above, so it runs by default: it only reads the files.
+    """
+    empty = [p.name for p in sorted(DATA_DIR.glob('*-puzzles.json'))
+             if 'displayPuzzles' in json.loads(p.read_text())
+             and not json.loads(p.read_text())['displayPuzzles']]
+    assert empty == [], 'omit the key rather than shipping an empty list'

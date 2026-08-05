@@ -1,8 +1,14 @@
 """Generate Slitherlink3D puzzles (in JSON) for a given grid (input from JSON).
-Usage: python3 genSliPuzzles.py [--quiet|--verbose] myGrid.json [numPuzzles]
+Usage: python3 genSliPuzzles.py [--quiet|--verbose] [--display=N]
+           [--existing=FILE] myGrid.json [numPuzzles]
 Output is written to stdout; diagnostic/progress messages go to stderr.
 --quiet keeps only errors, warnings and the outcome; --verbose adds per-edge
 detail. See VERBOSITY.
+--display=N asks for N extra puzzles under "displayPuzzles" -- shown off on the
+title screen, never handed to a player. See generate_puzzles.
+--existing=FILE keeps the puzzles already in FILE and generates around them,
+which is how display puzzles are added to a grid without churning the puzzles
+people may have bookmarked. See load_existing_puzzles.
 For JSON format specifications, see docs/json-format.md."""
 import itertools, json, random, sys, math
 from collections import Counter
@@ -27,7 +33,18 @@ grid_id: str|None = None
 # sys.argv, because the flags may come before or after it.
 grid_path: str|None = None
 num_puzzles_wanted: int = 1
+# How many display-only puzzles to generate as well (--display=N). One is
+# enough: the title screen shows a single loop per grid.
+num_display_wanted: int = 1
+# Path given by --existing=FILE, whose puzzles are kept as-is; None otherwise.
+existing_puzzles_path: str|None = None
 puzzles_output: dict = {}
+# Display-only puzzles, generated exactly like the playable ones (authentic,
+# uniquely solvable) but kept in a separate list so that they can never reach a
+# player. output_puzzles attaches them under "displayPuzzles", and only if we
+# managed to produce any -- an absent key means the title screen shows that
+# grid's clues without a loop. See docs/json-format.md.
+display_puzzles: list = []
 
 grid_vertices: list|None = None
 num_vertices: int = 0
@@ -305,22 +322,44 @@ def load_grid_file():
 
 def usage():
     """Print usage message and exit."""
-    log("Usage: python3 genSliPuzzles.py [--quiet|--verbose] myGrid.json [numPuzzles]",
-        level=0)
-    log("  -q, --quiet    only errors, warnings and the outcome of the run", level=0)
-    log("  -v, --verbose  add per-edge/per-face detail (very wordy)", level=0)
+    log("Usage: python3 genSliPuzzles.py [--quiet|--verbose] [--display=N] "
+        "[--existing=FILE] myGrid.json [numPuzzles]", level=0)
+    log("  -q, --quiet      only errors, warnings and the outcome of the run", level=0)
+    log("  -v, --verbose    add per-edge/per-face detail (very wordy)", level=0)
+    log("  --display=N      also generate N display-only puzzles (default "
+        f"{num_display_wanted})", level=0)
+    log("  --existing=FILE  keep the puzzles already in FILE, and generate "
+        "puzzles distinct from them", level=0)
     sys.exit(1)
+
+
+def option_value(arg, name):
+    """The value of a --name=value option, or None if arg isn't that option."""
+    prefix = f"--{name}="
+    return arg[len(prefix):] if arg.startswith(prefix) else None
 
 
 def process_args():
     """Process command-line arguments."""
-    global num_puzzles_wanted, grid_path, VERBOSITY
+    global num_puzzles_wanted, num_display_wanted, existing_puzzles_path
+    global grid_path, VERBOSITY
     positional = []
     for arg in sys.argv[1:]:
         if arg in ("-q", "--quiet"):
             VERBOSITY = 0
         elif arg in ("-v", "--verbose"):
             VERBOSITY = 2
+        elif (value := option_value(arg, "display")) is not None:
+            try:
+                num_display_wanted = int(value)
+            except ValueError:
+                log(f"Error: --display wants a number, not '{value}'.", level=0)
+                usage()  # exits
+            if num_display_wanted < 0:
+                log(f"Error: --display can't be negative.", level=0)
+                usage()  # exits
+        elif (value := option_value(arg, "existing")) is not None:
+            existing_puzzles_path = value
         elif arg.startswith("-"):
             log(f"Error: unrecognized option '{arg}'.", level=0)
             usage()  # exits
@@ -332,6 +371,47 @@ def process_args():
     grid_path = positional[0]
     if (len(positional) == 2):
         num_puzzles_wanted = int(positional[1])
+
+
+def load_existing_puzzles():
+    """Adopt the puzzles from --existing=FILE, if one was given.
+
+    Its puzzles go into the output as they stand, and count as already generated,
+    so anything produced this run is distinct from them (up to rotation and
+    reflection -- see already_generated). That makes it safe to add a display
+    puzzle to a grid that already ships puzzles: the playable ones come out
+    byte-identical, so nobody's bookmarked ?puzzle= number moves, and the new
+    loop can't be the answer to one of them.
+
+    Any displayPuzzles already in the file are DISCARDED, on the grounds that
+    asking for display puzzles is a request to make new ones. Pass --display=0
+    to keep the file's playable puzzles and drop its loop.
+    """
+    global existing_puzzles_path
+    if existing_puzzles_path is None:
+        return
+
+    try:
+        existing = json.load(open(existing_puzzles_path, "r"))
+    except FileNotFoundError:
+        log(f"Error: --existing file '{existing_puzzles_path}' not found.", level=0)
+        sys.exit(1)
+    except json.decoder.JSONDecodeError:
+        log(f"Error: --existing file '{existing_puzzles_path}' is not valid JSON.",
+            level=0)
+        sys.exit(1)
+
+    # A mismatched gridId means the puzzles describe a different solid: its clues
+    # are indexed by ITS faces, so keeping them would silently corrupt this grid's
+    # file. (build_catalogue.py warns about the same mismatch and skips the file.)
+    if existing.get("gridId") != grid_id:
+        log(f"Error: '{existing_puzzles_path}' has gridId "
+            f"'{existing.get('gridId')}', but this grid is '{grid_id}'.", level=0)
+        sys.exit(1)
+
+    kept = existing.get("puzzles", [])
+    puzzles_output["puzzles"].extend(kept)
+    log(f"Keeping {len(kept)} existing puzzle(s) from {existing_puzzles_path}.")
 
 
 class RegionColoring:
@@ -880,6 +960,21 @@ def same_puzzle_up_to_symmetry(clues_a, clues_b):
                for sigma in face_symmetries())
 
 
+def puzzles_so_far():
+    """Every puzzle this run has kept, playable and display-only alike.
+
+    Both lists, so that a display puzzle isn't a copy of a playable one: it would
+    be an odd thing to put on the title screen, since the point of it is to show
+    something other than the puzzles on offer. (Also the reason display puzzles
+    are generated last: see generate_puzzles.)
+
+    Two puzzles can still share a LOOP while differing in clues, and that's
+    allowed: nothing on screen tells the player the loops match, so it gives
+    nothing away.
+    """
+    return puzzles_output["puzzles"] + display_puzzles
+
+
 def already_generated(clues):
     """Have we already produced this puzzle, up to rotation and reflection?
 
@@ -893,7 +988,7 @@ def already_generated(clues):
     solvable, so matching clues imply matching solutions.
     """
     census = clue_census(clues)
-    for puzzle in puzzles_output["puzzles"]:
+    for puzzle in puzzles_so_far():
         if clue_census(puzzle["clues"]) != census:
             continue   # Cheap: no symmetry could relate these two.
         if same_puzzle_up_to_symmetry(puzzle["clues"], clues):
@@ -901,12 +996,17 @@ def already_generated(clues):
     return False
 
 
-def generate_puzzle(i):
+def generate_puzzle(i, display=False):
     """Generate the ith puzzle, distinct from the ones already generated.
 
     Returns True if one was produced.
 
     i is just used for logging, I think.
+
+    `display` puts the result in display_puzzles instead of the playable list.
+    Nothing else changes: a display puzzle is generated by the same code, to the
+    same standard (one loop, uniquely solvable by deduction), because it is shown
+    with its clues and a player may well try to check it by eye.
 
     Some solutions admit no clue set we can solve by deduction, so we start
     over with a fresh pair of regions -- but only up to MAX_REGION_ATTEMPTS
@@ -924,6 +1024,9 @@ def generate_puzzle(i):
     # simply run out of distinct puzzles, which is expected on the small solids
     # and not a problem to investigate.
     duplicates_rejected = 0
+    # What to call this one in the log, so a display puzzle's progress (and any
+    # failure to produce one) isn't mistaken for a playable puzzle's.
+    what = "display puzzle" if display else "puzzle"
     while not clues:
         if attempts >= MAX_REGION_ATTEMPTS:
             if duplicates_rejected:
@@ -931,7 +1034,7 @@ def generate_puzzle(i):
                           f"generated, so this grid may have no more to offer")
             else:
                 reason = "no set of clues for any of those solutions was solvable by deduction"
-            log(f"Giving up on puzzle {i} after {attempts} attempts: {reason}.",
+            log(f"Giving up on {what} {i} after {attempts} attempts: {reason}.",
                 level=0)
             return False
         attempts += 1
@@ -944,11 +1047,11 @@ def generate_puzzle(i):
             # failed attempt, not a reason to abandon the whole run -- which is
             # what happened before, since the exception escaped this loop and
             # killed the process, losing any puzzles already generated.
-            log(f"Attempt {attempts} for puzzle {i} produced no loop ({problem}); "
+            log(f"Attempt {attempts} for {what} {i} produced no loop ({problem}); "
                 f"trying again.")
             continue
         clues = generate_minimal_clueset(mesh)
-        log(f"Generating clues for puzzle {i} attempt {attempts} "
+        log(f"Generating clues for {what} {i} attempt {attempts} "
             f"{'succeeded' if clues else 'failed'}")
         # If we couldn't generate proper clues for this puzzle, start over from scratch.
 
@@ -961,14 +1064,14 @@ def generate_puzzle(i):
             # failed attempt. The attempt cap above stops this spinning forever
             # on a grid whose puzzles we have exhausted; hitting it means this
             # grid simply has fewer puzzles to offer, which is fine.
-            log(f"Attempt {attempts} for puzzle {i} repeated a puzzle already "
+            log(f"Attempt {attempts} for {what} {i} repeated a puzzle already "
                 f"generated (up to rotation/reflection); trying again.")
             duplicates_rejected += 1
             clues = None
             continue
 
     puzzle = { "clues": clues, "solution": solution }
-    puzzles_output["puzzles"].append(puzzle)
+    (display_puzzles if display else puzzles_output["puzzles"]).append(puzzle)
 
     plt.show()
     return True
@@ -979,6 +1082,15 @@ def generate_puzzles():
 
     A puzzle that can't be generated isn't fatal: we output the ones that
     worked (see output_puzzles) rather than losing them.
+
+    Display puzzles come last, for two reasons: they must differ from every
+    playable puzzle (already_generated can only avoid what exists yet), and if
+    the run is cut short it's the playable ones we want to have finished.
+
+    On a small grid there may be no distinct puzzle left over to display -- the
+    tetrahedron has exactly one puzzle in total -- so failing to produce one is
+    reported and then accepted. Those grids are too small for the title screen
+    anyway.
     """
     produced = 0
     for i in range(num_puzzles_wanted):
@@ -988,10 +1100,24 @@ def generate_puzzles():
         log(f"Produced {produced} of the {num_puzzles_wanted} puzzles requested.",
             level=0)
 
+    displayed = 0
+    for i in range(num_display_wanted):
+        if generate_puzzle(i, display=True):
+            displayed += 1
+    if displayed < num_display_wanted:
+        log(f"Produced {displayed} of the {num_display_wanted} display puzzles "
+            f"requested; this grid will show no loop on the title screen.",
+            level=0)
+
 
 def output_puzzles():
     """Output generated puzzles in JSON format."""
     global puzzles_output
+    # Only if we produced any: an empty "displayPuzzles" would be a promise of a
+    # loop that isn't there, and the app treats the key's absence as "no loop"
+    # (see js/puzzleLoader.js).
+    if display_puzzles:
+        puzzles_output["displayPuzzles"] = display_puzzles
     # One line per clue list and per solution, not one line per integer: with
     # indent=3, three puzzles on the truncated icosidodecahedron ran to 491
     # lines. (write_json ends with the newline, which also stops zsh printing a
@@ -1002,6 +1128,7 @@ def output_puzzles():
 def main():
     process_args()
     load_grid_file()
+    load_existing_puzzles()
     setup_display(mesh)
     # random.seed() # Uncomment once we're finished debugging.
     try:
@@ -1011,7 +1138,8 @@ def main():
         # Fall through and output the puzzles completed so far, rather than
         # losing them. (Only whole puzzles are ever in puzzles_output.)
         log(f"\nInterrupted; outputting the "
-            f"{len(puzzles_output['puzzles'])} puzzle(s) completed so far.",
+            f"{len(puzzles_output['puzzles'])} puzzle(s) and "
+            f"{len(display_puzzles)} display puzzle(s) completed so far.",
             level=0)
     output_puzzles()
 

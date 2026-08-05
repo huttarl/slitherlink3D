@@ -20,6 +20,14 @@ detail. Note that --quiet still lets errors through, so it is a better
 way to keep a batch run's output manageable than redirecting stderr to
 /dev/null, which hides real failures too.
 
+--display=N and --existing=FILE are passed through as well; see the
+generator's own docstring for what they do. Adding a display puzzle to a
+grid that already has puzzles looks like this (via a temporary file,
+since the shell would truncate the input before the generator reads it):
+
+    util/run_gen.py -q --display=1 --existing=data/aC-puzzles.json \\
+        data/aC.json 0 600 > /tmp/aC.json && mv /tmp/aC.json data/aC-puzzles.json
+
 On timeout, the generator is first sent SIGINT so it can output any
 puzzles that were already completed (it catches KeyboardInterrupt and
 dumps its results); only if it doesn't exit within a grace period is it
@@ -43,11 +51,16 @@ GRACE_SECONDS = 15
 
 
 def usage():
-    print("Usage: util/run_gen.py [--quiet|--verbose] <grid.json> "
-          "[num_puzzles] [timeout_seconds]", file=sys.stderr)
-    print("  -q, --quiet    only errors, warnings and the outcome of the run",
+    print("Usage: util/run_gen.py [--quiet|--verbose] [--display=N] "
+          "[--existing=FILE] <grid.json> [num_puzzles] [timeout_seconds]",
           file=sys.stderr)
-    print("  -v, --verbose  add per-edge/per-face detail (very wordy)",
+    print("  -q, --quiet      only errors, warnings and the outcome of the run",
+          file=sys.stderr)
+    print("  -v, --verbose    add per-edge/per-face detail (very wordy)",
+          file=sys.stderr)
+    print("  --display=N      also generate N display-only puzzles",
+          file=sys.stderr)
+    print("  --existing=FILE  keep the puzzles already in FILE",
           file=sys.stderr)
     sys.exit(1)
 
@@ -58,7 +71,10 @@ def main():
     flags = []
     positional = []
     for arg in sys.argv[1:]:
-        if arg in ("-q", "--quiet", "-v", "--verbose"):
+        if (arg in ("-q", "--quiet", "-v", "--verbose")
+                or arg.startswith(("--display=", "--existing="))):
+            # Passed through to the generator, which parses them; this wrapper
+            # only needs to know they aren't its own positional arguments.
             flags.append(arg)
         elif arg.startswith("-"):
             print(f"run_gen.py: unrecognized option '{arg}'", file=sys.stderr)
