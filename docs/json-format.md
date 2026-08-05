@@ -8,6 +8,16 @@ A JSON object containing the following properties:
    in a link to a polyhedron construction site, e.g. https://levskaya.github.io/polyhedronisme/?recipe=aC)
 - "categories" (optional): an array of strings, human-readable names for the categories that the polyhedron
   belongs to. E.g. ["Platonic solid", "zonohedron"]
+  - Exactly one of these should be a *family* — "Platonic solid", "Archimedean solid",
+    "Catalan solid", "Johnson solid" — since the polyhedron picker groups by family.
+    The rest are cross-cutting properties: "deltahedron", "quasiregular", "zonohedron",
+    "parallelohedron", "chiral", "self-dual".
+  - Where one category implies another, list only the narrowest: every parallelohedron
+    is a zonohedron, so the cube says "parallelohedron" and stops there.
+  - Names are kept short — "chiral", not "chiral polyhedron" — since the About card has
+    already given the solid's name and family by the time these are read. Each is linked
+    to an explanation where there's a good one; see js/polyhedronLinks.js.
+  - Both conventions are checked by js/tests/catalogue.test.js.
 - "vertices": array of 3-number arrays. Each sub-array is a vertex, and each number is
     a coordinate (X, Y, Z). E.g. [ [0, 0, 1], [-0.3, 0.577, 0.745], ...]
 - "faces": array of arrays of numbers. Each sub-array is a face, and each number is a zero-based

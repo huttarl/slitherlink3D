@@ -232,6 +232,13 @@ those layers subscribe to its observer callbacks instead.
 - **data/** — grid (`*.json`) and puzzle (`*-puzzles.json`) files (format
   spec in `docs/json-format.md`), plus `grids.json`, the generated catalogue
   the app's pickers read (rebuild with `util/build_catalogue.py`).
+  - Formatting: one line per vertex, per face and per clue list, via
+    `util/json_format.py` — the generators write that way, and
+    `python3 util/json_format.py data/*.json` reformats existing files in place
+    (idempotent, and it refuses to write if the parsed data would change).
+    Neither extreme is readable: minified puts a grid on one 1000-character
+    line, while `indent=3` gave every coordinate a line of its own (491 lines
+    for three puzzles on the truncated icosidodecahedron).
 - **docs/** — `json-format.md` (authoritative format reference),
   `project-overview.md` (this file), `upgrading-THREE.md` (how and when to
   upgrade the vendored THREE.js).

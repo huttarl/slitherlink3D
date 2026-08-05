@@ -23,9 +23,43 @@ Category vocabulary in use (26 grids, as of 2026-08-04):
 
 Note the two kinds: **families** (Platonic / Archimedean / Johnson, later
 Catalan…) which partition the collection, and **cross-cutting attributes**
-(deltahedron, chiral, quasiregular, parallelohedron) which a solid may have
-alongside its family. Grouping should key on the family; the attributes are
-interesting extra badges.
+(deltahedron, chiral, quasiregular, zonohedron, parallelohedron, self-dual)
+which a solid may have alongside its family. Grouping should key on the family;
+the attributes are interesting extra badges.
+
+Two conventions, both enforced by tests in `js/tests/catalogue.test.js`:
+
+- **Exactly one family per grid**, since the picker files each solid under one
+  heading.
+- **Only the narrowest category, where one implies another.** Every
+  parallelohedron is a zonohedron (Polytope Wiki even makes Parallelohedra a
+  subcategory of Zonohedra), so the cube is listed as a parallelohedron and
+  leaves it there; the broader fact is one click away on that page.
+
+### The attribute audit (2026-08-05)
+
+Checked against Polytope Wiki's own category tags, via its API, rather than from
+memory — `Category:Convex_deltahedra`, `Category:Parallelohedra`,
+`Category:Zonohedra`, `Category:Convex_quasiregular_polyhedra` — plus the
+articles' own text for chirality (the wiki's `Category:Chiral polyhedra` is
+about skew polyhedra, so it's the wrong tool; the symmetry notation's `+`
+suffix and the prose agree instead).
+
+What that turned up, beyond what the data already had:
+
+| added | to | why |
+|---|---|---|
+| `deltahedron` | I | the icosahedron is one of the 8 convex deltahedra, along with T and O which already had it |
+| `parallelohedron` | C | the cube is the first of Fedorov's five; only C and tO qualify here |
+| `zonohedron` | bC, bD | all faces centrally symmetric. Among uniform solids only C, tO, bC, bD qualify — and the first two are listed as parallelohedra instead |
+| `chiral` | sD, J47, J48 | sC already had it. J47 and J48 are two of the five chiral Johnson solids (J44–J48) |
+| `self-dual` | T | the tetrahedron is its own dual — a nice thing to meet on the first puzzle |
+
+Checked and deliberately NOT added: `quasiregular` stays on aC and aD only (the
+octahedron is quasiregular *as a tetratetrahedron*, which the wiki doesn't tag
+and which needs more explanation than a badge affords); J10 and J75 are
+**not** chiral (`B2×I` and `A2×I` symmetry, no `+`, and their articles don't say
+chiral) even though several of their Johnson neighbours are.
 
 **Caveat on the `recipe` field:** it is the recipe used to *generate* the
 geometry, not a pedagogical label, and it sometimes takes a non-canonical

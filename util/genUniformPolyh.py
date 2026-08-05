@@ -35,6 +35,8 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial import ConvexHull
 
+import json_format
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 PHI = (1 + 5 ** 0.5) / 2   # golden ratio, pervasive in the icosahedral solids
@@ -373,8 +375,9 @@ def write_grid(stem, points, faces):
     }
     path = DATA_DIR / f"{stem}.json"
     with open(path, "w") as f:
-        json.dump(grid, f, separators=(',', ':'))
-        f.write("\n")
+        # One line per vertex and per face, rather than the whole grid on one
+        # line: these files get read by people. See util/json_format.py.
+        json_format.write_json(grid, f)
     return path
 
 

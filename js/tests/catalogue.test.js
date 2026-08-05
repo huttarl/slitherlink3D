@@ -5,6 +5,10 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
 import { groupGridsByFamily, nextPuzzleLocation, playableGrids } from '../catalogue.js';
 
 /** A stand-in catalogue: only the fields nextPuzzleLocation reads. */
@@ -153,5 +157,47 @@ describe('groupGridsByFamily', () => {
 
     test('an empty list gives no groups', () => {
         assert.deepStrictEqual(groupGridsByFamily([]), []);
+    });
+});
+
+/**
+ * Conventions for the `categories` in the real data (data/<grid>.json, gathered
+ * into data/grids.json by util/build_catalogue.py).
+ */
+describe('the catalogue\'s categories', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const catalogue = JSON.parse(
+        readFileSync(join(here, '..', '..', 'data', 'grids.json'), 'utf8'));
+
+    // Where one category implies another, only the narrower is listed: the
+    // broader is a click away on the narrower one's page, and the card has
+    // little room. Every parallelohedron is a zonohedron, so the cube is listed
+    // as a parallelohedron and leaves it at that.
+    const IMPLIES = [['parallelohedron', 'zonohedron']];
+
+    test('no grid lists both a category and one it implies', () => {
+        const redundant = [];
+        for (const grid of catalogue.grids) {
+            const categories = grid.categories || [];
+            for (const [narrow, broad] of IMPLIES) {
+                if (categories.includes(narrow) && categories.includes(broad)) {
+                    redundant.push(`${grid.gridId}: ${narrow} implies ${broad}`);
+                }
+            }
+        }
+        assert.deepStrictEqual(redundant, []);
+    });
+
+    test('every grid names exactly one family', () => {
+        // The picker groups by family, and a grid in two of them would have to
+        // be filed under one arbitrarily.
+        const FAMILIES = ['Platonic solid', 'Archimedean solid', 'Catalan solid',
+                          'Johnson solid'];
+        for (const grid of catalogue.grids) {
+            const families = (grid.categories || [])
+                .filter(category => FAMILIES.includes(category));
+            assert.strictEqual(families.length, 1,
+                `${grid.gridId} has families ${JSON.stringify(families)}`);
+        }
     });
 });

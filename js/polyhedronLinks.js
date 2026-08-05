@@ -98,9 +98,10 @@ const CATEGORY_PAGES = {
     'Johnson solid': VIRTUAL_POLYHEDRA + 'johnson-info.html',
     'deltahedron': VIRTUAL_POLYHEDRA + 'deltahedra-info.html',
     'quasiregular': VIRTUAL_POLYHEDRA + 'quasi-regular-info.html',
-    'zonohedron': VIRTUAL_POLYHEDRA + '../zonohedra/zonohedrification.html',
+    'zonohedron': VIRTUAL_POLYHEDRA + 'zonohedra-info.html',
     'chiral': POLYTOPE_WIKI + 'Chirality',
-    'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron'
+    'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
+    'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',
 };
 
 /** Categories we have deliberately decided not to link (see above). */

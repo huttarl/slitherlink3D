@@ -17,6 +17,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # Our local module
+import json_format
 import slisolver
 
 # Global variables
@@ -991,10 +992,11 @@ def generate_puzzles():
 def output_puzzles():
     """Output generated puzzles in JSON format."""
     global puzzles_output
-    json.dump(puzzles_output, sys.stdout, indent=3)
-    # Output a newline, or else zsh will display a confusing '%' character.
-    # (Deliberately print, not log: the newline terminates the JSON on stdout.)
-    print()
+    # One line per clue list and per solution, not one line per integer: with
+    # indent=3, three puzzles on the truncated icosidodecahedron ran to 491
+    # lines. (write_json ends with the newline, which also stops zsh printing a
+    # confusing '%'.)
+    json_format.write_json(puzzles_output, sys.stdout)
 
 
 def main():

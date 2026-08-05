@@ -2,6 +2,8 @@
 
 import sys, json, re
 
+import json_format
+
 cells = []
 vertices = []
 name = "unknown"
@@ -67,8 +69,9 @@ def sanitize_for_id(s):
     return re.sub(r"[^0-9A-Za-z_]", "", s)
 
 def output():
-    # Make output format compact, so that it loads quickly.
-    print(json.dumps({
+    # Compact enough to load quickly, but a line per vertex and per face so a
+    # person can read it. See util/json_format.py.
+    print(json_format.format_json({
         "gridId": sanitize_for_id(name),  # machine-friendly ID
         "gridName": name,  # user-visible name, e.g. "Rhombille"
         # At some point, add categories like "Johnson solid" and/or "zonohedron" etc.
@@ -80,7 +83,7 @@ def output():
         "vertices": vertices,
         "faces": cells,
 #         "puzzles": []
-        }, separators=(',',':')))
+        }))
     
 def main():
     try:

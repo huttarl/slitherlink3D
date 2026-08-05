@@ -22,6 +22,8 @@ import json
 import sys
 from pathlib import Path
 
+import json_format
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CATALOGUE_PATH = DATA_DIR / "grids.json"
 
@@ -85,8 +87,7 @@ def main():
         "grids": entries,
     }
     with open(CATALOGUE_PATH, "w") as f:
-        json.dump(catalogue, f, indent=3)
-        f.write("\n")
+        json_format.write_json(catalogue, f)
     print(f"Wrote {CATALOGUE_PATH} with {len(entries)} grids:")
     for e in entries:
         print(f"  {e['file']:6s} {e['gridName']:24s} "
