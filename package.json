@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"js/tests/*.test.js\"",
-    "test:mobile": "playwright test --config=js/tests/mobile/playwright.config.js"
+    "test:mobile": "playwright test --config=js/tests/mobile/playwright.config.js",
+    "test:links": "SLI_CHECK_LINKS=1 node --test js/tests/polyhedronLinks.test.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1"

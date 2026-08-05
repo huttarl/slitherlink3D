@@ -150,11 +150,17 @@ Two traps found while wiring this up:
 
 - **Hart has no readable per-solid pages.** His individual links are raw
   `.wrl` VRML model files, so he's the family source, not the solid source.
-- **The URLs can't be derived from names.** Chiral solids have separate laevo
-  and dextro pages at Visual Polyhedra and no plain one (`SnubCube.html` is a
-  404), so `sC` and `sD` point at the laevo page and the card claims nothing
-  about which hand our model is. Hence a hand-maintained table, with a test that
-  fails if a newly added grid isn't in it.
+- **The chiral solids break the URL rule.** Visual Polyhedra names its pages
+  after the solid in PascalCase, which holds for 24 of our 26 grids — but chiral
+  solids get separate laevo and dextro pages and no plain one (`SnubCube.html`
+  is a 404). So the page name is derived from the polyhedron's name, with a
+  two-entry exception table for `sC` and `sD` pointing at the laevo page; the
+  card claims nothing about which hand our model is.
+
+  A polyhedron added later therefore gets its link for free, but an unverified
+  one. `npm run test:links` fetches every link the catalogue produces and
+  insists on 200; it's skipped by the everyday suite, which shouldn't need the
+  network.
 
 Still unlinked, on purpose: **parallelohedron** and **chiral polyhedron**. Hart's
 glossary defines chirality but has no per-term anchors to link to, and the good

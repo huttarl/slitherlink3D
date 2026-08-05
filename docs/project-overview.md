@@ -22,6 +22,10 @@ The JS side of the app runs directly in the browser with no build process:
   @playwright/test && npx playwright install chromium`. See
   `js/tests/mobile/README.md` for what each test is guarding against and what
   automation still can't tell you.
+- **Check the About card's links**: `npm run test:links` — fetches every
+  outbound link the catalogue produces and insists on HTTP 200. Needs the
+  network, so `npm test` skips it. Run it after adding a polyhedron, whose link
+  is derived from its name and so is otherwise unverified.
 
 The Python utilities under `util/` have a pytest suite:
 
@@ -156,10 +160,11 @@ The Python utilities under `util/` have a pytest suite:
   catalogue.
 - `polyhedronLinks.js` — where the card's links go: Visual Polyhedra
   (dmccooey.com) per solid, George Hart's Virtual Polyhedra per family, Plus
-  Magazine for Euler's formula. Deliberately not Wikipedia. Hand-maintained,
-  because the URLs can't be derived from names (chiral solids have separate
-  laevo/dextro pages); `js/tests/polyhedronLinks.test.js` fails if a grid in the
-  catalogue has no entry.
+  Magazine for Euler's formula. Deliberately not Wikipedia. Per-solid URLs are
+  derived from the polyhedron's name, with a small exception table for the
+  chiral solids, whose pages are split laevo/dextro. A polyhedron added later is
+  linked automatically; `npm run test:links` then confirms the pages exist (it
+  needs the network, so the everyday suite skips it).
 - `solidFacts.js` — the pure topology behind that card: `faceCensus`,
   `facesAroundVertex` (walks the fan of faces round a vertex), and
   `vertexConfiguration`, which returns the shared cycle only when every vertex

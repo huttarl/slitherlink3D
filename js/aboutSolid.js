@@ -145,7 +145,8 @@ function buildAboutCard(facts) {
     // statistics. Shown in the drawer as well as the celebration, even though
     // the picker just above already names the solid: the line is here to be the
     // way out to that page.
-    line(linkOrText(facts.name, solidLink(facts.gridId)), 'about-name');
+    line(linkOrText(facts.name, solidLink(facts.gridId, facts.name)),
+         'about-name');
 
     if (facts.categories.length > 0) {
         // Each family or property links to its own background page. Interleave
