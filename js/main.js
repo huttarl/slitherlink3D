@@ -2,7 +2,9 @@ import {updateTextVisibility} from './clueRenderer.js';
 import {createGameState} from "./scene.js";
 import {setupUI} from "./ui.js";
 import {expandDrawer, initPanelLayout} from "./panelLayout.js";
-import {initTitleScreen, openHowToPlay, wantsTitleScreen} from "./titleScreen.js";
+import {initTitleScreen, openHowToPlay, titleScreenCameraDistance,
+        wantsTitleScreen} from "./titleScreen.js";
+import {CAMERA_DISTANCE} from "./constants.js";
 
 async function main() {
     // Get the panel into its right shape before anything slow: loading the grid
@@ -24,7 +26,11 @@ async function main() {
 
     // Get references to scene manager for easier access
     const sceneManager = gameState.getSceneManager();
-    sceneManager.setupStuff();
+    // The title screen sits closer in: its solid is there to be admired, not
+    // played, and filling the frame keeps it from hiding behind the title box.
+    sceneManager.setupStuff(titleScreen
+        ? titleScreenCameraDistance(window.innerWidth / window.innerHeight)
+        : CAMERA_DISTANCE);
 
     setupUI(gameState);
 

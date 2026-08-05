@@ -16,7 +16,9 @@ import {
 // The app's own value, rather than a copy that would drift out of step with it.
 // (constants.js pulls in THREE, which imports fine under Node -- the headless
 // unit tests do the same.)
-import { DEFAULT_GRID, LONG_PRESS_MS, TITLE_SCREEN_GRID } from '../../constants.js';
+import { CAMERA_DISTANCE, CAMERA_HEIGHT, DEFAULT_GRID, LONG_PRESS_MS,
+         TITLE_SCREEN_FALLBACK_GRID, TITLE_SCREEN_MIN_FACES } from '../../constants.js';
+import { titleScreenCameraDistance } from '../../titleScreen.js';
 
 /**
  * Loads the default puzzle and waits for the scene.
@@ -408,23 +410,46 @@ test.describe('the title screen', () => {
                     .toBe(true);
             }
 
-            // ...and it's the showy solid, tumbling.
+            // ...and it's one of the showy solids, tumbling, seen from closer in
+            // than a board would be. Which solid is a random pick per launch
+            // (see chooseTitleScreenGrid), so the assertion is on the criteria.
             await waitForScene(page);
             const scene = await page.evaluate(async () => {
                 const {GameState} = await import('/js/GameState.js');
                 const gs = GameState.getInstance();
                 return {grid: gs.getPuzzleGrid().gridName,
                         faces: gs.getPuzzleGrid().faces.size,
+                        aspect: window.innerWidth / window.innerHeight,
+                        // Distance rather than position.z: the tumble is running,
+                        // so the camera has swung round -- but it keeps its
+                        // distance from the solid, which is what's being framed.
+                        cameraDistance: gs.getSceneManager().camera.position
+                            .distanceTo(gs.getSceneManager().controls.target),
                         tumbling: gs.getSceneManager().isTumbling};
             });
-            expect(scene.faces).toBe(62);          // rhombicosidodecahedron
+            expect(scene.faces,
+                `${scene.grid} is too small for the title screen`)
+                .toBeGreaterThanOrEqual(TITLE_SCREEN_MIN_FACES);
+            // Framed for this screen's shape, and never farther back than a
+            // board (which on a wide window means closer -- see
+            // titleScreenCameraDistance). The camera starts CAMERA_HEIGHT above
+            // the equator, so its real distance is the hypotenuse.
+            const framed = distance =>
+                Math.hypot(distance, CAMERA_HEIGHT);
+            expect(scene.cameraDistance)
+                .toBeCloseTo(framed(titleScreenCameraDistance(scene.aspect)), 2);
+            // With a hair of slack: the tumble recomputes the position from the
+            // camera's orientation every frame, so the distance drifts in the
+            // last bits or two.
+            expect(scene.cameraDistance)
+                .toBeLessThanOrEqual(framed(CAMERA_DISTANCE) + 1e-6);
             expect(scene.tumbling).toBe(true);
         });
 
     test('the panel never paints during a cold launch', async ({page}) => {
         // Same argument as the collapsed-panel test above: the title screen is
         // set up by main.html's inline script, before the first paint, so the
-        // panel must never be seen even while the 62-face solid is loading.
+        // panel must never be seen even while the big solid is loading.
         await page.route('**/data/*.json', async route => {
             await new Promise(r => setTimeout(r, 500));
             await route.continue();
@@ -500,9 +525,10 @@ test.describe('the title screen', () => {
         });
 
     test('a named grid skips the title screen', async ({page}) => {
-        await page.goto(`/main.html?grid=${TITLE_SCREEN_GRID}`);
+        await page.goto(`/main.html?grid=${TITLE_SCREEN_FALLBACK_GRID}`);
         await waitForScene(page);
-        // Even the title screen's own solid, asked for by name, is a board.
+        // Even a solid the title screen could have shown, asked for by name,
+        // is a board.
         const title = await visibleWithinViewport(page, '#titleScreen');
         expect(title.rendered).toBe(false);
         const panel = await visibleWithinViewport(page, '#info');

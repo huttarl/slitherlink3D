@@ -65,9 +65,10 @@ The Python utilities under `util/` have a pytest suite:
    The grid and puzzle are chosen by the `?grid=` and `?puzzle=` URL
    parameters (default in `constants.js`); the pickers in the panel reload
    the page with new parameters. A URL naming neither is a cold launch, which
-   is the **title screen** and loads `TITLE_SCREEN_GRID` instead —
-   `titleScreen.js::gridIdFromUrl()` is the single answer, so the pickers can't
-   label a different solid than the one on screen.
+   is the **title screen** and loads one of the larger solids at random instead
+   — `titleScreen.js::gridIdFromUrl()` is the single answer (async, since the
+   pick reads the catalogue, and cached), so the pickers can't label a different
+   solid than the one on screen.
 4. Hands the loaded data to `GameState.setupScene()`, which copies grid topology
    into the `PuzzleGrid`, applies clues, and validates the solution.
 5. Builds edge cylinders (`createEdgeGeometry()`), vertex spheres and clue
@@ -171,10 +172,14 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   `?grid=`/`?puzzle=` parameters.
 - `confirmDialog.js` — our own yes/no dialog, in place of `window.confirm()`.
 - `titleScreen.js` — the cold-launch title screen: the app's name over a
-  tumbling `TITLE_SCREEN_GRID` (rhombicosidodecahedron, clues showing), with no
+  tumbling solid (clues showing), zoomed in a little closer than a board, with no
   panel. `wantsTitleScreen()` is the rule (no `?grid=`, no `?puzzle=`), and it's
   duplicated in main.html's inline script, which has to hide the panel before
-  the first paint. Start and How to Play both navigate to `DEFAULT_GRID`.
+  the first paint. Which solid is a random pick per launch, from the playable
+  grids with at least `TITLE_SCREEN_MIN_FACES` faces — big enough to look
+  impressive, and big enough to have several puzzles, so showing one off can't
+  spoil a grid's only puzzle. Start and How to Play both navigate to
+  `DEFAULT_GRID`.
 - `aboutSolid.js` — the opt-in "About this solid" card: family and categories,
   V/E/F, the face census, the vertex configuration where every vertex is alike,
   and Euler's formula. Shown behind the ⓘ beside the polyhedron picker and

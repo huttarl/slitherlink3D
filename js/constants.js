@@ -10,6 +10,28 @@ export const VERTEX_RADIUS = 0.04;
 export const CAMERA_MIN_ZOOM = 2;
 export const CAMERA_MAX_ZOOM = 10;
 
+// How far the camera starts from the solid (which is normalized to a
+// circumradius near 1), in the same units as the zoom limits above.
+export const CAMERA_DISTANCE = 6;
+
+// How far above the solid's equator the camera starts, so the first view of it
+// is slightly from above rather than dead-on. Its real distance from the solid
+// is therefore hypot(CAMERA_DISTANCE, CAMERA_HEIGHT), a little more than the
+// distance asked for.
+export const CAMERA_HEIGHT = 1;
+
+// The camera's vertical field of view, in degrees. A perspective camera's fov is
+// the VERTICAL one, so the horizontal view depends on the viewport's aspect
+// ratio -- which is why a tall phone screen sees less of the solid at a given
+// distance than a wide desktop window does (see titleScreenCameraDistance).
+export const CAMERA_FOV_DEGREES = 35;
+
+// How much of the frame the solid should span on the title screen, as a fraction
+// of the narrower field of view. Higher than a board's framing: nothing here has
+// to be clicked, so the solid can be big -- which also gets the interesting part
+// of it out from behind the centred title box. Under 1 so it isn't cropped.
+export const TITLE_SCREEN_FILL = 0.85;
+
 // Mouse interaction threshold (pixels moved before considering it a drag)
 export const DRAG_THRESHOLD_PIXELS = 5;
 
@@ -78,11 +100,21 @@ export const LEVEL_CAMERA_SECONDS = 0.5;
 // the player left off).
 export const DEFAULT_GRID = 'T';
 
-// Grid shown tumbling behind the title screen. Not a board to be played, so
-// the criteria are the opposite of DEFAULT_GRID's: as impressive as we can
-// afford. The rhombicosidodecahedron has 62 faces of three kinds, so it reads
-// as intricate from any angle, and at 120 edges it still builds quickly.
-export const TITLE_SCREEN_GRID = 'eD';
+// Which solids may appear tumbling behind the title screen: any playable grid
+// with more than this many faces, picked at random per launch (see
+// chooseTitleScreenGrid). Not a board to be played, so the criteria are the
+// opposite of DEFAULT_GRID's: as impressive as we can afford, and a different
+// one each time you arrive.
+//
+// The face count is a proxy for "this grid has several puzzles", so that showing
+// one of them off -- eventually with its solution loop drawn on it -- can't spoil
+// a grid's only puzzle.
+export const TITLE_SCREEN_MIN_FACES = 11;
+
+// Used when the catalogue can't be read, so the pick can't be made: a solid we
+// know is there and comfortably meets the criteria (the rhombicosidodecahedron,
+// 62 faces of three kinds, intricate from any angle).
+export const TITLE_SCREEN_FALLBACK_GRID = 'eD';
 
 // Edge state machine configuration
 export const EDGE_COLORS = {

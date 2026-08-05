@@ -1,7 +1,8 @@
 import * as THREE from './three/three.module.min.js';
 import { OrbitControls } from './three/OrbitControls.js';
 import { TrackballControls } from './three/TrackballControls.js';
-import {CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS,
+import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, CAMERA_HEIGHT, CAMERA_MAX_ZOOM,
+        CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS,
         TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED,
         TUMBLE_DEGREES_PER_SEC} from "./constants.js";
 import {debug} from "./debug.js";
@@ -130,9 +131,16 @@ export class SceneManager {
         return this.scene;
     }
 
-    setupStuff() {
+    /**
+     * Camera, renderer and controls. Separate from initializeScene; see the note
+     * there for why.
+     *
+     * @param {number} [cameraDistance] - how far back to start the camera. The
+     *     title screen passes a closer distance (see main.js); a board gets the
+     *     default, which fits the whole solid comfortably.
+     */
+    setupStuff(cameraDistance = CAMERA_DISTANCE) {
         // Set up camera
-        const cameraDistance = 6;
         this.setupCamera(window.innerWidth / window.innerHeight, cameraDistance);
 
         // Set up renderer
@@ -158,9 +166,9 @@ export class SceneManager {
      * @param {number} aspectRatio - Camera aspect ratio
      * @param {number} distance - Camera distance from origin
      */
-    setupCamera(aspectRatio, distance = 6) {
-        this.camera = new THREE.PerspectiveCamera(35, aspectRatio); // , distance - 2, 1000
-        this.camera.position.y = 1;
+    setupCamera(aspectRatio, distance = CAMERA_DISTANCE) {
+        this.camera = new THREE.PerspectiveCamera(CAMERA_FOV_DEGREES, aspectRatio); // , distance - 2, 1000
+        this.camera.position.y = CAMERA_HEIGHT;
         this.camera.position.z = distance;
         this.camera.lookAt(0, 0, 0);
         this.camera.updateProjectionMatrix();

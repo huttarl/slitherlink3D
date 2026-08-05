@@ -32,7 +32,7 @@ export async function setupSelectors(puzzleGrid) {
     // The same answer createGameState used, so the pickers and the where-am-I
     // label always name the solid that's actually on screen -- including on the
     // title screen, whose grid isn't in the URL at all.
-    const currentGrid = gridIdFromUrl(params);
+    const currentGrid = await gridIdFromUrl(params);
 
     // Grid picker. Only grids that have puzzles: there is nothing to play on
     // one that doesn't, so offering it would be a dead end. (The '(no puzzles)'

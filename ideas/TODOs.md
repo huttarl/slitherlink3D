@@ -15,9 +15,9 @@ Finished items live in ideas/TODOs-done.md.
     (and possibly marks too... maybe the solution to a puzzle, but one that's extra, not a spoiler).
     Have a semitransparent overlay in the center with the title "Slitherlink 3D" and maybe buttons
     "How to Play" and "Start". The latter would exit the title screen and start normal play.
-    (A URL naming no grid or puzzle is the title screen: it tumbles the
-    rhombicosidodecahedron with its clues showing, and hides the main panel.
-    Both buttons navigate to the tetrahedron; "How to Play" also opens the
+    (A URL naming no grid or puzzle is the title screen: it tumbles a random one
+    of the bigger solids, zoomed in, with its clues showing, and hides the main
+    panel. Both buttons navigate to the tetrahedron; "How to Play" also opens the
     instructions there. See js/titleScreen.js.)
     - [ ] show a slitherlink loop on the title solid -- marks, or a solution
       that no puzzle in the catalogue uses, so it can't spoil anything.

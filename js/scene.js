@@ -50,10 +50,10 @@ export async function createGameState() {
     // Load geometry and puzzle data in parallel for better performance.
     // The grid is chosen by the ?grid= query parameter (a data/ filename
     // stem; the picker in ui.js offers the ones listed in data/grids.json) --
-    // except on a cold launch, which is the title screen and shows its own
+    // except on a cold launch, which is the title screen and picks its own
     // solid. gridIdFromUrl is the single answer, so the pickers can't disagree
     // with what's on screen.
-    const requestedGrid = gridIdFromUrl(urlParams);
+    const requestedGrid = await gridIdFromUrl(urlParams);
     let [polyhedronData, puzzleData] = [null, null];
     try {
         [polyhedronData, puzzleData] = await loadGrid(requestedGrid);
