@@ -16,10 +16,14 @@ import {
 // The app's own value, rather than a copy that would drift out of step with it.
 // (constants.js pulls in THREE, which imports fine under Node -- the headless
 // unit tests do the same.)
-import { LONG_PRESS_MS } from '../../constants.js';
+import { DEFAULT_GRID, LONG_PRESS_MS, TITLE_SCREEN_GRID } from '../../constants.js';
 
 /**
  * Loads the default puzzle and waits for the scene.
+ *
+ * The grid is named explicitly, even though it IS the default: a URL with no
+ * grid or puzzle is a cold launch, which now shows the title screen instead of
+ * a board (see js/titleScreen.js).
  *
  * Deliberately NOT a top-level beforeEach: the tests that navigate somewhere
  * else themselves (the smoke tests, the slow-load test) would then build a
@@ -27,7 +31,7 @@ import { LONG_PRESS_MS } from '../../constants.js';
  * for the CPU that was enough to blow the timeout.
  */
 async function openDefaultPuzzle(page) {
-    await page.goto('/main.html');
+    await page.goto(`/main.html?grid=${DEFAULT_GRID}`);
     await waitForScene(page);
 }
 
@@ -218,7 +222,8 @@ test.describe('the collapsed panel', () => {
 
             const wantCollapsed = testInfo.project.name === 'phone';
             const samples = [];
-            const navigation = page.goto('/main.html', {waitUntil: 'commit'});
+            const navigation = page.goto(`/main.html?grid=${DEFAULT_GRID}`,
+                                        {waitUntil: 'commit'});
             for (let i = 0; i < 8; i++) {
                 await page.waitForTimeout(120);
                 samples.push(await page.evaluate(() => {
@@ -355,6 +360,130 @@ test.describe('the collapsed panel', () => {
         expect(sameRow.beside, 'the About button is not to the right of the select')
             .toBe(true);
     });
+    });
+});
+
+test.describe('the title screen', () => {
+    test('a cold launch shows the title over the solid, with no panel',
+        async ({page}) => {
+            await page.goto('/main.html');
+            const title = await visibleWithinViewport(page, '#titleScreen');
+            expect(title.rendered, 'the title screen is not shown').toBe(true);
+            expect(title.text).toContain('Slitherlink 3D');
+
+            // The panel is gone entirely, not merely collapsed.
+            const panel = await visibleWithinViewport(page, '#info');
+            expect(panel.rendered, 'the main panel is showing on the title screen')
+                .toBe(false);
+
+            // Both buttons on screen, on a phone as well as a desktop.
+            for (const selector of ['#titleStart', '#titleHowTo']) {
+                const button = await visibleWithinViewport(page, selector);
+                expect(button.rendered, `${selector} is not shown`).toBe(true);
+                expect(button.insideViewport,
+                    `${selector} is off screen: ${JSON.stringify(button.rect)}`)
+                    .toBe(true);
+            }
+
+            // ...and it's the showy solid, tumbling.
+            await waitForScene(page);
+            const scene = await page.evaluate(async () => {
+                const {GameState} = await import('/js/GameState.js');
+                const gs = GameState.getInstance();
+                return {grid: gs.getPuzzleGrid().gridName,
+                        faces: gs.getPuzzleGrid().faces.size,
+                        tumbling: gs.getSceneManager().isTumbling};
+            });
+            expect(scene.faces).toBe(62);          // rhombicosidodecahedron
+            expect(scene.tumbling).toBe(true);
+        });
+
+    test('the panel never paints during a cold launch', async ({page}) => {
+        // Same argument as the collapsed-panel test above: the title screen is
+        // set up by main.html's inline script, before the first paint, so the
+        // panel must never be seen even while the 62-face solid is loading.
+        await page.route('**/data/*.json', async route => {
+            await new Promise(r => setTimeout(r, 500));
+            await route.continue();
+        });
+        const navigation = page.goto('/main.html', {waitUntil: 'commit'});
+        const samples = [];
+        for (let i = 0; i < 6; i++) {
+            await page.waitForTimeout(120);
+            samples.push(await page.evaluate(() => {
+                const info = document.getElementById('info');
+                const title = document.getElementById('titleScreen');
+                if (!info || !title) return null;
+                return {panelShown: !info.classList.contains('hidden'),
+                        titleShown: !title.classList.contains('hidden')};
+            }).catch(() => null));
+        }
+        await navigation;
+
+        const seen = samples.filter(Boolean);
+        expect(seen.length, 'never managed to sample').toBeGreaterThan(2);
+        expect(seen.every(s => !s.panelShown),
+            'the main panel was visible during the title screen').toBe(true);
+        expect(seen.every(s => s.titleShown),
+            'the title screen was not up the whole time').toBe(true);
+    });
+
+    test('Start goes to the beginner grid, with the panel back',
+        async ({page}) => {
+            await page.goto('/main.html');
+            await waitForScene(page);
+            await page.locator('#titleStart').click();
+            await waitForScene(page);
+
+            expect(new URL(page.url()).searchParams.get('grid'))
+                .toBe(DEFAULT_GRID);
+            const faces = await page.evaluate(async () => {
+                const {GameState} = await import('/js/GameState.js');
+                return GameState.getInstance().getPuzzleGrid().faces.size;
+            });
+            expect(faces).toBe(4);                 // tetrahedron
+
+            const title = await visibleWithinViewport(page, '#titleScreen');
+            expect(title.rendered, 'the title screen is still up').toBe(false);
+            const panel = await visibleWithinViewport(page, '#info');
+            expect(panel.rendered, 'the main panel did not come back').toBe(true);
+        });
+
+    test('How to Play does the same, and opens the instructions',
+        async ({page}) => {
+            await page.goto('/main.html');
+            await waitForScene(page);
+            await page.locator('#titleHowTo').click();
+            await waitForScene(page);
+
+            const state = await page.evaluate(() => ({
+                open: document.getElementById('howToPlay').open,
+                collapsed: document.getElementById('info')
+                    .classList.contains('collapsed'),
+                query: window.location.search,
+            }));
+            expect(state.open, 'the instructions are not open').toBe(true);
+            // They live in the drawer, so a phone's collapsed panel had to open.
+            expect(state.collapsed, 'the drawer is still collapsed').toBe(false);
+            // The request has been acted on and shouldn't linger in the URL,
+            // where it would re-open on every later puzzle.
+            expect(state.query).not.toContain('howto');
+            expect(state.query).toContain(`grid=${DEFAULT_GRID}`);
+
+            // And the instructions are actually on screen, not just open.
+            const instructions = await visibleWithinViewport(page, '#howToPlay');
+            expect(instructions.rendered).toBe(true);
+            expect(instructions.text).toContain('single loop');
+        });
+
+    test('a named grid skips the title screen', async ({page}) => {
+        await page.goto(`/main.html?grid=${TITLE_SCREEN_GRID}`);
+        await waitForScene(page);
+        // Even the title screen's own solid, asked for by name, is a board.
+        const title = await visibleWithinViewport(page, '#titleScreen');
+        expect(title.rendered).toBe(false);
+        const panel = await visibleWithinViewport(page, '#info');
+        expect(panel.rendered).toBe(true);
     });
 });
 

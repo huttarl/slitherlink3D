@@ -461,6 +461,55 @@
             color: #08d;
         }
 
+        /* --- Title screen -------------------------------------------------
+           Shown on a cold launch, over the tumbling solid. The backdrop stays
+           clear (unlike the celebration's, which dims the board): the solid is
+           the point, so only the box itself is tinted. It does still take the
+           pointer events, which is deliberate -- a click can't reach the canvas,
+           so nothing stops the tumble while the title is up. */
+        #titleScreen {
+            background: none;
+            cursor: default;
+        }
+
+        .title-box {
+            background: rgba(0, 0, 0, 0.62);
+            color: white;
+            padding: 1.6em 2.2em;
+            border-radius: 0.8em;
+            text-align: center;
+            max-width: min(90vw, 30em);
+            /* Legible over whatever part of the solid ends up behind it. */
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0.5em 1.5em rgba(0, 0, 0, 0.35);
+        }
+
+        .title-box h1 {
+            margin: 0;
+            font-size: clamp(1.8em, 6vw, 3em);
+            letter-spacing: 0.02em;
+        }
+
+        .title-box p {
+            margin: 0.8em 0 0;
+            opacity: 0.85;
+        }
+
+        .title-buttons {
+            margin-top: 1.6em;
+            display: flex;
+            gap: 0.8em;
+            justify-content: center;
+            /* Narrow phones in portrait: stack rather than shrink the labels. */
+            flex-wrap: wrap;
+        }
+
+        .title-buttons button {
+            margin: 0;
+            padding: 0.5em 1.4em;
+            font-size: 1.05em;
+        }
+
         /* Make the celebration box semitransparent. */
         #overlayMessage {
             opacity: 0.8;
@@ -531,8 +580,10 @@
                 <span id="stripButtons"></span>
             </div>
             <div id="infoDrawer">
-            <!-- Collapsible Instructions -->
-            <details>
+            <!-- Collapsible Instructions. The id is how the title screen's
+                 "How to Play" button opens this after navigating here; see
+                 openHowToPlay in js/titleScreen.js. -->
+            <details id="howToPlay">
                 <summary style="cursor: pointer; color: #88ccff; margin-top: 8px;">
                     📖 How to Play
                 </summary>
@@ -594,6 +645,21 @@
             </div>
             </div><!-- /#infoDrawer -->
         </div>
+        <!-- The title screen. Sits over the tumbling solid on a cold launch (no
+             ?grid= or ?puzzle=); either button navigates to the starting puzzle.
+             Unhidden by the inline script below, before the first paint, and
+             wired by js/titleScreen.js. Placed here, ahead of that script,
+             because a script only sees the document parsed so far. -->
+        <div id="titleScreen" class="hidden overlay">
+            <div class="title-box">
+                <h1>Slitherlink 3D</h1>
+                <p>Draw a single loop along the edges of a polyhedron.</p>
+                <div class="title-buttons">
+                    <button id="titleStart">Start</button>
+                    <button id="titleHowTo">How to Play</button>
+                </div>
+            </div>
+        </div>
         <script>
             /* Collapse the panel BEFORE the first paint, on the screens that
                want it collapsed.
@@ -609,9 +675,22 @@
 
                Only the class: the buttons move when ui.js runs. The strip is a
                fixed width (see #info.collapsed) so they arrive into space
-               already reserved, without shifting anything. */
+               already reserved, without shifting anything.
+
+               The same argument applies to the title screen, for the same
+               reason: showing the panel and then removing it would be a visible
+               flicker on every cold launch. The condition below duplicates
+               wantsTitleScreen() in js/titleScreen.js -- one line, in two places,
+               because a module can't run this early. */
             (function () {
                 var info = document.getElementById('info');
+                var params = new URLSearchParams(window.location.search);
+                if (!params.has('grid') && !params.has('puzzle')) {
+                    // Title screen: no panel at all, and the title over the solid.
+                    info.classList.add('hidden');
+                    document.getElementById('titleScreen').classList.remove('hidden');
+                    return;
+                }
                 var query = info.getAttribute('data-narrow-query');
                 if (window.matchMedia && window.matchMedia(query).matches) {
                     info.classList.add('collapsed');

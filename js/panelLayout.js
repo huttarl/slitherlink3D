@@ -34,6 +34,21 @@ function narrowScreenQuery() {
  *  back exactly where it was. Keyed by element id. */
 const buttonHomes = new Map();
 
+/** initPanelLayout's collapse/expand function, published for expandDrawer. */
+let setPanelCollapsed = null;
+
+/**
+ * Opens the drawer, for something outside this module that needs what's inside
+ * it -- the title screen's "How to Play", which lands on a phone with the panel
+ * collapsed and the instructions therefore out of sight.
+ *
+ * Counts as the player expressing a preference (they did click a button), so
+ * the panel won't re-collapse itself on the next viewport change.
+ */
+export function expandDrawer() {
+    if (setPanelCollapsed) setPanelCollapsed(false, {playerChose: true});
+}
+
 /**
  * Wires the panel's collapse/expand behaviour and sets the starting state.
  *
@@ -63,8 +78,16 @@ export function initPanelLayout() {
                              label: button.textContent});
     }
 
-    /** Moves the in-play buttons into the strip, or back into the drawer. */
-    function setCollapsed(collapsed) {
+    /**
+     * Moves the in-play buttons into the strip, or back into the drawer.
+     *
+     * @param {boolean} collapsed
+     * @param {{playerChose: boolean}} [options] - set playerChose when the
+     *     change came from something the player did, which stops later viewport
+     *     changes overriding it (see the listener below)
+     */
+    function setCollapsed(collapsed, {playerChose = false} = {}) {
+        if (playerChose) playerChoseState = true;
         info.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
         for (const id of STRIP_BUTTON_IDS) {
@@ -95,16 +118,16 @@ export function initPanelLayout() {
     });
 
     toggle.addEventListener('click', () => {
-        playerChoseState = true;
-        setCollapsed(!info.classList.contains('collapsed'));
+        setCollapsed(!info.classList.contains('collapsed'), {playerChose: true});
     });
     // Where-am-I is a shortcut to the pickers, which live in the drawer.
     document.getElementById('whereAmI').addEventListener('click', () => {
-        playerChoseState = true;
-        setCollapsed(false);
+        setCollapsed(false, {playerChose: true});
     });
 
     setCollapsed(narrowScreen.matches);
+    // Publish it, so expandDrawer can reach in (see above).
+    setPanelCollapsed = setCollapsed;
 }
 
 /** True when the panel is collapsed, so check results belong in the toast. */

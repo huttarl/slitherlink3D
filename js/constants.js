@@ -69,13 +69,20 @@ export const TRACKBALL_DAMPING = 0.5;
 // Instant would be disorienting; this is short enough not to feel sluggish.
 export const LEVEL_CAMERA_SECONDS = 0.5;
 
-// Grid (polyhedron) shown when the URL has no ?grid= parameter.
+// Grid (polyhedron) the player starts on: what "Start" loads, and what a
+// ?grid=-less URL falls back to.
 // The value is a data/ filename stem (see data/grids.json), which can
 // differ from the grid's internal gridId.
 // The tetrahedron: the simplest possible board, the right place for a
 // newcomer to learn the rules. Revisit once progress is saved (start where
-// the player left off), or if a title screen wants a showier solid.
+// the player left off).
 export const DEFAULT_GRID = 'T';
+
+// Grid shown tumbling behind the title screen. Not a board to be played, so
+// the criteria are the opposite of DEFAULT_GRID's: as impressive as we can
+// afford. The rhombicosidodecahedron has 62 faces of three kinds, so it reads
+// as intricate from any angle, and at 120 edges it still builds quickly.
+export const TITLE_SCREEN_GRID = 'eD';
 
 // Edge state machine configuration
 export const EDGE_COLORS = {

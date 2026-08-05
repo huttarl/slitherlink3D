@@ -1,12 +1,26 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
+
+- [ ] Adding more info about each polyhedron, as applicable:
+  - [ ] add aliases, like "buckyball" / "soccer ball" for truncated icosahedron
+  - [ ] link to dual solid - linking to that solid in the game, if we have it
+  - [ ] Conway recipe, with link to polyhedronisme
+  - [ ] Where to fit all this stuff, without overwhelming the user? Put some of it
+    under a "More" fold?
+- [ ] Add Catalan solids
 - [ ] Add more rules, after A B C and D, to help the puzzle generator / evaluator know
     what's possible & easy for players. I have several that I use experientially in
     solving variety slitherlink puzzles.
-- [ ] On launch, have a title screen that shows an impressive polyhedron (rotating) with puzzle clues
+- [x] On launch, have a title screen that shows an impressive polyhedron (rotating) with puzzle clues
     (and possibly marks too... maybe the solution to a puzzle, but one that's extra, not a spoiler).
     Have a semitransparent overlay in the center with the title "Slitherlink 3D" and maybe buttons
     "How to Play" and "Start". The latter would exit the title screen and start normal play.
+    (A URL naming no grid or puzzle is the title screen: it tumbles the
+    rhombicosidodecahedron with its clues showing, and hides the main panel.
+    Both buttons navigate to the tetrahedron; "How to Play" also opens the
+    instructions there. See js/titleScreen.js.)
+    - [ ] show a slitherlink loop on the title solid -- marks, or a solution
+      that no puzzle in the catalogue uses, so it can't spoil anything.
 - [ ] The buttons are of uneven sizes.
         E.g. the "upright" and "Reset" buttons look a little shorter on top than the others.
         Actually on careful inspection, the buttons with icons (Unicode symbols) are slightly *taller* than the icons with words.
@@ -99,7 +113,7 @@ Finished items live in ideas/TODOs-done.md.
 - [~] Handle errors more gracefully, e.g. in loadPolyhedronFromJSON().
 - [~] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
     - [x] Is this encoded in the JSON?
-    - [ ] maybe associate a color (scheme) with each polyhedron, and category, for more atmosphere?
+    - [ ] maybe associate a scene color (scheme) with each polyhedron, and category, for more atmosphere?
 - [ ] figure out data flow for grids, puzzles and solutions
     - [x] what formats do we already have
         - [x] as example data

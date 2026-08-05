@@ -64,7 +64,10 @@ The Python utilities under `util/` have a pytest suite:
    (`loadPolyhedronFromJSON()` from `geometry.js`, `loadPuzzleData()` from `puzzleLoader.js`).
    The grid and puzzle are chosen by the `?grid=` and `?puzzle=` URL
    parameters (default in `constants.js`); the pickers in the panel reload
-   the page with new parameters.
+   the page with new parameters. A URL naming neither is a cold launch, which
+   is the **title screen** and loads `TITLE_SCREEN_GRID` instead —
+   `titleScreen.js::gridIdFromUrl()` is the single answer, so the pickers can't
+   label a different solid than the one on screen.
 4. Hands the loaded data to `GameState.setupScene()`, which copies grid topology
    into the `PuzzleGrid`, applies clues, and validates the solution.
 5. Builds edge cylinders (`createEdgeGeometry()`), vertex spheres and clue
@@ -75,6 +78,13 @@ The Python utilities under `util/` have a pytest suite:
    pickers and the check-reporting to `puzzlePicker.js` and `checkFeedback.js`.
    (The panel's layout was already set up, before step 1, by
    `panelLayout.js::initPanelLayout()`.)
+
+On a cold launch, `main.js` also calls `initTitleScreen()` before step 1, to wire
+the two buttons. Everything visual about the title screen — hiding the panel,
+showing the title box — is done by main.html's inline pre-paint script, so it is
+already on screen while the 62-face solid is still loading. Both buttons
+navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
+`openHowToPlay()` acts on and then strips from the URL.
 
 `main.js` then drives `requestAnimationFrame` → `updateTextVisibility()` →
 `timer.update()` → `controls.update()` → `gameState.render()`.
@@ -160,6 +170,11 @@ The Python utilities under `util/` have a pytest suite:
   guards leaving a part-worked board. Navigating reloads the page with new
   `?grid=`/`?puzzle=` parameters.
 - `confirmDialog.js` — our own yes/no dialog, in place of `window.confirm()`.
+- `titleScreen.js` — the cold-launch title screen: the app's name over a
+  tumbling `TITLE_SCREEN_GRID` (rhombicosidodecahedron, clues showing), with no
+  panel. `wantsTitleScreen()` is the rule (no `?grid=`, no `?puzzle=`), and it's
+  duplicated in main.html's inline script, which has to hide the panel before
+  the first paint. Start and How to Play both navigate to `DEFAULT_GRID`.
 - `aboutSolid.js` — the opt-in "About this solid" card: family and categories,
   V/E/F, the face census, the vertex configuration where every vertex is alike,
   and Euler's formula. Shown behind the ⓘ beside the polyhedron picker and
@@ -230,7 +245,8 @@ those layers subscribe to its observer callbacks instead.
   - Rendering: `SceneManager.js`, `scene.js`, `geometry.js`,
     `geometryUtils.js`, `clueRenderer.js`, `idLabels.js`, `skybox.js`
   - Input/UI: `interaction.js`, `ui.js`, `panelLayout.js`,
-    `checkFeedback.js`, `puzzlePicker.js`, `confirmDialog.js`, `aboutSolid.js`
+    `checkFeedback.js`, `puzzlePicker.js`, `confirmDialog.js`, `aboutSolid.js`,
+    `titleScreen.js`
   - Polyhedron facts: `solidFacts.js`, `polyhedronLinks.js`, plus `categories`
     in the grid data and `groupGridsByFamily` in `catalogue.js`
   - Configuration: `constants.js`; `debug.js` (gated tracing)

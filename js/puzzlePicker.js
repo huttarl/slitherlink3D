@@ -2,11 +2,11 @@
  * Choosing what to play: the polyhedron and puzzle pickers, the "Next puzzle"
  * buttons, and the "are you sure?" that guards leaving a part-worked board.
  */
-import {DEFAULT_GRID} from "./constants.js";
 import {groupGridsByFamily, loadCatalogue, nextPuzzleLocation,
         playableGrids} from "./catalogue.js";
 import {confirmDialog} from "./confirmDialog.js";
 import {setWhereAmI} from "./panelLayout.js";
+import {gridIdFromUrl} from "./titleScreen.js";
 
 // Set true once the current puzzle has been solved, so that navigating away
 // from it doesn't pointlessly ask whether to discard the player's marks.
@@ -29,7 +29,10 @@ export function markPuzzleSolved() {
 export async function setupSelectors(puzzleGrid) {
     const catalogue = await loadCatalogue();
     const params = new URLSearchParams(window.location.search);
-    const currentGrid = params.get('grid') || DEFAULT_GRID;
+    // The same answer createGameState used, so the pickers and the where-am-I
+    // label always name the solid that's actually on screen -- including on the
+    // title screen, whose grid isn't in the URL at all.
+    const currentGrid = gridIdFromUrl(params);
 
     // Grid picker. Only grids that have puzzles: there is nothing to play on
     // one that doesn't, so offering it would be a dead end. (The '(no puzzles)'

@@ -1,7 +1,8 @@
 import {updateTextVisibility} from './clueRenderer.js';
 import {createGameState} from "./scene.js";
 import {setupUI} from "./ui.js";
-import {initPanelLayout} from "./panelLayout.js";
+import {expandDrawer, initPanelLayout} from "./panelLayout.js";
+import {initTitleScreen, openHowToPlay, wantsTitleScreen} from "./titleScreen.js";
 
 async function main() {
     // Get the panel into its right shape before anything slow: loading the grid
@@ -11,14 +12,24 @@ async function main() {
     // first paint; this moves the strip's buttons and wires the toggle.)
     initPanelLayout();
 
+    // A cold launch is a title screen: the panel is already hidden and the
+    // title already up (main.html's inline script did both before the first
+    // paint), so this only has to wire the two buttons. Both of them navigate,
+    // which is why there's no "leave the title screen" path to build.
+    const titleScreen = wantsTitleScreen();
+    if (titleScreen) initTitleScreen();
+
     // Create the game state with all necessary objects
     const gameState = await createGameState();
-    
+
     // Get references to scene manager for easier access
     const sceneManager = gameState.getSceneManager();
     sceneManager.setupStuff();
 
     setupUI(gameState);
+
+    // Arriving from the title screen's "How to Play": open the instructions.
+    if (!titleScreen) openHowToPlay(expandDrawer);
 
     // Tumble from the moment the puzzle appears: it shows the player that the
     // solid turns, and which sides it has, before they've touched anything. The
