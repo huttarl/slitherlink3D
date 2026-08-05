@@ -260,6 +260,16 @@
       "edges": 180,
       "vertices": 120,
       "numPuzzles": 3
+    },
+    {
+      "file": "gp12",
+      "gridId": "gp12",
+      "gridName": "Goldberg GP(1,2)",
+      "categories": ["Goldberg polyhedron", "chiral"],
+      "faces": 72,
+      "edges": 210,
+      "vertices": 140,
+      "numPuzzles": 3
     }
   ]
 }

@@ -281,6 +281,8 @@ those layers subscribe to its observer callbacks instead.
 - **util/** — Python utilities:
   - `genUniformPolyh.py` — generates Platonic/Archimedean grid JSON from exact
     coordinates, verifying uniformity before writing.
+  - `genGoldberg.py` — generates a Goldberg polyhedron GP(m,n) from its two
+    parameters, by subdividing an icosahedron and taking the polar dual.
   - `obj2json.py` — converts polyHédronisme OBJ → grid JSON.
   - `genRandomPolyh.py` — random polyhedron generator.
   - `genSliPuzzles.py` — puzzle generator: paints faces red/blue, ensures each
@@ -360,6 +362,26 @@ Three sources:
   The grid's `gridId`/`gridName` are derived from the OBJ's group name.
   The converter sanity-checks Euler's formula (F + V = E + 2) and fails
   if it doesn't hold.
+
+- **`genGoldberg.py`**: generates a Goldberg polyhedron — 12 pentagons, the
+  rest hexagons, three faces at every vertex — from its parameters (m,n):
+
+  ```
+  python3 util/genGoldberg.py 1 2 gp12 "Goldberg GP(1,2)" > data/gp12.json
+  ```
+
+  GP(1,0) is the dodecahedron and GP(1,1) the truncated icosahedron, which we
+  already had from exact coordinates; running those two through this script is
+  the check that its lattice arithmetic is right. It works in two easy steps
+  rather than one hard one: subdivide the icosahedron's faces along the
+  triangular lattice to get the *geodesic* dual (whose triangles are then just a
+  convex hull), and take the polar dual of that about the unit sphere, which
+  yields exactly flat faces. Every run verifies the result against the counts
+  GP(m,n) must have (10T+2 faces, 20T vertices, 30T edges for
+  T = m² + mn + n²), the 12-pentagon census, trivalent vertices, and flatness,
+  and exits non-zero if any of it is off. Output is deterministic, so
+  regenerating a grid doesn't invalidate the puzzles built on it. Requires
+  `numpy` and `scipy`.
 
 - **`genRandomPolyh.py`**: generates a random sphere-like polyhedron —
   scatters points on a sphere (randomly with simulated repulsion to spread
@@ -481,9 +503,11 @@ progression order. A new grid won't appear in the picker until this has run.
 The project is in active development.
 
 The Python puzzle-generation pipeline (solver + generator) works end-to-end.
-`data/` currently holds **26 grids with 76 puzzles**: all 5 Platonic solids,
-all 13 Archimedean solids, and 8 Johnson solids, ranging from the tetrahedron
-(4 faces, 6 edges) to the truncated icosidodecahedron (62 faces, 180 edges).
+`data/` currently holds **27 grids with 79 playable puzzles**, plus 20
+display-only ones for the title screen: all 5 Platonic solids, all 13
+Archimedean solids, 8 Johnson solids, and the Goldberg polyhedron GP(1,2),
+ranging from the tetrahedron (4 faces, 6 edges) to GP(1,2) itself (72 faces,
+210 edges).
 Every grid offers 3 puzzles except the tetrahedron, which has exactly one
 puzzle in total: its loop is always some face's boundary, that face's clue is
 excluded for having a deficit of 0, and all four faces are equivalent under

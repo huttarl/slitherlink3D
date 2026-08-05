@@ -25,6 +25,13 @@ const FAMILY_ORDER = [
     'Archimedean solid',
     'Catalan solid',
     'Johnson solid',
+    // For solids in none of the classical families: GP(1,2) and up. Note the
+    // difference from the cross-cutting 'Goldberg' attribute, which marks the
+    // two solids that ARE Goldberg polyhedra while already belonging to a
+    // classical family (the dodecahedron and the truncated icosahedron). The
+    // families have to partition the collection, so the same name can't do
+    // both jobs.
+    'Goldberg polyhedron',
 ];
 
 /** Plural of a category name: "Platonic solid" -> "Platonic solids". */

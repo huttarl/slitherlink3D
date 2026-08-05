@@ -15,8 +15,8 @@
  *  - Plus Magazine (Cambridge's Millennium Mathematics Project) for Euler's
  *    formula: authoritative and written for a general reader.
  *
- * Every URL these produce for the current 26 grids was checked (all HTTP 200)
- * on 2026-08-04. Per-solid articles follow a rule, with a table for any
+ * Every URL these produce was checked (all HTTP 200): the 26 named solids on
+ * 2026-08-04, and GP(1,2) on 2026-08-05. Per-solid articles follow a rule, with a table for any
  * exceptions; the categories are a table, there being no rule to have.
  *
  * A category with no entry is fine and means "no link": the card leaves the word
@@ -38,12 +38,12 @@ const VIRTUAL_POLYHEDRA = 'https://www.georgehart.com/virtual-polyhedra/';
 /**
  * gridId -> article title, for any solid the rule below gets wrong.
  *
- * Empty, as it happens: all 26 titles come out right, including the chiral
- * solids, which the wiki treats as one article each ('Snub cube') rather than
- * splitting them by handedness the way Visual Polyhedra does.
+ * Nearly empty: all the named solids' titles come out right, including the
+ * chiral ones, which the wiki treats as one article each ('Snub cube') rather
+ * than splitting them by handedness the way Visual Polyhedra does.
  *
- * Kept because the rule is a convention, not a guarantee. If a solid's article
- * sits under a different title, put it here; if the wiki hasn't got one at all,
+ * The exception is a solid the wiki has no article for, only a family one. If
+ * that happens again, and the family article isn't a good landing place either,
  * qfbox.info/4d/<name> is the fallback, though its naming is irregular
  * (.../cuboctahedron exists, .../truncated_icosahedron doesn't) so each such
  * entry needs checking by hand.
@@ -51,7 +51,13 @@ const VIRTUAL_POLYHEDRA = 'https://www.georgehart.com/virtual-polyhedra/';
  * Keyed by gridId, which is not always the data file's stem: the cube's file is
  * cube.json but its gridId is 'C'.
  */
-const SOLID_PAGE_EXCEPTIONS = {};
+const SOLID_PAGE_EXCEPTIONS = {
+    // The wiki covers the Goldberg polyhedra in one article and has nothing on
+    // GP(1,2) by itself, so the family article is where the name should lead.
+    // (The rule would derive 'Goldberg_GP' from "Goldberg GP(1,2)" -- it strips
+    // a trailing parenthetical, which here is part of the name.)
+    'gp12': 'Goldberg_polyhedron',
+};
 
 /**
  * The Polytope Wiki article title for a solid, derived from its name.
@@ -61,8 +67,10 @@ const SOLID_PAGE_EXCEPTIONS = {};
  * in, so this is barely a transformation. Our Johnson names carry a bracketed
  * catalogue number ("Square pyramid (J1)") which isn't part of the title.
  *
- * Holds for all 26 grids, so a grid added later gets a link for free -- but an
- * unverified one, so check it (see the note at the top of this file).
+ * Holds for every solid with a name of its own, so a grid added later gets a
+ * link for free -- but an unverified one, so check it (see the note at the top of
+ * this file). It does NOT hold for a name ending in a parenthesis that belongs to
+ * it, like "Goldberg GP(1,2)": that one is in SOLID_PAGE_EXCEPTIONS.
  *
  * @param {string} gridName - e.g. 'Gyroelongated square pyramid (J10)'
  * @returns {string} e.g. 'Gyroelongated_square_pyramid'
@@ -100,6 +108,9 @@ const CATEGORY_PAGES = {
     'quasiregular': VIRTUAL_POLYHEDRA + 'quasi-regular-info.html',
     'zonohedron': VIRTUAL_POLYHEDRA + 'zonohedra-info.html',
     'chiral': POLYTOPE_WIKI + 'Chirality',
+    // The family and the cross-cutting attribute point at the same article; see
+    // FAMILY_ORDER in catalogue.js for why they're separate categories.
+    'Goldberg polyhedron': POLYTOPE_WIKI + 'Goldberg_polyhedron',
     'Goldberg': POLYTOPE_WIKI + 'Goldberg_polyhedron',
     'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
     'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',

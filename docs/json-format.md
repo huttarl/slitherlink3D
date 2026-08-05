@@ -9,9 +9,16 @@ A JSON object containing the following properties:
 - "categories" (optional): an array of strings, human-readable names for the categories that the polyhedron
   belongs to. E.g. ["Platonic solid", "zonohedron"]
   - Exactly one of these should be a *family* — "Platonic solid", "Archimedean solid",
-    "Catalan solid", "Johnson solid" — since the polyhedron picker groups by family.
+    "Catalan solid", "Johnson solid", "Goldberg polyhedron" — since the polyhedron
+    picker groups by family.
     The rest are cross-cutting properties: "deltahedron", "quasiregular", "zonohedron",
     "parallelohedron", "chiral", "self-dual", "Goldberg".
+  - "Goldberg polyhedron" (a family) and "Goldberg" (an attribute) say the same thing
+    about a solid, and no grid says both. The family is for a solid that belongs to no
+    classical family — GP(1,2) and larger; the attribute is for one that does, namely
+    the dodecahedron (Platonic, and GP(1,0)) and the truncated icosahedron
+    (Archimedean, and GP(1,1)). Families have to partition the collection, so the
+    same name can't serve both purposes.
   - Where one category implies another, list only the narrowest: every parallelohedron
     is a zonohedron, so the cube says "parallelohedron" and stops there.
   - Names are kept short — "chiral", not "chiral polyhedron"; "Goldberg", not
