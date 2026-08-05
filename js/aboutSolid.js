@@ -118,7 +118,14 @@ function buildAboutCard(facts, {withName}) {
         line(facts.categories.join(' · '), 'about-categories');
     }
     line(`${facts.vertices} vertices, ${facts.edges} edges, `
-         + `${facts.faces} faces — ${facts.faceCensus}`);
+         + `${facts.faces} faces (${facts.faceCensus})`);
+
+    // Euler's formula. Different arithmetic on every solid, the same answer
+    // every time: the cheapest way to hand someone a theorem to notice for
+    // themselves. (Minus signs, not hyphens.)
+    line(`${facts.vertices} − ${facts.edges} + ${facts.faces} = `
+         + `${facts.vertices - facts.edges + facts.faces} (Euler's Formula)`,
+         'about-euler');
 
     if (facts.vertexConfig) {
         // Only when every vertex has the same arrangement, which is most of
@@ -143,12 +150,6 @@ function buildAboutCard(facts, {withName}) {
         }
     }
 
-    // Euler's formula. Different arithmetic on every solid, the same answer
-    // every time: the cheapest way to hand someone a theorem to notice for
-    // themselves. (Minus signs, not hyphens.)
-    line(`${facts.vertices} − ${facts.edges} + ${facts.faces} = `
-         + `${facts.vertices - facts.edges + facts.faces} — like every solid here`,
-         'about-euler');
 
     return card;
 }

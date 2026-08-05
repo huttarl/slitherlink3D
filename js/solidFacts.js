@@ -51,9 +51,14 @@ export function faceCensus(grid) {
  * @returns {string}
  */
 export function describeFaceCensus(census) {
-    return census
-        .map(({sides, count}) => `${count} ${polygonName(sides, count !== 1)}`)
-        .join(', ');
+    if (census.length === 1) {
+        // Only one type of face (Platonic solid)
+        return `all ${polygonName(census[0].sides, true)}`
+    } else {
+        return census
+            .map(({sides, count}) => `${count} ${polygonName(sides, count !== 1)}`)
+            .join(', ');
+    }
 }
 
 /**
