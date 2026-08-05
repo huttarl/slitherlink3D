@@ -56,6 +56,23 @@
             gap: 8px;
         }
 
+        /* Expanded, the panel is between-puzzle UI -- pickers, settings, the
+           About card -- so it can afford room the collapsed strip can't. Wide
+           enough that the card's lines mostly don't wrap: the widest, for the
+           truncated icosidodecahedron, wants 442px ("120 vertices, 180 edges,
+           62 faces — 30 squares, 20 hexagons, 12 decagons"). The very longest
+           still wrap, which is fine; what looked messy was every line wrapping.
+
+           A fixed width rather than a cap, so the panel doesn't visibly widen
+           when the pickers populate a moment after the first paint (it used to
+           jump from 294px to 330px). box-sizing so the padding is included, and
+           max-width so a phone in portrait still fits. */
+        #info:not(.collapsed) {
+            box-sizing: border-box;
+            width: 480px;
+            max-width: calc(100vw - 20px);
+        }
+
         #info.collapsed {
             /* Tighter than the expanded panel: this is a control strip, not
                a panel, and every pixel here is board the player can't see. */
@@ -344,16 +361,54 @@
             text-overflow: ellipsis;
         }
 
+        /* The picker rows are flex, so a row is always exactly one line: the
+           select gives up width (it can ellipsize, and the opened dropdown
+           shows full names anyway) rather than letting the ⓘ or Next button
+           wrap underneath. Widening the panel alone wouldn't settle this --
+           "Truncated icosidodecahedron (62 faces)" wants 380px of select on its
+           own, and the next polyhedron added could want more. */
+        .picker-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Selects are what give up room when a row is tight. min-width: 0 lets
+           them shrink below their content, which a flex item won't do otherwise
+           (and shrinking is the whole point: the text ellipsizes). */
+        .picker-row select {
+            flex: 0 1 auto;
+            min-width: 0;
+        }
+
+        /* The polyhedron names are long, so this one takes all the room going.
+           The puzzle select stays at its natural size above -- stretching
+           "Puzzle 1" across 300px just looks empty. */
+        #gridSelect {
+            flex: 1 1 0;
+        }
+
+        .picker-row label,
+        .picker-row button {
+            flex: none;
+            white-space: nowrap;
+        }
+
         /* --- "About this solid" ------------------------------------------
            A few facts about the current polyhedron, in the drawer behind the
            ⓘ and on the celebration overlay. Quiet by design: smaller and
            dimmer than the controls, so it reads as an aside rather than
            something demanding attention. */
         .about-solid {
-            margin-top: 0.75ex;
+            margin-top: 1ex;
             font-size: 13px;
             line-height: 1.5;
             opacity: 0.85;
+            /* Boxed, so it reads as one aside rather than loose lines mixed in
+               among the controls. */
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 6px;
+            padding: 0.6em 0.7em;
         }
 
         .about-solid .about-name {
@@ -375,20 +430,20 @@
             opacity: 0.75;
         }
 
-        /* The ⓘ toggle sits on the picker's row, so it must not take the
-           button margins that the drawer's rows use. */
+        /* The ⓘ toggle rides the picker's row, so it must not take the stacked-row
+           margins the drawer's other buttons use; the row's flex gap spaces it. */
         #aboutSolidToggle {
-            margin: 0 0 0 0.3em;
+            margin: 0;
             padding: 0.1em 0.4em;
             font-size: 12px;
         }
 
-        /* In the celebration box the card is centered with everything else,
-           and separated from the Next button above it. */
+        /* In the celebration box the card is centered with everything else, and
+           set off from the Next button above it. Dark border, not light: this
+           copy sits on the white message box. */
         .about-solid-overlay {
             margin-top: 2ex;
-            border-top: 1px solid rgba(0, 0, 0, 0.15);
-            padding-top: 1ex;
+            border-color: rgba(0, 0, 0, 0.2);
         }
 
         /* Make the celebration box semitransparent. */
@@ -479,17 +534,18 @@
                     </ul>
                 </div>
             </details>
-            <div style="margin-top: 1ex">
+            <div class="picker-row" style="margin-top: 1ex">
                 <label for="gridSelect">Polyhedron:</label>
                 <select id="gridSelect" title="Choose a polyhedron to play on"></select>
-                <!-- Filled in and wired by aboutSolid.js. Starts hidden: the
-                     facts are there for the curious, not in anyone's way. -->
-                <button id="aboutSolidToggle" class="about-toggle" aria-expanded="false"
+                <!-- Wired by aboutSolid.js; the card below is filled in there
+                     too. Starts hidden: the facts are for the curious, not in
+                     anyone's way. -->
+                <button id="aboutSolidToggle" aria-expanded="false"
                         aria-controls="aboutSolid"
                         title="A few facts about this polyhedron">&#x24D8; About</button>
-                <div id="aboutSolid" class="about-solid hidden"></div>
             </div>
-            <div style="margin-top: 1ex">
+            <div id="aboutSolid" class="about-solid hidden"></div>
+            <div class="picker-row" style="margin-top: 1ex">
                 <label for="puzzleSelect">Puzzle:</label>
                 <select id="puzzleSelect" title="Choose a puzzle for this polyhedron"></select>
                 <button id="nextPuzzle" style="margin-top: 0"

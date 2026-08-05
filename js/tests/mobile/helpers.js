@@ -91,6 +91,19 @@ export async function makeOneMistake(page) {
 }
 
 /**
+ * Opens the panel's drawer, whichever state it started in.
+ *
+ * Not just a click on the toggle: a phone starts collapsed and a desktop starts
+ * expanded, so a blind click gives the two projects opposite results (and a test
+ * that then waits for something inside the drawer hangs until it times out).
+ */
+export async function expandPanel(page) {
+    const collapsed = await page.evaluate(() =>
+        document.getElementById('info').classList.contains('collapsed'));
+    if (collapsed) await page.locator('#panelToggle').click();
+}
+
+/**
  * Fills in the whole solution loop, so the next check finds the puzzle solved
  * and the celebration appears.
  */

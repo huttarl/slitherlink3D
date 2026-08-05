@@ -9,7 +9,7 @@
 import { test, expect } from '@playwright/test';
 import {
     clearAllMarks, collectConsoleErrors, edgeMidpointOnScreen, edgeState,
-    inflateCanvasContainer, makeOneMistake, restoreCanvasContainer,
+    expandPanel, inflateCanvasContainer, makeOneMistake, restoreCanvasContainer,
     someVisibleEdge, solvePuzzle, stopTumbling, touchPress,
     visibleWithinViewport, waitForScene,
 } from './helpers.js';
@@ -285,6 +285,47 @@ test.describe('the collapsed panel', () => {
                      || a.bottom < b.top || b.bottom < a.top);
         });
         expect(overlap, 'the info panel and the debug panel overlap').toBe(false);
+    });
+
+    test('expanding the panel keeps it on screen', async ({page}) => {
+        // The expanded drawer has a FIXED width (480px), wide enough that the
+        // About card's lines mostly don't wrap. That's more than a phone has, so
+        // it leans on max-width: calc(100vw - 20px); without that the panel and
+        // its pickers would hang off the right edge. Long name loaded, since the
+        // polyhedron select is the widest thing in there.
+        await page.goto('/main.html?grid=bD');
+        await waitForScene(page);
+        await expandPanel(page);
+        await page.locator('#aboutSolidToggle').click();
+
+        for (const selector of ['#info', '#gridSelect', '#aboutSolidToggle',
+                                '#aboutSolid', '#nextPuzzle']) {
+            const box = await visibleWithinViewport(page, selector);
+            expect(box.rendered, `${selector} is not shown`).toBe(true);
+            expect(box.insideViewport,
+                `${selector} hangs off the screen: ${JSON.stringify(box.rect)} in `
+                + `a ${JSON.stringify(box.viewport)} viewport`).toBe(true);
+        }
+    });
+
+    test('the About toggle stays on the picker row', async ({page}) => {
+        // It used to wrap onto a line of its own once the polyhedron name was
+        // long. The row is flex now, so the select gives up width instead.
+        await page.goto('/main.html?grid=bD');
+        await waitForScene(page);
+        await expandPanel(page);
+
+        const sameRow = await page.evaluate(() => {
+            const select = document.getElementById('gridSelect').getBoundingClientRect();
+            const about = document.getElementById('aboutSolidToggle').getBoundingClientRect();
+            return {vertical: Math.abs(select.top - about.top) < select.height,
+                    beside: about.left >= select.right - 1};
+        });
+        expect(sameRow.vertical,
+            'the About button is not on the same line as the polyhedron select')
+            .toBe(true);
+        expect(sameRow.beside, 'the About button is not to the right of the select')
+            .toBe(true);
     });
     });
 });
