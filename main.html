@@ -707,7 +707,14 @@
                     title="Clear the marks that don't match the solution (undoable)">Clear errors</button>
             <button id="toastDismiss" title="Dismiss" aria-label="Dismiss">&#x2715;</button>
         </div>
-        <div class="debugging">
+        <!-- Developer controls (Show IDs, Show Solution, face details). Hidden:
+             they used to sit in the corner of every screen, including the title
+             screen, which looked unfinished to a player and offered them nothing
+             they wanted.
+             No way to reveal them yet -- for now, delete the "hidden" class here,
+             or run `document.getElementById('debugPanel').classList.remove('hidden')`
+             in the browser console. A proper switch is still to be chosen. -->
+        <div id="debugPanel" class="debugging hidden">
             <details>
                 <summary style="cursor: pointer; color: #88ccff; margin-top: 8px;">
                     Debugging

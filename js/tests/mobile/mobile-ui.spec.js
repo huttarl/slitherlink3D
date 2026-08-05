@@ -283,13 +283,31 @@ test.describe('the collapsed panel', () => {
     });
 
     test('the panel and the debug panel do not overlap', async ({page}) => {
-        const overlap = await page.evaluate(() => {
+        // The debug panel is hidden now, so this reveals it first: against a
+        // zero-size rectangle the check below passes while testing nothing. The
+        // corners still have to be clear of each other for whenever it's shown.
+        await page.evaluate(() =>
+            document.getElementById('debugPanel').classList.remove('hidden'));
+        const boxes = await page.evaluate(() => {
             const a = document.getElementById('info').getBoundingClientRect();
-            const b = document.querySelector('.debugging').getBoundingClientRect();
-            return !(a.right < b.left || b.right < a.left
-                     || a.bottom < b.top || b.bottom < a.top);
+            const b = document.getElementById('debugPanel').getBoundingClientRect();
+            return {a: {right: a.right, left: a.left, top: a.top, bottom: a.bottom},
+                    b: {right: b.right, left: b.left, top: b.top, bottom: b.bottom},
+                    debugSized: b.width > 0 && b.height > 0};
         });
+        expect(boxes.debugSized, 'the debug panel has no size once revealed')
+            .toBe(true);
+        const {a, b} = boxes;
+        const overlap = !(a.right < b.left || b.right < a.left
+                          || a.bottom < b.top || b.bottom < a.top);
         expect(overlap, 'the info panel and the debug panel overlap').toBe(false);
+    });
+
+    test('the debug panel stays out of the way', async ({page}) => {
+        // Hidden on a board as well as on the title screen. There's no switch to
+        // reveal it yet; when there is, this is where to assert it works.
+        const panel = await visibleWithinViewport(page, '#debugPanel');
+        expect(panel.rendered, 'the debug panel is showing unasked').toBe(false);
     });
 
     test('expanding the panel keeps it on screen', async ({page}) => {
@@ -375,6 +393,11 @@ test.describe('the title screen', () => {
             const panel = await visibleWithinViewport(page, '#info');
             expect(panel.rendered, 'the main panel is showing on the title screen')
                 .toBe(false);
+
+            // Nor the developer panel, which used to sit in the corner here.
+            const debugPanel = await visibleWithinViewport(page, '#debugPanel');
+            expect(debugPanel.rendered,
+                'the debug panel is showing on the title screen').toBe(false);
 
             // Both buttons on screen, on a phone as well as a desktop.
             for (const selector of ['#titleStart', '#titleHowTo']) {
