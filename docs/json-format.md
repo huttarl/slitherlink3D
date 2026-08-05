@@ -11,11 +11,12 @@ A JSON object containing the following properties:
   - Exactly one of these should be a *family* — "Platonic solid", "Archimedean solid",
     "Catalan solid", "Johnson solid" — since the polyhedron picker groups by family.
     The rest are cross-cutting properties: "deltahedron", "quasiregular", "zonohedron",
-    "parallelohedron", "chiral", "self-dual".
+    "parallelohedron", "chiral", "self-dual", "Goldberg".
   - Where one category implies another, list only the narrowest: every parallelohedron
     is a zonohedron, so the cube says "parallelohedron" and stops there.
-  - Names are kept short — "chiral", not "chiral polyhedron" — since the About card has
-    already given the solid's name and family by the time these are read. Each is linked
+  - Names are kept short — "chiral", not "chiral polyhedron"; "Goldberg", not
+    "Goldberg polyhedron" — since the About card has already given the solid's name
+    and family by the time these are read. One named after a person keeps its capital. Each is linked
     to an explanation where there's a good one; see js/polyhedronLinks.js.
   - Both conventions are checked by js/tests/catalogue.test.js.
 - "vertices": array of 3-number arrays. Each sub-array is a vertex, and each number is

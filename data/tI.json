@@ -1,7 +1,7 @@
 {
   "gridId": "tI",
   "gridName": "Truncated icosahedron",
-  "categories": ["Archimedean solid"],
+  "categories": ["Archimedean solid", "Goldberg"],
   "recipe": "dkdI",
   "vertices": [
     [0.106, 0.327, 0.939],

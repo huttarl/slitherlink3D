@@ -1,7 +1,7 @@
 {
   "gridId": "D",
   "gridName": "Dodecahedron",
-  "categories": ["Platonic solid"],
+  "categories": ["Platonic solid", "Goldberg"],
   "vertices": [
     [-0.0, 0.0, 1.0],
     [0.667, 0.0, 0.745],

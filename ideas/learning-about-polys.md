@@ -54,6 +54,7 @@ What that turned up, beyond what the data already had:
 | `zonohedron` | bC, bD | all faces centrally symmetric. Among uniform solids only C, tO, bC, bD qualify — and the first two are listed as parallelohedra instead |
 | `chiral` | sD, J47, J48 | sC already had it. J47 and J48 are two of the five chiral Johnson solids (J44–J48) |
 | `self-dual` | T | the tetrahedron is its own dual — a nice thing to meet on the first puzzle |
+| `Goldberg` | D, tI | trivalent, faces only pentagons and hexagons, always exactly 12 pentagons. D is GP(1,0) and tI is GP(1,1); no other solid we have qualifies (checked by counting face sizes and vertex degrees across data/). Capitalized, being someone's name |
 
 Checked and deliberately NOT added: `quasiregular` stays on aC and aD only (the
 octahedron is quasiregular *as a tetratetrahedron*, which the wiki doesn't tag

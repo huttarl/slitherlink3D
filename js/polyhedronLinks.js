@@ -100,6 +100,7 @@ const CATEGORY_PAGES = {
     'quasiregular': VIRTUAL_POLYHEDRA + 'quasi-regular-info.html',
     'zonohedron': VIRTUAL_POLYHEDRA + 'zonohedra-info.html',
     'chiral': POLYTOPE_WIKI + 'Chirality',
+    'Goldberg': POLYTOPE_WIKI + 'Goldberg_polyhedron',
     'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
     'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',
 };
