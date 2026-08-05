@@ -34,8 +34,17 @@ The Python utilities under `util/` have a pytest suite:
   in a few seconds — puzzles are generated to be solvable by deduction, so
   the solver never has to search. `pytest util/tests -m slow` runs only the
   sweep; `-m "not slow"` skips it, should it ever get expensive again.
-- Python deps used by `util/`: `compas`, `networkx`, `matplotlib`, `pytest`
-  (plus `numpy` and `scipy` for `genRandomPolyh.py` and `genUniformPolyh.py`).
+- Python deps used by `util/` are declared in `requirements.txt` (`compas`,
+  `networkx`, `matplotlib`, `numpy`, `scipy`, `pytest`), with a note there on
+  which script needs what. None of them are needed to play or develop the
+  browser app. Python 3.11 or newer.
+
+      python3 -m venv .venv
+      .venv/bin/pip install -r requirements.txt
+
+  A venv matters more than it looks: on a machine with several Pythons, the one
+  first on `PATH` is easily not the one carrying these libraries, and the
+  generators then fail with a bare `ModuleNotFoundError`.
 - Run the suite after changing any file in `util/`.
 - **Generate puzzles**: `util/run_gen.py data/<id>.json` — see
   "Generating polyhedra and puzzles" below.

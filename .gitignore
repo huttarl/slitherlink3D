@@ -6,3 +6,8 @@ node_modules/
 # Playwright output: traces, screenshots and reports from failing runs.
 test-results/
 playwright-report/
+
+# Python virtual environment for the util/ tools (requirements.txt says how to
+# make one). __pycache__ is covered by the global gitignore, so it isn't here.
+.venv/
+venv/

@@ -1,0 +1,36 @@
+# Python dependencies for the tools under util/. Install with:
+#
+#     python3 -m venv .venv
+#     .venv/bin/pip install -r requirements.txt
+#     .venv/bin/pytest util/tests
+#
+# NOTE: none of this is needed to play or develop the game. The browser app is
+# vanilla ES modules with Three.js vendored under js/three/ -- serve main.html
+# (util/serve.py needs only the standard library) and it runs. These packages are
+# for generating polyhedra and puzzles, and for the Python test suite.
+#
+# Python 3.11 or newer: numpy and networkx both declare Requires-Python >= 3.11.
+#
+# Versions are floors, set to what the project is known to run on (macOS,
+# Python 3.11.13, August 2026) rather than to the oldest thing that might work.
+# Nothing here is pinned to an exact version; if a newer release breaks a script,
+# pin it here and say why.
+
+# genSliPuzzles.py: the puzzle generator's mesh and graph work --
+#   compas for the Mesh/half-edge structure, networkx for the symmetry check
+#   (graph automorphisms, to keep a grid's puzzles distinct under rotation and
+#   reflection).
+compas>=2.14.1
+networkx>=3.5
+
+# genSliPuzzles.py, genRandomPolyh.py, testKey.py: plotting, used to draw a
+# generated puzzle while it's being worked on. Optional in spirit but imported
+# at module level, so the generator won't start without it.
+matplotlib>=3.10.7
+
+# genRandomPolyh.py, genUniformPolyh.py: vertex coordinates and convex hulls.
+numpy>=2.3.5
+scipy>=1.15.3
+
+# The Python test suite (util/tests). See pytest.ini for the markers.
+pytest>=9.0.3

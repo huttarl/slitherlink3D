@@ -6,10 +6,10 @@ Note, some of these items may be already done even if they're not checked off.
     (and possibly marks too... maybe the solution to a puzzle, but one that's extra, not a spoiler).
     Have a semitransparent overlay in the center with the title "Slitherlink 3D" and maybe buttons
     "How to Play" and "Start". The latter would exit the title screen and start normal play.
-- [ ] Tweak for mobile:
+- [x] Tweak for mobile:
   - [x] quick: Debug panel overlaps main panel. Move it to lower right.
   - [x] quick: Shift+click isn't available; use long-tap instead.
-  - [ ] broader margin for picking an edge? In that case do we also need to allow the tap ray
+  - [x] broader margin for picking an edge? In that case do we also need to allow the tap ray
         to intersect multiple edges and pick the closest?
   - [x] The main panel is way too big. Will need to collapse it to a small button.
 - [ ] The buttons are of uneven sizes.
