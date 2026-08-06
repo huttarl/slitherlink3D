@@ -15,7 +15,7 @@
  * work for every solid added later.
  */
 import {loadCatalogue} from "./catalogue.js";
-import {describeFaceCensus, describeVertexConfiguration, faceCensus,
+import {describeFaceCensus, describeVertexConfiguration, faceCensus, faceNamer,
         vertexConfiguration, vertexConfigurationNotation} from "./solidFacts.js";
 import {categoryLink, EULER_FORMULA_LINK, solidLink} from "./polyhedronLinks.js";
 
@@ -83,6 +83,8 @@ export async function initAboutSolid(gameState) {
  * @param {string[]} categories - from the catalogue entry
  */
 function collectFacts(puzzleGrid, categories) {
+    // Measured once: both the census line and the vertex line read from it.
+    const census = faceCensus(puzzleGrid);
     return {
         name: puzzleGrid.gridName,
         gridId: puzzleGrid.gridId,
@@ -95,7 +97,12 @@ function collectFacts(puzzleGrid, categories) {
         vertices: puzzleGrid.vertices.size,
         edges: puzzleGrid.edges.size,
         faces: puzzleGrid.faces.size,
-        faceCensus: describeFaceCensus(faceCensus(puzzleGrid)),
+        faceCensus: describeFaceCensus(census),
+        // How to name a face of a given size ON THIS SOLID, so the vertex line
+        // below can say "square" where the census measured squares and "rhombus"
+        // where it measured rhombi -- a cycle of side counts can't tell them
+        // apart by itself.
+        nameFor: faceNamer(census),
         // null unless every vertex is alike -- see vertexConfiguration.
         vertexConfig: vertexConfiguration(puzzleGrid),
     };
@@ -195,7 +202,7 @@ function buildAboutCard(facts) {
         // teaches the definition without stating one. Most Johnson solids have
         // vertices of several kinds, and simply get no such line.
         line(`Same at every vertex: `
-             + `${describeVertexConfiguration(facts.vertexConfig)} `
+             + `${describeVertexConfiguration(facts.vertexConfig, facts.nameFor)} `
              + `(${vertexConfigurationNotation(facts.vertexConfig)})`);
 
         if (facts.categories.length > 0 && !facts.inUniformFamily) {

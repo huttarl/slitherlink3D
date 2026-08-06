@@ -9,10 +9,13 @@
  *
  * Whether the pages actually EXIST is the last test, and it needs the network,
  * so it only runs with SLI_CHECK_LINKS=1. Run that after adding a polyhedron.
+ * It fetches only the links it has no record of having checked, so adding one
+ * solid costs one request rather than re-asking somebody else's servers for every
+ * page we have ever linked to. See links-checked.json.
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -158,21 +161,88 @@ describe('the pages exist', () => {
     // rather than tabulating gives up.
     const enabled = !!process.env.SLI_CHECK_LINKS;
 
+    /**
+     * Fetch one link, reporting its status or the failure as a string.
+     *
+     * One retry after a pause, because a refusal is not always an answer about
+     * the URL: with the catalogue up past fifty links, firing them all at once
+     * got "fetch failed" from Polytope Wiki for perfectly good pages, while the
+     * same URLs answered 200 when asked more slowly.
+     */
+    async function statusOf(url, attempts = 2) {
+        for (let attempt = 1; ; attempt++) {
+            try {
+                const response = await fetch(url,
+                    {signal: AbortSignal.timeout(30_000)});
+                if (response.status === 200 || attempt === attempts) {
+                    return [url, response.status];
+                }
+            } catch (err) {
+                if (attempt === attempts) return [url, String(err)];
+            }
+            await new Promise(resume => setTimeout(resume, 2000));
+        }
+    }
+
+    /**
+     * The links we have already fetched and found, as {url: date checked}.
+     *
+     * The point of keeping it: a link is worth checking when it first appears,
+     * because that's when a derived URL might be wrong. Re-asking for all of
+     * them on every run only loads somebody else's servers to tell us what we
+     * already know. Committed alongside the code, so the record travels with the
+     * links it describes.
+     */
+    const RECORD_PATH = join(here, 'links-checked.json');
+
+    function readRecord() {
+        try {
+            return JSON.parse(readFileSync(RECORD_PATH, 'utf8'));
+        } catch {
+            return {};           // No record yet: everything is new.
+        }
+    }
+
     test('every link the catalogue produces returns 200',
         {skip: enabled ? false : 'set SLI_CHECK_LINKS=1 to fetch every link'},
         async () => {
             const links = [...new Set(allLinks())];
-            const results = await Promise.all(links.map(async url => {
-                try {
-                    const response = await fetch(url,
-                        {signal: AbortSignal.timeout(30_000)});
-                    return [url, response.status];
-                } catch (err) {
-                    return [url, String(err)];
-                }
-            }));
+            const record = readRecord();
+            // Only what we haven't checked before -- unless asked for the lot,
+            // which is for the occasional audit, not for routine runs.
+            const all = !!process.env.SLI_CHECK_ALL_LINKS;
+            const unchecked = all ? links : links.filter(url => !record[url]);
+            console.log(`${links.length} links, ${unchecked.length} to fetch `
+                + `(SLI_CHECK_ALL_LINKS=1 re-checks every one)`);
+            if (unchecked.length === 0) return;
+
+            // A few at a time, not all at once: these are somebody's servers,
+            // and hammering them turns a link check into a load test.
+            const results = [];
+            const AT_A_TIME = 4;
+            for (let i = 0; i < unchecked.length; i += AT_A_TIME) {
+                results.push(...await Promise.all(
+                    unchecked.slice(i, i + AT_A_TIME).map(url => statusOf(url))));
+            }
             const broken = results.filter(([, status]) => status !== 200);
+
+            // Record the ones that answered, so the next run leaves them alone.
+            // Written even when others failed: what was verified stays verified,
+            // and re-fetching it would not help diagnose the failure.
+            const today = new Date().toISOString().slice(0, 10);
+            for (const [url, status] of results) {
+                if (status === 200) record[url] = today;
+            }
+            writeFileSync(RECORD_PATH,
+                JSON.stringify(sortedByKey(record), null, 2) + '\n');
+
             assert.deepStrictEqual(broken, [],
-                `${links.length} links checked; these did not return 200`);
+                `${unchecked.length} links fetched; these did not return 200`);
         });
 });
+
+/** An object with its keys in order, so the record file's diffs stay readable. */
+function sortedByKey(object) {
+    return Object.fromEntries(Object.keys(object).sort()
+        .map(key => [key, object[key]]));
+}

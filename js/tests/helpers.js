@@ -9,9 +9,12 @@
 import { Grid } from '../Grid.js';
 import { PuzzleGrid } from '../PuzzleGrid.js';
 
-// Grid.addVertex only needs something with clone(); geometry is irrelevant here.
-function stubPosition() {
-    return { clone() { return this; } };
+// Grid.addVertex only needs something with clone(). Real coordinates are given
+// anyway, because a couple of the facts under test are measured rather than
+// counted: solidFacts tells a square from a rhombus by comparing sides and
+// diagonals, and can only do that if the corners are somewhere.
+function position(x, y, z) {
+    return {x, y, z, clone() { return this; }};
 }
 
 // The same cube as util/tests/test_slisolver.py's fixture:
@@ -25,10 +28,17 @@ export const CUBE_FACES = [
     [3, 0, 4, 7],   // 5: left
 ];
 
+/** The unit cube's corners, in the order CUBE_FACES indexes them: 0-3 round the
+ *  bottom, 4-7 round the top. */
+const CUBE_POINTS = [
+    [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+    [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1],
+];
+
 /** Populate the given grid (Grid or PuzzleGrid) with cube topology. */
 export function buildCubeTopology(grid) {
     for (let v = 0; v < 8; v++) {
-        grid.addVertex(stubPosition(), {}, v);
+        grid.addVertex(position(...CUBE_POINTS[v]), {}, v);
     }
     CUBE_FACES.forEach((face, i) => {
         // Mirror createPolyhedron's face metadata (the parts logic depends on).
@@ -58,12 +68,11 @@ export function makeCubePuzzleGrid(clues, solution) {
     return pg;
 }
 
-/** Builds a grid from a list of faces, each a list of vertex IDs. */
-function makeGridFromFaces(faceList, numVertices) {
+/** Builds a grid from a list of faces, each a list of vertex IDs, and a matching
+ *  list of vertex coordinates. */
+function makeGridFromFaces(faceList, points) {
     const grid = new Grid();
-    for (let v = 0; v < numVertices; v++) {
-        grid.addVertex(stubPosition(), {}, v);
-    }
+    points.forEach((point, v) => grid.addVertex(position(...point), {}, v));
     faceList.forEach((face, i) => grid.addFace(face, { index: i, clue: -1 }, i));
     return grid;
 }
@@ -73,7 +82,10 @@ function makeGridFromFaces(faceList, numVertices) {
  * (3.3.3), so it exercises the uniform-vertex case with triangles.
  */
 export function makeTetrahedronGrid() {
-    return makeGridFromFaces([[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]], 4);
+    return makeGridFromFaces(
+        [[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]],
+        // Alternate corners of a cube, which is a regular tetrahedron.
+        [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]]);
 }
 
 /**
@@ -84,7 +96,23 @@ export function makeTetrahedronGrid() {
  */
 export function makeSquarePyramidGrid() {
     return makeGridFromFaces(
-        [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]], 5);
+        [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
+        [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0.707]]);
+}
+
+/**
+ * A rhombic prism-ish Grid whose "square-looking" face is really a rhombus: two
+ * triangles either side of a four-sided face with equal edges but unequal
+ * diagonals. The case that made faceCensus measure rather than assume.
+ */
+export function makeRhombusFaceGrid() {
+    // A rhombus in the z=0 plane with diagonals 2 and 1, so its sides are all
+    // equal but it is plainly not a square; two apexes close it into a solid.
+    return makeGridFromFaces(
+        [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4],
+         [1, 0, 5], [2, 1, 5], [3, 2, 5], [0, 3, 5]],
+        [[-1, 0, 0], [0, -0.5, 0], [1, 0, 0], [0, 0.5, 0],
+         [0, 0, 0.8], [0, 0, -0.8]]);
 }
 
 /**

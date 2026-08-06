@@ -22,10 +22,16 @@ The JS side of the app runs directly in the browser with no build process:
   @playwright/test && npx playwright install chromium`. See
   `js/tests/mobile/README.md` for what each test is guarding against and what
   automation still can't tell you.
-- **Check the About card's links**: `npm run test:links` — fetches every
-  outbound link the catalogue produces and insists on HTTP 200. Needs the
-  network, so `npm test` skips it. Run it after adding a polyhedron, whose link
-  is derived from its name and so is otherwise unverified.
+- **Check the About card's links**: `npm run test:links` — fetches the outbound
+  links the catalogue produces and insists on HTTP 200. Needs the network, so
+  `npm test` skips it. Run it after adding a polyhedron, whose link is derived
+  from its name and so is otherwise unverified.
+  It only fetches links it has no record of, keeping that record in
+  `js/tests/links-checked.json` (committed, and updated by the run itself), so
+  adding one solid costs one request rather than re-asking every site we link to
+  for pages we verified long ago. `SLI_CHECK_ALL_LINKS=1 npm run test:links`
+  re-checks everything, for the occasional audit — worth doing rarely, since
+  these are other people's servers.
 
 The Python utilities under `util/` have a pytest suite:
 
@@ -286,6 +292,8 @@ those layers subscribe to its observer callbacks instead.
     parameters, by subdividing an icosahedron and taking the polar dual.
   - `genPrism.py` — generates an n-prism or n-antiprism from exact coordinates,
     with every face a regular polygon.
+  - `genDual.py` — the dual of a grid, by polar reciprocation; `--all-catalan`
+    writes all 13 Catalan solids from the Archimedean ones in `data/`.
   - `obj2json.py` — converts polyHédronisme OBJ → grid JSON.
   - `genRandomPolyh.py` — random polyhedron generator.
   - `genSliPuzzles.py` — puzzle generator: paints faces red/blue, ensures each
@@ -298,6 +306,10 @@ those layers subscribe to its observer callbacks instead.
     (`slisolver_old.py` is a retired earlier draft, kept for reference.)
   - `run_gen.py` — wrapper that runs `genSliPuzzles.py` headlessly with a
     timeout (see "Generating polyhedra and puzzles").
+  - `fill_puzzles.py` — generates puzzles for every grid that hasn't any, one
+    after another, smallest first; start it and leave it. Each grid's puzzles are
+    written only if at least one was produced, so a grid that times out is either
+    filled with what the generator managed or left untouched.
   - `build_catalogue.py` — regenerates `data/grids.json` from the data files.
   - `catalogue_report.py` — prints what `data/` holds: a line per grid with its
     counts, puzzles, display puzzles and categories, plus totals, and a note on
@@ -393,6 +405,39 @@ Three sources:
   and exits non-zero if any of it is off. Output is deterministic, so
   regenerating a grid doesn't invalidate the puzzles built on it. Requires
   `numpy` and `scipy`.
+
+- **`genDual.py`**: the dual of an existing grid — and the way the Catalan
+  solids are made, since each is the dual of an Archimedean solid:
+
+  ```
+  util/genDual.py --all-catalan        # all 13, straight into data/
+  util/genDual.py data/aC.json         # one, to stdout
+  ```
+
+  It works by **polar reciprocation** about a sphere concentric with the solid:
+  the vertex replacing a face is the pole of that face's plane, so the face
+  replacing a vertex `v` lies in the plane `x·v = 1` and is exactly flat. That
+  also explains why this is the right construction rather than an approximation:
+  reciprocation preserves the symmetry group, and an Archimedean solid is
+  vertex-transitive, so the symmetries that carry any vertex to any other carry
+  the dual's faces to each other — the faces come out congruent, which is what
+  defines a Catalan solid. The reciprocating radius only scales the result, so
+  there is nothing to tune.
+
+  Each solid is checked before being written: Euler's formula, congruent faces
+  (edge lengths and angles, with separate tolerances since one unit says nothing
+  about the other), flatness, and outward winding. The names and categories come
+  from a table keyed by the primal's `gridId`, and the `recipe` is Conway's — `d`
+  prefixed to the primal's, so the cuboctahedron's dual `daC` is the rhombic
+  dodecahedron. Verified against the literature on the way in: that solid's
+  rhombi come out at 70.53°/109.47°, and the rhombic triacontahedron's at
+  63.43°/116.57°.
+
+  One caveat worth knowing: the dual inherits the primal's stored precision.
+  `data/tI.json` and `data/sD.json` came through `obj2json.py`, which rounds to 3
+  decimals, so their duals' faces agree only to about a quarter of a degree
+  rather than exactly. Harmless, but it is why the congruence tolerances aren't
+  tighter.
 
 - **`genPrism.py`**: generates a prism or antiprism, all of whose faces are
   regular polygons:
@@ -537,6 +582,19 @@ util/run_gen.py data/myGrid.json > data/myGrid-puzzles.json
 
 (Add `2>/dev/null` to hide the progress chatter.) Note that generation is
 random and not seeded from the command line, so runs are not reproducible.
+
+For a batch — a set of new grids, say — `util/fill_puzzles.py` runs the generator
+over every grid that hasn't any puzzles yet, smallest first, and can be left
+unattended:
+
+```
+util/fill_puzzles.py                          # all the empty ones
+util/fill_puzzles.py --timeout 3600 dbD       # one, with longer to work
+```
+
+It writes each grid's file only once at least one puzzle exists, so a grid that
+runs out of time keeps whatever the generator salvaged or stays as it was, and it
+prints how long each took.
 
 Two more options, both passed through by `run_gen.py`:
 

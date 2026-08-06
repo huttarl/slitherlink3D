@@ -11,52 +11,130 @@
  * (see js/tests/solidFacts.test.js).
  */
 
-/** Names for the polygons that turn up in these solids. */
+/**
+ * Names for the polygons that turn up in these solids, by side count alone.
+ *
+ * "quadrilateral" rather than "square", because a four-sided face is only a
+ * square on the solids whose faces are regular: the rhombic dodecahedron's
+ * twelve faces are rhombi, and a deltoidal icositetrahedron's are kites. Where
+ * the corners are known, faceName measures instead of guessing.
+ */
 const POLYGON_NAMES = {
-    3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon',
+    3: 'triangle', 4: 'quadrilateral', 5: 'pentagon', 6: 'hexagon',
     7: 'heptagon', 8: 'octagon', 9: 'nonagon', 10: 'decagon', 12: 'dodecagon',
 };
 
+/** Plurals that aren't just -s. */
+const IRREGULAR_PLURALS = {rhombus: 'rhombi'};
+
+/** How much two lengths may differ and still count as equal, as a fraction of
+ *  the larger. Generous, because grid coordinates are stored rounded (three
+ *  decimals for anything that came through obj2json.py) -- and because a shape
+ *  that misses being a square by more than 2% is one a player would see isn't
+ *  one. */
+const SHAPE_TOLERANCE = 0.02;
+
+function pluralOf(name) {
+    return IRREGULAR_PLURALS[name] || name + 's';
+}
+
 /**
- * What to call a polygon with this many sides.
+ * What to call a polygon with this many sides, knowing nothing else about it.
  * @param {number} sides
  * @param {boolean} [plural]
  * @returns {string} e.g. "hexagon", "hexagons", "14-gons"
  */
 export function polygonName(sides, plural = false) {
     const name = POLYGON_NAMES[sides] || `${sides}-gon`;
-    return plural ? name + 's' : name;
+    return plural ? pluralOf(name) : name;
+}
+
+function distanceBetween(p, q) {
+    return Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z);
+}
+
+/** Are these lengths all the same, within SHAPE_TOLERANCE? */
+function allEqual(lengths) {
+    const largest = Math.max(...lengths);
+    return largest - Math.min(...lengths) <= SHAPE_TOLERANCE * largest;
+}
+
+/**
+ * What to call a quadrilateral with these corners, in order round it.
+ *
+ * Equal sides and equal diagonals make a square; equal sides alone a rhombus
+ * (which is what the rhombic dodecahedron and triacontahedron are made of, and
+ * worth saying, since it's where they get their names). Anything else is left as
+ * a quadrilateral -- a kite could be named too, but "kite" isn't the word a
+ * player would check against the solid's own name.
+ *
+ * @param {Array<{x: number, y: number, z: number}>} corners - four, in order
+ * @returns {string} 'square', 'rhombus' or 'quadrilateral'
+ */
+export function quadrilateralName(corners) {
+    const sides = corners.map((corner, i) =>
+        distanceBetween(corner, corners[(i + 1) % corners.length]));
+    if (!allEqual(sides)) return 'quadrilateral';
+    return allEqual([distanceBetween(corners[0], corners[2]),
+                     distanceBetween(corners[1], corners[3])])
+        ? 'square' : 'rhombus';
+}
+
+/** The corners of a face as points, or null if the grid hasn't real coordinates
+ *  (which is the case for the topology-only grids the unit tests build). */
+function cornersOf(grid, face) {
+    const corners = face.vertexIDs.map(id => grid.vertices.get(id)?.position);
+    const usable = corners.every(p => p && Number.isFinite(p.x)
+        && Number.isFinite(p.y) && Number.isFinite(p.z));
+    return usable ? corners : null;
+}
+
+/**
+ * What to call one face of a grid: its side count's name, refined by measuring
+ * where that says more (see quadrilateralName).
+ */
+function faceName(grid, face) {
+    if (face.vertexIDs.length !== 4) return polygonName(face.vertexIDs.length);
+    const corners = cornersOf(grid, face);
+    return corners ? quadrilateralName(corners) : polygonName(4);
 }
 
 /**
  * How many faces of each kind the solid has.
  *
+ * Kinds, not side counts: squares and rhombi are counted apart, so a solid with
+ * both would report both. Ordered by side count, and by name within it.
+ *
  * @param {Grid} grid
- * @returns {Array<{sides: number, count: number}>} ascending by side count
+ * @returns {Array<{sides: number, name: string, count: number}>}
  */
 export function faceCensus(grid) {
     const counts = new Map();
     for (const face of grid.faces.values()) {
-        const sides = face.vertexIDs.length;
-        counts.set(sides, (counts.get(sides) || 0) + 1);
+        const kind = `${face.vertexIDs.length} ${faceName(grid, face)}`;
+        const seen = counts.get(kind);
+        counts.set(kind, {sides: face.vertexIDs.length,
+                          name: faceName(grid, face),
+                          count: (seen ? seen.count : 0) + 1});
     }
-    return [...counts.entries()]
-        .sort(([a], [b]) => a - b)
-        .map(([sides, count]) => ({sides, count}));
+    return [...counts.values()]
+        .sort((a, b) => a.sides - b.sides || a.name.localeCompare(b.name));
 }
 
 /**
  * The census in words: "8 triangles, 6 squares".
- * @param {Array<{sides: number, count: number}>} census - from faceCensus
+ * @param {Array<{sides: number, name: string, count: number}>} census - from
+ *     faceCensus
  * @returns {string}
  */
 export function describeFaceCensus(census) {
     if (census.length === 1) {
         // Only one type of face (Platonic solid)
-        return `all ${polygonName(census[0].sides, true)}`
+        return `all ${pluralOf(census[0].name)}`
     } else {
         return census
-            .map(({sides, count}) => `${count} ${polygonName(sides, count !== 1)}`)
+            .map(({name, count}) =>
+                `${count} ${count !== 1 ? pluralOf(name) : name}`)
             .join(', ');
     }
 }
@@ -184,10 +262,34 @@ export function vertexConfigurationNotation(cycle) {
 }
 
 /**
+ * A naming function for this solid's faces, from its census.
+ *
+ * A vertex configuration is a cycle of side COUNTS, so on its own it can't tell a
+ * square from a rhombus. This bridges the gap: where every face of a given size
+ * on this solid is the same kind, that kind's name is used, and where they differ
+ * the plain name for the side count is. A cube's 4 is therefore a square, a
+ * rhombic dodecahedron's a rhombus, and a hypothetical solid with both gets
+ * "quadrilateral".
+ *
+ * @param {Array<{sides: number, name: string}>} census - from faceCensus
+ * @returns {function(number): string}
+ */
+export function faceNamer(census) {
+    const names = new Map();
+    for (const {sides, name} of census) {
+        names.set(sides, names.has(sides) && names.get(sides) !== name
+            ? polygonName(sides) : name);
+    }
+    return sides => names.get(sides) || polygonName(sides);
+}
+
+/**
  * A vertex configuration in words: "triangle, square, triangle, square".
  * @param {number[]} cycle
+ * @param {function(number): string} [nameFor] - what to call a face with this
+ *     many sides; pass faceNamer(census) to have measured names used
  * @returns {string}
  */
-export function describeVertexConfiguration(cycle) {
-    return cycle.map(sides => polygonName(sides)).join(', ');
+export function describeVertexConfiguration(cycle, nameFor = polygonName) {
+    return cycle.map(sides => nameFor(sides)).join(', ');
 }

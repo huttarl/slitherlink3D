@@ -62,7 +62,6 @@ const SOLID_PAGE_EXCEPTIONS = {
     // random solids (util/genRandomPolyh.py) are one-offs nobody has written
     // about -- and unlike a missing entry, this can't quietly become a 404.
     'RandomsphereA': null,
-    'RandomsphereB': null,
     'RandomsphereC': null,
     'RandomsphereD': null,
     'RandomsphereE': null,
@@ -112,6 +111,10 @@ function deriveArticleTitle(gridName) {
 const CATEGORY_PAGES = {
     'Platonic solid': VIRTUAL_POLYHEDRA + 'platonic-info.html',
     'Archimedean solid': VIRTUAL_POLYHEDRA + 'archimedean-info.html',
+    // Hart files the Catalan solids under what they are -- the Archimedean duals
+    // -- which is also the more useful page to land on, since it explains where
+    // they come from rather than just listing them.
+    'Catalan solid': VIRTUAL_POLYHEDRA + 'archimedean-duals-info.html',
     'Johnson solid': VIRTUAL_POLYHEDRA + 'johnson-info.html',
     'deltahedron': VIRTUAL_POLYHEDRA + 'deltahedra-info.html',
     'quasiregular': VIRTUAL_POLYHEDRA + 'quasi-regular-info.html',

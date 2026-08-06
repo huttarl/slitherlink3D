@@ -24,6 +24,10 @@ What it measures, and why each one matters:
               coordinates; small values are invisible, and note that
               util/obj2json.py rounds coordinates to 3 decimals, which alone
               costs a few thousandths.
+  degrees     how many faces meet at each vertex. Slitherlink's vertex rule says
+              0 or 2 of a vertex's edges are used, so a 3-valent vertex leaves
+              four possibilities and a 10-valent one forty-six: high degree means
+              weak propagation, and puzzle generation feels it.
   winding     every face should be counterclockwise seen from outside, which the
               renderer and the picking code both assume.
 
@@ -132,6 +136,15 @@ def report(path):
     print(f'  inradius  {min(inradii):.3f} to {max(inradii):.3f}  '
           f'(x{max(inradii) / min(inradii):.1f})')
     print(f'  bow       {max(face_bow(f) for f in faces):.1e}')
+    degrees = {}
+    for face in F:
+        for v in face:
+            degrees[v] = degrees.get(v, 0) + 1
+    tally = {}
+    for degree in degrees.values():
+        tally[degree] = tally.get(degree, 0) + 1
+    print(f'  degrees   '
+          + ', '.join(f'{count}x{degree}' for (degree, count) in sorted(tally.items())))
     crooked = [i for (i, f) in enumerate(faces) if not wound_outward(f, centre)]
     print(f'  winding   ' + ('all outward' if not crooked
                              else f'{len(crooked)} face(s) inward: {crooked[:5]}'))

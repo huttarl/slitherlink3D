@@ -7,7 +7,12 @@ Finished items live in ideas/TODOs-done.md.
   - [ ] Conway recipe, with link to polyhedronisme
   - [ ] Where to fit all this stuff, without overwhelming the user? Put some of it
     under a "More" fold?
-- [ ] Add Catalan solids
+- [x] Add Catalan solids
+    (All 13, as the duals of the Archimedean solids: `util/genDual.py
+    --all-catalan`. Polar reciprocation, which gives exactly flat and provably
+    congruent faces -- reciprocation keeps the symmetry group, and a
+    vertex-transitive primal therefore dualizes to a face-transitive solid.
+    Puzzles filled in by `util/fill_puzzles.py`.)
 - [ ] Add more rules, after A B C and D, to help the puzzle generator / evaluator know
     what's possible & easy for players. I have several that I use experientially in
     solving variety slitherlink puzzles.

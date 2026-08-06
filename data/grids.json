@@ -102,6 +102,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "dtT",
+      "gridId": "dtT",
+      "gridName": "Triakis tetrahedron",
+      "categories": ["Catalan solid"],
+      "faces": 12,
+      "edges": 18,
+      "vertices": 8,
+      "numPuzzles": 3
+    },
+    {
       "file": "A5",
       "gridId": "A5",
       "gridName": "Pentagonal antiprism",
@@ -119,6 +129,16 @@
       "faces": 13,
       "edges": 20,
       "vertices": 9,
+      "numPuzzles": 3
+    },
+    {
+      "file": "daC",
+      "gridId": "daC",
+      "gridName": "Rhombic dodecahedron",
+      "categories": ["Catalan solid", "parallelohedron"],
+      "faces": 12,
+      "edges": 24,
+      "vertices": 14,
       "numPuzzles": 3
     },
     {
@@ -172,6 +192,26 @@
       "numPuzzles": 3
     },
     {
+      "file": "dtC",
+      "gridId": "dtC",
+      "gridName": "Triakis octahedron",
+      "categories": ["Catalan solid"],
+      "faces": 24,
+      "edges": 36,
+      "vertices": 14,
+      "numPuzzles": 0
+    },
+    {
+      "file": "dtO",
+      "gridId": "dtO",
+      "gridName": "Tetrakis hexahedron",
+      "categories": ["Catalan solid"],
+      "faces": 24,
+      "edges": 36,
+      "vertices": 14,
+      "numPuzzles": 3
+    },
+    {
       "file": "randA",
       "gridId": "RandomsphereA",
       "gridName": "Random sphere A",
@@ -179,6 +219,16 @@
       "faces": 28,
       "edges": 42,
       "vertices": 16,
+      "numPuzzles": 3
+    },
+    {
+      "file": "deC",
+      "gridId": "deC",
+      "gridName": "Deltoidal icositetrahedron",
+      "categories": ["Catalan solid"],
+      "faces": 24,
+      "edges": 48,
+      "vertices": 26,
       "numPuzzles": 3
     },
     {
@@ -202,13 +252,23 @@
       "numPuzzles": 3
     },
     {
-      "file": "randB",
-      "gridId": "RandomsphereB",
-      "gridName": "Random sphere B",
-      "categories": ["Miscellaneous"],
-      "faces": 35,
-      "edges": 53,
-      "vertices": 20,
+      "file": "dsC",
+      "gridId": "dsC",
+      "gridName": "Pentagonal icositetrahedron",
+      "categories": ["Catalan solid", "chiral"],
+      "faces": 24,
+      "edges": 60,
+      "vertices": 38,
+      "numPuzzles": 3
+    },
+    {
+      "file": "daD",
+      "gridId": "daD",
+      "gridName": "Rhombic triacontahedron",
+      "categories": ["Catalan solid", "zonohedron"],
+      "faces": 30,
+      "edges": 60,
+      "vertices": 32,
       "numPuzzles": 3
     },
     {
@@ -239,6 +299,16 @@
       "faces": 26,
       "edges": 72,
       "vertices": 48,
+      "numPuzzles": 3
+    },
+    {
+      "file": "dbC",
+      "gridId": "dbC",
+      "gridName": "Disdyakis dodecahedron",
+      "categories": ["Catalan solid"],
+      "faces": 48,
+      "edges": 72,
+      "vertices": 26,
       "numPuzzles": 3
     },
     {
@@ -312,6 +382,26 @@
       "numPuzzles": 3
     },
     {
+      "file": "dtD",
+      "gridId": "dtD",
+      "gridName": "Triakis icosahedron",
+      "categories": ["Catalan solid"],
+      "faces": 60,
+      "edges": 90,
+      "vertices": 32,
+      "numPuzzles": 0
+    },
+    {
+      "file": "dtI",
+      "gridId": "dtI",
+      "gridName": "Pentakis dodecahedron",
+      "categories": ["Catalan solid"],
+      "faces": 60,
+      "edges": 90,
+      "vertices": 32,
+      "numPuzzles": 3
+    },
+    {
       "file": "cD",
       "gridId": "cD",
       "gridName": "Chamfered dodecahedron",
@@ -319,6 +409,16 @@
       "faces": 42,
       "edges": 120,
       "vertices": 80,
+      "numPuzzles": 3
+    },
+    {
+      "file": "deD",
+      "gridId": "deD",
+      "gridName": "Deltoidal hexecontahedron",
+      "categories": ["Catalan solid"],
+      "faces": 60,
+      "edges": 120,
+      "vertices": 62,
       "numPuzzles": 3
     },
     {
@@ -342,6 +442,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "dsD",
+      "gridId": "dsD",
+      "gridName": "Pentagonal hexecontahedron",
+      "categories": ["Catalan solid", "chiral"],
+      "faces": 60,
+      "edges": 150,
+      "vertices": 92,
+      "numPuzzles": 3
+    },
+    {
       "file": "sD",
       "gridId": "sD",
       "gridName": "Snub dodecahedron",
@@ -360,6 +470,16 @@
       "edges": 180,
       "vertices": 120,
       "numPuzzles": 3
+    },
+    {
+      "file": "dbD",
+      "gridId": "dbD",
+      "gridName": "Disdyakis triacontahedron",
+      "categories": ["Catalan solid"],
+      "faces": 120,
+      "edges": 180,
+      "vertices": 62,
+      "numPuzzles": 0
     },
     {
       "file": "gp12",
