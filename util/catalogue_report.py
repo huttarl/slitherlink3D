@@ -20,6 +20,10 @@ data/<stem>-puzzles.json for the display puzzles and clues, which the catalogue
 doesn't track. Reporting only: rebuild the catalogue with
 util/build_catalogue.py, and leave the checking to the test suites.
 
+Because the counts come from the catalogue rather than from the puzzle files, a
+stale grids.json makes this report quietly wrong. So it warns, on stderr and
+before anything else, if any data file is newer -- see warn_if_stale.
+
 Standard library only, so plain python3 runs it -- no compas or numpy needed.
 """
 import json
@@ -32,6 +36,51 @@ DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
 # missing display puzzle is worth mentioning for them and not for the rest.
 # Mirrors TITLE_SCREEN_MIN_FACES in js/constants.js.
 TITLE_SCREEN_MIN_FACES = 11
+
+
+def files_newer_than_catalogue(data_dir=None):
+    """Names of data files modified more recently than grids.json.
+
+    Any of them means the catalogue is stale, and since the playable-puzzle
+    counts in this report come FROM the catalogue, they are then simply wrong --
+    a grid regenerated without rebuilding still shows its old count, and a grid
+    added without rebuilding does not appear at all. That has already caused one
+    confident, wrong report of what data/ contained.
+    """
+    data_dir = data_dir or DATA_DIR
+    catalogue = data_dir / 'grids.json'
+    if not catalogue.exists():
+        return []
+    when = catalogue.stat().st_mtime
+    return sorted(path.name for path in data_dir.glob('*.json')
+                  if path != catalogue and path.stat().st_mtime > when)
+
+
+def warn_if_stale(data_dir=None, out=None):
+    """Print the staleness warning, if there is one. Returns True if it warned.
+
+    `out` defaults to sys.stderr, but resolved at call time rather than as a
+    default argument value -- a default would capture whatever sys.stderr was when
+    this module was imported, and so ignore any later replacement of it.
+
+    Deliberately on stderr and before the table, not appended at the end. Both
+    choices come from how this went wrong in practice: a note at the bottom is
+    easy to skip past -- fill_puzzles.py's own "rebuild the catalogue next"
+    reminder was -- and the report is usually read through a pipe like
+    `| grep dtC`, which would filter a stdout warning out of sight entirely.
+    stderr goes to the terminal either way.
+    """
+    out = out or sys.stderr
+    stale = files_newer_than_catalogue(data_dir)
+    if not stale:
+        return False
+    shown = ', '.join(stale[:6])
+    if len(stale) > 6:
+        shown += f' and {len(stale) - 6} more'
+    print(f'WARNING: {len(stale)} data file(s) are newer than grids.json, so the '
+          f'puzzle counts below are out of date ({shown}).\n'
+          f'         Run util/build_catalogue.py, then this again.', file=out)
+    return True
 
 
 def display_puzzle_count(stem):
@@ -79,6 +128,7 @@ def clue_summary(stem, num_faces):
 
 
 def main():
+    warn_if_stale()
     catalogue = json.loads((DATA_DIR / 'grids.json').read_text())
     args = sys.argv[1:]
     clues = '--clues' in args
