@@ -414,24 +414,21 @@ def load_existing_puzzles():
     log(f"Keeping {len(kept)} existing puzzle(s) from {existing_puzzles_path}.")
 
 
-# How many repair passes one coloring gets before we abandon it and start over
-# from a fresh random one, and how many fresh starts to try before giving up.
+# How many colorings to grow and discard before giving up on a grid.
 #
-# Profiled 2026-08-06: the tetrakis hexahedron (dtO) settles in 9 passes, but the
-# triakis octahedron (dtC) can pass 137,000 without ever settling -- red and blue
-# alternately repairing their own connectivity and breaking the other's, about 14
-# faces repainted per pass, making no progress. That looked for a long time like
-# a slow uniqueness proof, when in fact the solver was never reached at all. A
-# coloring that hasn't settled in a couple of hundred passes is not going to, and
-# a fresh start is far more likely to pay off than more patience.
-# The attempt limit is deliberately small. A coloring that settles at all seems to
-# settle on the first attempt (dtO needs 9 passes, dtI 7), so a solid that has
-# failed 20 fresh starts is failing systematically, not unluckily -- and since the
-# cost of each pass grows with the number of faces, a generous limit would mean
-# minutes of spinning on a large solid before the error appears, which is the
-# behavior this cap exists to prevent.
-REPAIR_PASS_LIMIT = 200
-COLORING_ATTEMPT_LIMIT = 20
+# Each attempt is one pass over the faces plus two connectivity searches, so this
+# is cheap; the limit exists to fail loudly rather than to ration work. It is
+# generous because the condition that discards an attempt -- a boundary that
+# crosses itself at a pinch vertex -- gets likelier as vertex degree rises, and a
+# grid with many high-degree vertices needs a good number of tries.
+COLORING_ATTEMPT_LIMIT = 2000
+
+# How many attempts to make at each raggedness before easing off by 0.1 (see
+# generate). 25 gets from full raggedness to round growth inside the first 250
+# attempts, which is a small fraction of the limit above -- so a grid that needs
+# rounder regions pays a fraction of a second to discover that, and one that
+# doesn't never finds out.
+RAGGEDNESS_PATIENCE = 25
 
 
 class RegionColoring:
@@ -641,73 +638,131 @@ class RegionColoring:
                         # Stop processing this face. Check other boring faces (continue outer loop).
                         break
 
-    def paint_regions(self):
-        """One attempt: paint fresh random regions and repair them into usable ones.
+    def grow_region(self, target, raggedness):
+        """A random connected set of `target` faces, grown one face at a time.
 
-        Makes sure each region is connected, reasonably large, and not boring.
+        Starts from a random face and repeatedly adopts a face from the frontier,
+        so the region is connected by construction rather than by repair.
 
-        Returns the number of repair passes it took, or None if it used up
-        REPAIR_PASS_LIMIT without settling. Settling means a whole pass in which
-        neither color needed repainting -- and the two repairs can fight
-        indefinitely, because growing one color to reconnect it can cut the other
-        in half. See REPAIR_PASS_LIMIT for the measurements behind giving up.
+        `raggedness` between 0 and 1 is how strongly to grow at the region's TIPS
+        -- the frontier faces with the fewest neighbours already inside -- rather
+        than anywhere on the frontier. It matters much more than it sounds,
+        because the loop IS this region's boundary:
+
+          - at 0, growth fills hollows as readily as it extends limbs, so the
+            region rounds off and its boundary is short. Measured over every grid,
+            that gave loops 40-60% as long as the old painter's on the larger
+            solids (gp12: 39 edges against a stored average of 112).
+          - at 1, growth is dendritic and the boundary is long, matching the old
+            painter (bD 88 against 94, tI 53 against 48). But a dendritic region
+            keeps touching itself at a vertex, which paint_regions must discard,
+            and on the highest-degree solids nearly every attempt was discarded:
+            dbD failed 2000 times running and gp12 stopped finishing at all.
+
+        Hence neither extreme, and the caller lowers it as attempts fail; see
+        generate. sorted() appears only so the choice is reproducible under a
+        fixed seed, since set iteration order is not.
         """
-        self.randomize_face_colors()
+        region = {random.choice(list(self.mesh.faces()))}
+        frontier = set(self.mesh.face_neighbors(next(iter(region))))
+        while len(region) < target and frontier:
+            if random.random() < raggedness:
+                def already_inside(fkey):
+                    return sum(1 for nbr in self.mesh.face_neighbors(fkey)
+                               if nbr in region)
+                fewest = min(already_inside(fkey) for fkey in frontier)
+                choices = [fkey for fkey in frontier
+                           if already_inside(fkey) == fewest]
+            else:
+                choices = list(frontier)
+            pick = random.choice(sorted(choices))
+            frontier.discard(pick)
+            region.add(pick)
+            for neighbor in self.mesh.face_neighbors(pick):
+                if neighbor not in region:
+                    frontier.add(neighbor)
+        return region
+
+    def paint_regions(self, raggedness=1.0):
+        """One attempt at a usable coloring: grow a connected red region, and let
+        blue be everything else. See grow_region for `raggedness`.
+
+        Returns True if the result is usable, False if this attempt should be
+        thrown away -- which is the whole point of the approach. The old code
+        painted every face at random and then REPAIRED the mess, growing each
+        color until it was connected; but growing one color to reconnect it can
+        cut the other in half, so the two repairs fought, and on dtC, dtD and dbD
+        they fought forever (137,000 passes without settling, ~14 faces repainted
+        per pass, while dtO settles in 9). Growing one region and discarding
+        failures cannot livelock: connectivity of the region is guaranteed, and
+        every other condition is a test, not a repair.
+
+        Three conditions, all cheap, and each a reason to discard rather than fix:
+        blue must be connected too (red is, by construction); neither color may be
+        empty; and the boundary must be a single simple loop, which
+        check_boundary_is_single_loop decides. That last one cannot be guaranteed
+        by construction -- two connected regions on a sphere can still meet at a
+        "pinch" vertex where four boundary edges cross -- so it is checked here,
+        where a failure costs one cheap attempt, rather than downstream in
+        enumerate_solution, where it costs one of MAX_REGION_ATTEMPTS.
+        """
+        # Aim for between a third and two thirds of the faces, which is what
+        # adjust_populations used to enforce after the fact: it keeps either color
+        # from being a token sliver.
+        target = random.randint(max(1, self.num_faces // 3),
+                                max(1, 2 * self.num_faces // 3))
+        region = self.grow_region(target, raggedness)
+        for fkey in self.mesh.faces():
+            self.paint_face(fkey, red if fkey in region else blue)
         update_display(self.mesh)
-        self.blue_needs_check = True
-        self.red_needs_check = True
-        for passes in range(1, REPAIR_PASS_LIMIT + 1):
-            self.adjust_populations()  # Could set red_needs_check or blue_needs_check.
-            if self.blue_needs_check:
-                # Make sure blue is connected.
-                added_blue = self.ensure_connected(blue)
-                self.blue_needs_check = False
-                # If that required painting faces blue...
-                if added_blue:
-                    self.red_needs_check = True
-            if self.red_needs_check:
-                # Make sure red is connected.
-                added_red = self.ensure_connected(red)
-                self.red_needs_check = False
-                # If that required painting faces red...
-                if added_red:
-                    self.blue_needs_check = True
-            self.fix_boring_neighborhoods()
-            if not (self.blue_needs_check or self.red_needs_check):
-                return passes
-            log(f"{passes} steps. Needs check: blue={self.blue_needs_check} "
-                f"red={self.red_needs_check}", level=2)
-        return None
+
+        if len(self.color_components(blue)) != 1:
+            return False
+        # Red's connectedness is guaranteed by grow_region; checked anyway,
+        # because it is one line and it is the invariant the whole approach rests
+        # on. A count of 0 here means the region swallowed every face.
+        if len(self.color_components(red)) != 1:
+            return False
+        try:
+            check_boundary_is_single_loop(self.mesh)
+        except ValueError as problem:
+            log(f"Discarding coloring: {problem}", level=2)
+            return False
+        return True
 
     def generate(self, i):
-        """Paint usable regions, starting over as often as it takes.
+        """Paint usable regions, discarding failed attempts until one works.
 
         i is the puzzle index, just used for logging.
 
-        Raises RuntimeError if COLORING_ATTEMPT_LIMIT fresh starts all fail, so
-        that a solid the painter cannot handle fails loudly and quickly instead of
-        spinning. That distinction cost us real time: dtC's silent spinning was
-        twice mistaken for a slow uniqueness proof, and read as evidence that the
-        solver needed more rules.
+        Raises RuntimeError if COLORING_ATTEMPT_LIMIT attempts all fail, so that a
+        solid this cannot handle fails loudly and immediately instead of spinning.
+        That distinction cost real time once already: the old repair loop's silent
+        spinning on dtC was twice mistaken for a slow uniqueness proof, and read as
+        evidence that the SOLVER needed more rules, when the solver was never
+        reached at all.
         """
         for attempt in range(1, COLORING_ATTEMPT_LIMIT + 1):
-            passes = self.paint_regions()
-            if passes is not None:
+            # Start as ragged as possible, for the longest loop, and relax towards
+            # round growth as attempts fail. Ragged regions give much better
+            # puzzles but keep pinching themselves on high-degree solids, and only
+            # the grid knows how much it will tolerate -- dbD and gp12 need to come
+            # most of the way down, while every other grid succeeds within the
+            # first few attempts at full raggedness. Backing off beats picking one
+            # compromise value for all grids, and reaching 0 recovers the growth
+            # that was measured to work everywhere.
+            raggedness = max(0.0, 1.0 - 0.1 * ((attempt - 1) // RAGGEDNESS_PATIENCE))
+            if self.paint_regions(raggedness):
                 log(f"Generated regions for puzzle {i + 1} with {self.count(red)} "
-                    f"red faces and {self.count(blue)} blue faces, in {passes} "
-                    f"steps" + (f" on attempt {attempt}" if attempt > 1 else "")
-                    + ".")
+                    f"red faces and {self.count(blue)} blue faces"
+                    + (f", on attempt {attempt} (raggedness {raggedness:.1f})"
+                       if attempt > 1 else "") + ".")
                 populate_num_walls(self.mesh)
                 return
-            log(f"Coloring for puzzle {i + 1} did not settle within "
-                f"{REPAIR_PASS_LIMIT} repair passes (attempt {attempt} of "
-                f"{COLORING_ATTEMPT_LIMIT}); starting over.", level=2)
-
         raise RuntimeError(
-            f"Could not paint usable regions in {COLORING_ATTEMPT_LIMIT} attempts "
-            f"of up to {REPAIR_PASS_LIMIT} repair passes each. The two colors are "
-            f"probably disconnecting each other faster than they can be repaired; "
-            f"see REPAIR_PASS_LIMIT.")
+            f"Could not grow a usable pair of regions in {COLORING_ATTEMPT_LIMIT} "
+            f"attempts. Every attempt was discarded for a disconnected second "
+            f"region or a self-crossing boundary; see paint_regions.")
 
 
 def is_edge_boring(mesh, ekey):
