@@ -417,18 +417,12 @@ def load_existing_puzzles():
 # How many colorings to grow and discard before giving up on a grid.
 #
 # Each attempt is one pass over the faces plus two connectivity searches, so this
-# is cheap; the limit exists to fail loudly rather than to ration work. It is
-# generous because the condition that discards an attempt -- a boundary that
-# crosses itself at a pinch vertex -- gets likelier as vertex degree rises, and a
-# grid with many high-degree vertices needs a good number of tries.
+# is cheap; the limit exists to fail loudly rather than to ration work. Since
+# grow_region refuses the faces that would pinch the boundary, rather than letting
+# a pinch spoil the finished coloring, the only thing left to discard an attempt
+# for is a disconnected second region -- so attempts rarely fail at all. Measured
+# on dbD, the worst case for the old approach: 60 of 60 attempts now succeed.
 COLORING_ATTEMPT_LIMIT = 2000
-
-# How many attempts to make at each raggedness before easing off by 0.1 (see
-# generate). 25 gets from full raggedness to round growth inside the first 250
-# attempts, which is a small fraction of the limit above -- so a grid that needs
-# rounder regions pays a fraction of a second to discover that, and one that
-# doesn't never finds out.
-RAGGEDNESS_PATIENCE = 25
 
 
 class RegionColoring:
@@ -638,54 +632,90 @@ class RegionColoring:
                         # Stop processing this face. Check other boring faces (continue outer loop).
                         break
 
-    def grow_region(self, target, raggedness):
-        """A random connected set of `target` faces, grown one face at a time.
+    def boundary_degree(self, region, vkey):
+        """How many of vkey's edges would be on the loop, if `region` were one of
+        the two colors. An edge is on the loop when exactly one of its two faces
+        is inside."""
+        return sum(1 for nbr in self.mesh.vertex_neighbors(vkey)
+                   if len({fkey for fkey in self.mesh.edge_faces((vkey, nbr))
+                           if fkey is not None} & region) == 1)
 
-        Starts from a random face and repeatedly adopts a face from the frontier,
-        so the region is connected by construction rather than by repair.
+    def would_pinch(self, region, fkey):
+        """True if adopting `fkey` would leave one of ITS vertices with more than
+        two loop edges, i.e. a boundary that crosses itself there.
 
-        `raggedness` between 0 and 1 is how strongly to grow at the region's TIPS
-        -- the frontier faces with the fewest neighbours already inside -- rather
-        than anywhere on the frontier. It matters much more than it sounds,
-        because the loop IS this region's boundary:
+        Only fkey's own vertices need checking: adopting a face changes which
+        edges are on the loop solely around that face, so no other vertex's degree
+        can change.
+        """
+        grown = region | {fkey}
+        return any(self.boundary_degree(grown, vkey) not in (0, 2)
+                   for vkey in self.mesh.face_vertices(fkey))
 
-          - at 0, growth fills hollows as readily as it extends limbs, so the
-            region rounds off and its boundary is short. Measured over every grid,
-            that gave loops 40-60% as long as the old painter's on the larger
-            solids (gp12: 39 edges against a stored average of 112).
-          - at 1, growth is dendritic and the boundary is long, matching the old
-            painter (bD 88 against 94, tI 53 against 48). But a dendritic region
-            keeps touching itself at a vertex, which paint_regions must discard,
-            and on the highest-degree solids nearly every attempt was discarded:
-            dbD failed 2000 times running and gp12 stopped finishing at all.
+    def grow_region(self, target):
+        """A random connected set of up to `target` faces, grown one face at a
+        time, always at the region's TIPS and never through a pinch.
 
-        Hence neither extreme, and the caller lowers it as attempts fail; see
-        generate. sorted() appears only so the choice is reproducible under a
-        fixed seed, since set iteration order is not.
+        Two choices here, and both were measured rather than guessed.
+
+        Growing at the tips -- preferring frontier faces with the fewest
+        neighbours already inside -- rather than anywhere on the frontier. It
+        matters much more than it sounds, because the loop IS this region's
+        boundary: filling hollows as readily as extending limbs rounds the region
+        off, and a round region's boundary is a short curl around one area. That
+        is what produced dbD's first puzzle with an entire hemisphere of 0 clues.
+
+        Refusing a face that would pinch, rather than discarding the whole attempt
+        afterwards. Dendritic regions keep touching themselves at a vertex, and
+        the earlier code could only detect that at the end and start over -- which
+        on dbD failed 2000 attempts running, forcing raggedness down to nearly
+        zero and back to compact blobs. Testing each candidate first turns that
+        around completely; measured on dbD, 60 attempts out of 60 now yield a
+        valid coloring where fully ragged blind growth yielded none, the loop goes
+        from 23 edges to 58 of a possible 62, and the largest patch of faces the
+        loop never touches falls from 56 to 4.
+
+        A refusal is only true of the region as it stands, so when a face IS
+        adopted, every face sharing a vertex with it gets another chance: those
+        are exactly the faces whose vertex degrees just changed. Growth therefore
+        flows around an obstacle instead of stopping at it.
+
+        Returns fewer than `target` faces if it runs out of room, which is fine --
+        paint_regions judges the result on its merits, not its size. sorted()
+        appears only so the choice is reproducible under a fixed seed, since set
+        iteration order is not.
         """
         region = {random.choice(list(self.mesh.faces()))}
         frontier = set(self.mesh.face_neighbors(next(iter(region))))
-        while len(region) < target and frontier:
-            if random.random() < raggedness:
-                def already_inside(fkey):
-                    return sum(1 for nbr in self.mesh.face_neighbors(fkey)
-                               if nbr in region)
-                fewest = min(already_inside(fkey) for fkey in frontier)
-                choices = [fkey for fkey in frontier
-                           if already_inside(fkey) == fewest]
-            else:
-                choices = list(frontier)
-            pick = random.choice(sorted(choices))
+        refused = set()
+        while len(region) < target:
+            available = frontier - refused
+            if not available:
+                break
+
+            def already_inside(fkey):
+                return sum(1 for nbr in self.mesh.face_neighbors(fkey)
+                           if nbr in region)
+
+            fewest = min(already_inside(fkey) for fkey in available)
+            pick = random.choice(sorted(fkey for fkey in available
+                                        if already_inside(fkey) == fewest))
+            if self.would_pinch(region, pick):
+                refused.add(pick)
+                continue
+
             frontier.discard(pick)
             region.add(pick)
+            for vkey in self.mesh.face_vertices(pick):
+                refused -= set(self.mesh.vertex_faces(vkey))
             for neighbor in self.mesh.face_neighbors(pick):
                 if neighbor not in region:
                     frontier.add(neighbor)
         return region
 
-    def paint_regions(self, raggedness=1.0):
+    def paint_regions(self):
         """One attempt at a usable coloring: grow a connected red region, and let
-        blue be everything else. See grow_region for `raggedness`.
+        blue be everything else.
 
         Returns True if the result is usable, False if this attempt should be
         thrown away -- which is the whole point of the approach. The old code
@@ -711,7 +741,7 @@ class RegionColoring:
         # from being a token sliver.
         target = random.randint(max(1, self.num_faces // 3),
                                 max(1, 2 * self.num_faces // 3))
-        region = self.grow_region(target, raggedness)
+        region = self.grow_region(target)
         for fkey in self.mesh.faces():
             self.paint_face(fkey, red if fkey in region else blue)
         update_display(self.mesh)
@@ -743,20 +773,10 @@ class RegionColoring:
         reached at all.
         """
         for attempt in range(1, COLORING_ATTEMPT_LIMIT + 1):
-            # Start as ragged as possible, for the longest loop, and relax towards
-            # round growth as attempts fail. Ragged regions give much better
-            # puzzles but keep pinching themselves on high-degree solids, and only
-            # the grid knows how much it will tolerate -- dbD and gp12 need to come
-            # most of the way down, while every other grid succeeds within the
-            # first few attempts at full raggedness. Backing off beats picking one
-            # compromise value for all grids, and reaching 0 recovers the growth
-            # that was measured to work everywhere.
-            raggedness = max(0.0, 1.0 - 0.1 * ((attempt - 1) // RAGGEDNESS_PATIENCE))
-            if self.paint_regions(raggedness):
+            if self.paint_regions():
                 log(f"Generated regions for puzzle {i + 1} with {self.count(red)} "
                     f"red faces and {self.count(blue)} blue faces"
-                    + (f", on attempt {attempt} (raggedness {raggedness:.1f})"
-                       if attempt > 1 else "") + ".")
+                    + (f", on attempt {attempt}" if attempt > 1 else "") + ".")
                 populate_num_walls(self.mesh)
                 return
         raise RuntimeError(
