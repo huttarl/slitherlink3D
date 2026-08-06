@@ -311,6 +311,15 @@ those layers subscribe to its observer callbacks instead.
     after another, smallest first; start it and leave it. Each grid's puzzles are
     written only if at least one was produced, so a grid that times out is either
     filled with what the generator managed or left untouched.
+  - `sweep_grids.py` — generates one puzzle for every grid and reports how good it
+    is, writing nothing: time taken, loop length against the ceiling (the vertex
+    count, since the loop is a simple cycle through vertices), the largest
+    connected patch of faces the loop never touches, and the clue count — each
+    against the mean of the puzzles already in `data/`. The regression test for
+    changes to the *generator*, as distinct from the solver: a change that speeds
+    generation up while making the puzzles duller shows here and nowhere else. The
+    seed is fixed and reported so two runs are comparable; with a varying seed the
+    per-grid differences are noise.
   - `build_catalogue.py` — regenerates `data/grids.json` from the data files.
   - `catalogue_report.py` — prints what `data/` holds: a line per grid with its
     counts, puzzles, display puzzles and categories, plus totals, and a note on
@@ -541,12 +550,25 @@ Three sources:
 `genSliPuzzles.py` generates puzzles for a given grid, in two phases
 (spec: `ideas/puzzle gen algorithm.txt`):
 
-- **Phase A — solution**: randomly paint faces red/blue, force each color
-  region to be connected (via a dual graph in networkx), disrupt "boring"
-  all-one-color neighborhoods, and take the edges between differently-colored
-  faces as the solution loop. The coloring and its bookkeeping live in a
-  `RegionColoring` object; the boundary is rejected unless it is a single
-  simple loop, which counts as a failed attempt and re-randomizes.
+- **Phase A — solution**: paint one connected region of faces red and the rest
+  blue, and take the edges between differently-colored faces as the solution loop.
+  The coloring lives in a `RegionColoring` object, and it is *grown* rather than
+  repaired: start from one face and repeatedly adopt a frontier face, always at the
+  region's tips so the region stays ragged and its boundary long, and never
+  adopting a face that would put four loop edges at one vertex. Then hill-climb the
+  result, flipping single faces and keeping a flip only if it stays valid and
+  shrinks the largest patch of faces the loop never touches — stopping at good
+  enough rather than at an optimum, since pushing every grid to its longest
+  possible loop leaves the small ones with no uniquely-solvable clue set.
+
+  This replaced an earlier approach that painted every face at random and then
+  repaired the two regions until each was connected. That could not terminate on
+  some solids, because reconnecting one color cuts the other: on the triakis
+  octahedron it ran 137,000 passes without settling, which for a long time looked
+  like a slow uniqueness proof rather than a livelock. Growth cannot livelock —
+  connectivity is an invariant of the construction, and everything else is a test
+  whose failure discards one cheap attempt. `util/sweep_grids.py` is what measures
+  whether a change here helps or hurts.
 - **Phase B — clues**: compute each face's wall count, then whittle the
   clues down to a fairly minimal subset that is still *solvable by
   deduction* at `LOOKAHEAD_DEPTH` — a stronger requirement than a unique

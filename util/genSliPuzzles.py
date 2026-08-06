@@ -424,6 +424,18 @@ def load_existing_puzzles():
 # on dbD, the worst case for the old approach: 60 of 60 attempts now succeed.
 COLORING_ATTEMPT_LIMIT = 2000
 
+# How many passes over the faces improve_region may make looking for a flip that
+# lengthens the loop or reduces the untouched area. It stops early as soon as a
+# pass finds nothing, so this is only the ceiling -- there to keep a local search
+# from becoming the sort of quiet time sink the old repair loop turned out to be.
+IMPROVEMENT_ROUNDS = 12
+
+# improve_region stops once the biggest untouched patch is down to
+# faces / QUIET_PATCH_DIVISOR. A share rather than a fixed number, because what
+# counts as a big blank area depends on how much surface there is: 4 untouched
+# faces out of 120 is a speck, out of 12 it is a third of the solid.
+QUIET_PATCH_DIVISOR = 20
+
 
 class RegionColoring:
     """The red/blue two-coloring of the faces that a puzzle's solution comes from.
@@ -713,6 +725,128 @@ class RegionColoring:
                     frontier.add(neighbor)
         return region
 
+    def loop_length(self, region):
+        """How many edges the loop would have, if `region` were one color."""
+        return sum(1 for ekey in self.mesh.edges()
+                   if len({fkey for fkey in self.mesh.edge_faces(ekey)
+                           if fkey is not None} & region) == 1)
+
+    def largest_quiet_patch(self, region):
+        """The size of the biggest connected group of faces the loop would not
+        touch at all: a field of 0 clues with nothing happening in it.
+
+        This, rather than the total number of untouched faces, is what makes a
+        puzzle look dull -- scattered single 0s are fine and even welcome, while
+        one big blank area is the defect. dbD's first generated puzzle had 55 such
+        faces in a single patch, a whole visible hemisphere of 0s.
+        """
+        quiet = {fkey for fkey in self.mesh.faces()
+                 if all((nbr in region) == (fkey in region)
+                        for nbr in self.mesh.face_neighbors(fkey))}
+        biggest = 0
+        while quiet:
+            group = {quiet.pop()}
+            stack = list(group)
+            while stack:
+                for nbr in self.mesh.face_neighbors(stack.pop()):
+                    if nbr in quiet:
+                        quiet.discard(nbr)
+                        group.add(nbr)
+                        stack.append(nbr)
+            biggest = max(biggest, len(group))
+        return biggest
+
+    def quiet_patch_allowance(self):
+        """How big an untouched patch is acceptable, so improve_region knows when
+        to stop. A share of the faces, and never less than one."""
+        return max(1, self.num_faces // QUIET_PATCH_DIVISOR)
+
+    def improve_region(self, region):
+        """Hill-climb a valid region until its biggest untouched patch is small
+        enough, by flipping one face at a time and keeping only flips that help.
+
+        Growth alone leaves a blob with an interior the boundary never reaches, so
+        a grown region can score badly on untouched area even when its loop is a
+        respectable length. This fixes that after the fact: try flipping single
+        faces, in either direction, and keep a flip when the result is still valid
+        and either shrinks the biggest untouched patch or -- at equal patch size --
+        lengthens the loop.
+
+        It stops at GOOD ENOUGH, not at an optimum, and that is the important part.
+        Pushing every grid towards its longest possible loop broke six of the small
+        ones: on the tetrahedron the climb reaches the 4-cycle through all four
+        vertices, which gives every face the clue 2, and since three different
+        cycles do that, no clue set is unique and generate_minimal_clueset finds
+        nothing. T, cube, O, tT, J10 and tC all failed that way. Stopping once the
+        patch is within quiet_patch_allowance leaves those grids untouched -- their
+        patches are already tiny -- and spends the effort only where there is a
+        real blank area to break up. It also leaves a few scattered untouched
+        faces, which is wanted: it reads as organic rather than mechanical.
+
+        Bounded twice over, because an unbounded local search is exactly the kind
+        of quiet time sink the old repair loop turned out to be: at most
+        IMPROVEMENT_ROUNDS passes over the faces, and a pass stops early when it
+        finds nothing to gain.
+
+        Returns the improved region, never an invalid one, since a flip is only
+        kept once region_is_usable has approved it.
+        """
+        allowance = self.quiet_patch_allowance()
+        patch = self.largest_quiet_patch(region)
+        for _round in range(IMPROVEMENT_ROUNDS):
+            if patch <= allowance:
+                break
+            improved = False
+            # Shuffled, so successive rounds don't keep favoring the same faces.
+            candidates = list(self.mesh.faces())
+            random.shuffle(candidates)
+            for fkey in candidates:
+                flipped = (region - {fkey}) if fkey in region else (region | {fkey})
+                if not self.region_is_usable(flipped):
+                    continue
+                new_patch = self.largest_quiet_patch(flipped)
+                better = (new_patch < patch
+                          or (new_patch == patch
+                              and self.loop_length(flipped) > self.loop_length(region)))
+                if better:
+                    (region, patch) = (flipped, new_patch)
+                    improved = True
+            if not improved:
+                break
+        return region
+
+    def region_is_usable(self, region):
+        """Whether this region would give a legal puzzle: neither color empty,
+        both connected, and every vertex with 0 or 2 loop edges (so the boundary
+        is a single simple loop rather than several, or one that crosses itself).
+
+        Shared by grow_region's caller and by improve_region, so that a flip can
+        never be kept unless it would have been an acceptable coloring in its own
+        right.
+        """
+        outside = set(self.mesh.faces()) - region
+        if not region or not outside:
+            return False
+        if any(self.boundary_degree(region, vkey) not in (0, 2)
+               for vkey in self.mesh.vertices()):
+            return False
+        return (self.faces_are_connected(region)
+                and self.faces_are_connected(outside))
+
+    def faces_are_connected(self, faces):
+        """Whether this set of faces is connected through shared edges."""
+        if not faces:
+            return False
+        start = next(iter(faces))
+        seen = {start}
+        stack = [start]
+        while stack:
+            for nbr in self.mesh.face_neighbors(stack.pop()):
+                if nbr in faces and nbr not in seen:
+                    seen.add(nbr)
+                    stack.append(nbr)
+        return len(seen) == len(faces)
+
     def paint_regions(self):
         """One attempt at a usable coloring: grow a connected red region, and let
         blue be everything else.
@@ -727,14 +861,12 @@ class RegionColoring:
         failures cannot livelock: connectivity of the region is guaranteed, and
         every other condition is a test, not a repair.
 
-        Three conditions, all cheap, and each a reason to discard rather than fix:
-        blue must be connected too (red is, by construction); neither color may be
-        empty; and the boundary must be a single simple loop, which
-        check_boundary_is_single_loop decides. That last one cannot be guaranteed
-        by construction -- two connected regions on a sphere can still meet at a
-        "pinch" vertex where four boundary edges cross -- so it is checked here,
-        where a failure costs one cheap attempt, rather than downstream in
-        enumerate_solution, where it costs one of MAX_REGION_ATTEMPTS.
+        Grow, then discard the attempt unless it is usable -- neither color empty,
+        both connected, and a boundary that is one simple loop. grow_region rules
+        out the self-crossing case as it goes, so in practice the only thing left
+        to fail on is a second region cut in two, which is rare. Then improve what
+        survives by hill-climbing, since growth alone leaves a blob whose interior
+        the loop never reaches.
         """
         # Aim for between a third and two thirds of the faces, which is what
         # adjust_populations used to enforce after the fact: it keeps either color
@@ -742,17 +874,17 @@ class RegionColoring:
         target = random.randint(max(1, self.num_faces // 3),
                                 max(1, 2 * self.num_faces // 3))
         region = self.grow_region(target)
+        if not self.region_is_usable(region):
+            return False
+        region = self.improve_region(region)
+
         for fkey in self.mesh.faces():
             self.paint_face(fkey, red if fkey in region else blue)
         update_display(self.mesh)
 
-        if len(self.color_components(blue)) != 1:
-            return False
-        # Red's connectedness is guaranteed by grow_region; checked anyway,
-        # because it is one line and it is the invariant the whole approach rests
-        # on. A count of 0 here means the region swallowed every face.
-        if len(self.color_components(red)) != 1:
-            return False
+        # improve_region only ever keeps a flip it has checked, so this should not
+        # be reachable; it is the guard on the invariant everything downstream
+        # assumes, and cheap next to the search above.
         try:
             check_boundary_is_single_loop(self.mesh)
         except ValueError as problem:
