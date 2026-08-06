@@ -110,6 +110,11 @@ const CATEGORY_PAGES = {
     'zonohedron': VIRTUAL_POLYHEDRA + 'zonohedra-info.html',
     'chiral': POLYTOPE_WIKI + 'Chirality',
     'Goldberg': POLYTOPE_WIKI + 'Goldberg_polyhedron',
+    // Both are infinite families, so the wiki has an article about the family
+    // rather than a category page -- which is what a player wants here anyway:
+    // the cube is a prism, and the point is what that means.
+    'prism': POLYTOPE_WIKI + 'Prism',
+    'antiprism': POLYTOPE_WIKI + 'Antiprism',
     'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
     'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',
 };

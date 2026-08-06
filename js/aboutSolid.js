@@ -19,10 +19,17 @@ import {describeFaceCensus, describeVertexConfiguration, faceCensus,
         vertexConfiguration, vertexConfigurationNotation} from "./solidFacts.js";
 import {categoryLink, EULER_FORMULA_LINK, solidLink} from "./polyhedronLinks.js";
 
-// The families whose definition requires every vertex to be alike (up to a
-// symmetry of the whole solid). A solid outside them that nevertheless has the
-// same arrangement at every vertex is the interesting case; see buildAboutCard.
-const UNIFORM_VERTEX_FAMILIES = ['Platonic solid', 'Archimedean solid'];
+// Categories whose definition requires every vertex to be alike up to a symmetry
+// of the whole solid -- vertex-transitive, in a word. A solid outside them that
+// nevertheless has the same arrangement at every vertex is the interesting case;
+// see buildAboutCard.
+//
+// Not only families: the uniform prisms and antiprisms are vertex-transitive
+// too, and they are filed under "Miscellaneous" for want of a classical family.
+// Leaving them out told the player that a pentagonal antiprism lacks a symmetry
+// carrying any vertex to any other, which is false -- it has D(5d).
+const VERTEX_TRANSITIVE_CATEGORIES = ['Platonic solid', 'Archimedean solid',
+                                      'prism', 'antiprism'];
 
 /**
  * Builds the card and wires the drawer's ⓘ toggle. Safe to call before the
@@ -80,11 +87,11 @@ function collectFacts(puzzleGrid, categories) {
         name: puzzleGrid.gridName,
         gridId: puzzleGrid.gridId,
         categories,
-        // The families defined BY every vertex being alike. Used to spot the
+        // The categories that come with vertex-transitivity. Used to spot the
         // solids that manage the same arrangement at every vertex without
         // being in one -- see buildAboutCard.
         inUniformFamily: categories.some(
-            category => UNIFORM_VERTEX_FAMILIES.includes(category)),
+            category => VERTEX_TRANSITIVE_CATEGORIES.includes(category)),
         vertices: puzzleGrid.vertices.size,
         edges: puzzleGrid.edges.size,
         faces: puzzleGrid.faces.size,

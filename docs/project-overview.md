@@ -284,6 +284,8 @@ those layers subscribe to its observer callbacks instead.
     coordinates, verifying uniformity before writing.
   - `genGoldberg.py` — generates a Goldberg polyhedron GP(m,n) from its two
     parameters, by subdividing an icosahedron and taking the polar dual.
+  - `genPrism.py` — generates an n-prism or n-antiprism from exact coordinates,
+    with every face a regular polygon.
   - `obj2json.py` — converts polyHédronisme OBJ → grid JSON.
   - `genRandomPolyh.py` — random polyhedron generator.
   - `genSliPuzzles.py` — puzzle generator: paints faces red/blue, ensures each
@@ -387,6 +389,28 @@ Three sources:
   and exits non-zero if any of it is off. Output is deterministic, so
   regenerating a grid doesn't invalidate the puzzles built on it. Requires
   `numpy` and `scipy`.
+
+- **`genPrism.py`**: generates a prism or antiprism, all of whose faces are
+  regular polygons:
+
+  ```
+  python3 util/genPrism.py 6 P6 "Hexagonal prism" > data/P6.json
+  python3 util/genPrism.py --anti 5 A5 "Pentagonal antiprism" > data/A5.json
+  ```
+
+  Exact coordinates: two regular n-gons of circumradius 1/(2 sin(π/n)), a unit
+  apart for a prism, and for an antiprism twisted half a step and set
+  √(1 − 1/(4cos²(π/2n))) apart, which is what makes the lateral faces unit
+  squares or equilateral triangles. Every run checks that all edges are the same
+  length, that each face's corners are equidistant from its centre (equal edges
+  plus equal radii is regularity, for a flat face), that faces are flat, and that
+  the winding is outward — exiting non-zero otherwise. Standard library only.
+
+  Both families are infinite, which is why they're excluded from the Johnson
+  solids and why the script takes n. Two sizes it declines to be used for: the
+  square prism is the cube and the triangular antiprism is the octahedron, both
+  already in `data/` from `genUniformPolyh.py`. (Running it on those anyway is a
+  useful check — it reproduces them, with a note saying so.)
 
 - **`genRandomPolyh.py`**: generates a random sphere-like polyhedron —
   scatters points on a sphere (randomly with simulated repulsion to spread

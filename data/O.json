@@ -1,7 +1,7 @@
 {
   "gridId": "O",
   "gridName": "Octahedron",
-  "categories": ["Platonic solid", "deltahedron"],
+  "categories": ["Platonic solid", "deltahedron", "antiprism"],
   "recipe": "O",
   "vertices": [
     [-1.0, 0.0, 0.0],

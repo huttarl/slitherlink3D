@@ -1,7 +1,7 @@
 {
   "gridName": "Cube",
   "gridId": "C",
-  "categories": ["Platonic solid", "parallelohedron"],
+  "categories": ["Platonic solid", "parallelohedron", "prism"],
   "recipe": "C",
   "_comment": "The vertices are not centered at the origin, nor scaled to unit cube, so that we can test normalization.",
   "vertices": [
