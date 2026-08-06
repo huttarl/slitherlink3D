@@ -3,17 +3,16 @@
 Design notes for teaching the solver to reason about *pairs* of edges, not only
 about single edges.
 
-**Status.** Built and unit-tested in `util/slisolver.py`: the data model
-(`ParityRelation`, extracted from `FaceColoring`, which now subclasses it, plus
-`EdgePairing` and `EdgeClauses`) and the emitters (`emit_vertex_pairs`,
-`emit_face_pairs`, driven by `apply_pair_rules`, which runs in
-`propagate_constraints` after coloring stalls). Still to come: the substitution
-queries described below, which rewrite the clue arithmetic rather than only
-propagating. Tracked in `ideas/TODOs.md`.
+**Status.** All three stages are built and unit-tested in `util/slisolver.py`:
+the data model (`ParityRelation`, extracted from `FaceColoring`, which now
+subclasses it, plus `EdgePairing` and `EdgeClauses`), the emitters
+(`emit_vertex_pairs`, `emit_face_pairs`), and the substitution queries
+(`feasible_choices`, `apply_substitution`). `apply_pair_rules` drives all of it
+from `propagate_constraints`, once coloring has stalled.
 
-Two things measured once the emitters were working, both worth recording:
+Three things measured along the way, all worth recording:
 
-- **It fires where the doc predicted and nowhere else.** From positions where the
+- **It fires where this doc predicted and nowhere else.** From positions where the
   older families had stalled, `apply_pair_rules` deduced something in 156 of 200
   cases on the pentakis dodecahedron (`dtI`) and 127 of 200 on the tetrakis
   hexahedron (`dtO`) — triangle-faced, high-degree solids — and in **0 of 200** on
@@ -21,12 +20,21 @@ Two things measured once the emitters were working, both worth recording:
   3-valent solid with pentagonal faces gives the emitters almost nothing to say,
   because `f == 0, u == 3` yields no pair constraint at all and Rules A and B
   already cover the rest.
-- **It pays for itself, modestly.** Timing `solution_is_unique` over the stored
-  puzzles with the pass enabled vs stubbed out, in one process: `sD` 0.39s vs
-  0.56s, `bD` 1.63s vs 1.93s, `gp12` 25.06s vs 26.98s, and no measurable
-  difference on the small ones. Never slower, roughly 7–30% faster on the large
-  solids, and the set of puzzles proven unique was identical — as it must be,
-  since a sound rule cannot change the solution set, only how fast we reach it.
+- **The substitution queries are where the gain is, exactly as predicted.** Timing
+  `solution_is_unique` over the stored puzzles with the pass enabled vs stubbed
+  out, in one process. With the emitters alone the win was modest — `sD` 0.39s vs
+  0.56s, `bD` 1.63s vs 1.93s, `gp12` 25.06s vs 26.98s. Adding substitution turned
+  `gp12` into **3.47s vs 26.91s**, and it proved all three of that grid's puzzles
+  unique where before one of them exhausted the 20-second budget. So the payoff
+  really is in *asking* about the pairs rather than only propagating them.
+- **Soundness, checked against ground truth.** Across those thousands of stalled
+  positions, every edge the pass deduced was compared with the known solution:
+  zero disagreements. The flagship unit test is verified more strongly still, by
+  brute force over all 2¹² octahedron assignments.
+
+Note the set of puzzles proven unique can only grow, never change: a sound rule
+cannot alter the solution set, only how fast the search reaches it. A puzzle that
+newly passes was always unique — we simply couldn't prove it inside the budget.
 
 The four relations that come up constantly when solving these puzzles by hand:
 
@@ -195,6 +203,29 @@ pairing knows:
 
 The same substitution sharpens the vertex rule. None of these deductions are
 reachable today, and each is a one-line query away once the store exists.
+
+**As built, one mechanism covers all three.** The general statement is cleaner
+than the cases: bucket a face's unknown edges by parity group, and if `p` of a
+group's edges match its representative while `q` are opposite, that group
+contributes exactly `p` when the representative is filled and exactly `q` when it
+is empty — never anything between. So hitting the deficit becomes a sum of
+one-of-two choices, and `feasible_choices` asks, per group, which of its two
+choices can appear in any such sum. A group with only one feasible choice is
+determined; no feasible combination at all means the position is dead. The three
+cases above are then just readings of that: `(p,q) = (1,1)` is exactly-one and
+contributes 1 either way, `(2,0)` is both-or-neither and cannot supply 1, and
+`(2,0)` alone against deficit 1 has no feasible choice.
+
+The vertex version is the same call with two targets, 0 and 2 less what is already
+filled, and it earns its place independently: at a vertex with nothing filled and
+three unknowns, two of them tied both-or-neither, the third edge is ruled out —
+its partners supply 0 or 2, so including it would make 1 or 3.
+
+Two consequences worth noting. This subsumes `apply_vertex_rules` and
+`apply_clue_rules`, which are the all-singletons case, and it subsumes Rules A and
+B as described above; all of them stay because they are much cheaper and run
+first. And the sums are small enough that each reachable set is a bitmask integer,
+so the whole query is a prefix/suffix scan rather than an enumeration.
 
 ## Two decisions that keep it simple
 

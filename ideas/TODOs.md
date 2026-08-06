@@ -32,10 +32,14 @@ Finished items live in ideas/TODOs-done.md.
           triangle-faced high-degree solids and never on the dodecahedron;
           7-30% faster uniqueness checks on the large solids. Figures are in
           docs/edge-pair-constraints.md.
-        - [ ] Queries: rewrite the clue/vertex arithmetic using known pairings
-          (drop an exactly-one pair and reduce the deficit by 1, and so on).
-          This is where the doc expects most of the gain.
+        - [x] Queries: feasible_choices and apply_substitution rewrite the
+          clue/vertex arithmetic using known pairings. This was indeed where the
+          gain was: gp12's uniqueness checks went 26.9s -> 3.5s, and one of its
+          puzzles that used to exhaust the time budget is now proven unique.
         - [ ] Measure against dtC/dtD/dbD, and re-run util/fill_puzzles.py.
+          A first attempt at dtC (1 puzzle, no display) was still running after
+          7 minutes and was abandoned, so these three need either much longer
+          runs or another rule family -- not just more patience.
     - [ ] One thing that should be fruitful is to walk through my manual solving process
       of a puzzle or two, telling Claude along the way what patterns I'm seeing and using,
       and letting it decide whether that's a new rule, or something that's covered by existing

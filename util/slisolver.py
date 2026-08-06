@@ -291,6 +291,20 @@ class ParityRelation:
             return None
         return opposite1 ^ opposite2
 
+    def representative(self, item):
+        """(root, opposite) for an item: which group it belongs to, and whether
+        it is the opposite of that group's representative.
+
+        Read-only, unlike _find: an item never seen before is reported as its own
+        representative WITHOUT being added to the structure. That matters to
+        callers who ask about many edges just to bucket them, and would otherwise
+        silently grow the store with singletons.
+        """
+        key = self._key(item)
+        if key not in self.parent:
+            return (key, False)
+        return self._find(key)
+
     def group(self, item):
         """Every item whose state is tied to this one, as a list of
         (item, opposite) pairs, where `opposite` is relative to the item asked
@@ -626,6 +640,195 @@ def emit_face_pairs(mesh, pairing, clauses):
     return True
 
 
+def pair_groups(pairing, edges):
+    """Bucket `edges` into parity groups.
+
+    Returns a list of (same, opposite) pairs of edge lists: within each group,
+    the edges equal to that group's representative and the edges opposite to it.
+    An edge in no recorded relation forms its own group, as ([edge], []).
+
+    Only the edges passed in are bucketed. A group may well have other members
+    elsewhere on the solid; they are irrelevant to arithmetic about THIS face or
+    vertex, and leaving them out is what keeps the counts below correct.
+    """
+    groups = {}
+    for ekey in edges:
+        (root, opposite) = pairing.representative(ekey)
+        if root not in groups:
+            groups[root] = ([], [])
+        groups[root][1 if opposite else 0].append(ekey)
+    return list(groups.values())
+
+
+def _sum_set(bits1, bits2):
+    """Bitmask of every sum a + b, for a in bits1 and b in bits2, where a set bit
+    j means "the value j is reachable"."""
+    total = 0
+    shift = 0
+    remaining = bits1
+    while remaining:
+        if remaining & 1:
+            total |= bits2 << shift
+        remaining >>= 1
+        shift += 1
+    return total
+
+
+def feasible_choices(values, targets):
+    """Which of each group's two possible contributions can survive.
+
+    This is the substitution query at the heart of the pair machinery. A group of
+    tied edges is not free to contribute any number: if p of them equal the
+    group's representative and q are opposite to it, then the group contributes
+    exactly p when the representative is filled and exactly q when it is empty.
+    Nothing in between. So a face or vertex whose unknown edges fall into such
+    groups has to hit its target as a sum of one-of-two choices, and often only
+    some choices can appear in any such sum.
+
+    Args:
+        values: one (p, q) per group, as above.
+        targets: the acceptable totals -- a single deficit for a clued face, or
+            the two possibilities 0 and 2 (less what's already filled) for a
+            vertex.
+
+    Returns a list parallel to `values`, each entry the set of feasible
+    representative states (True = filled), or None if no combination of choices
+    reaches any target at all, which means the position is contradictory.
+
+    Sums are tiny, so each reachable set is a bitmask integer and the whole thing
+    is a prefix/suffix scan: prefix[i] is what groups before i can reach, and
+    suffix[i] what groups from i on can reach.
+    """
+    prefix = [1]
+    for (p, q) in values:
+        prefix.append((prefix[-1] << p) | (prefix[-1] << q))
+    suffix = [1] * (len(values) + 1)
+    for i in reversed(range(len(values))):
+        (p, q) = values[i]
+        suffix[i] = (suffix[i + 1] << p) | (suffix[i + 1] << q)
+
+    if not any(t >= 0 and (prefix[-1] >> t) & 1 for t in targets):
+        return None
+
+    choices = []
+    for (i, (p, q)) in enumerate(values):
+        # What every OTHER group can reach between them.
+        rest = _sum_set(prefix[i], suffix[i + 1])
+        feasible = set()
+        for (state, value) in ((True, p), (False, q)):
+            if any(t - value >= 0 and (rest >> (t - value)) & 1 for t in targets):
+                feasible.add(state)
+        choices.append(feasible)
+    return choices
+
+
+def _resolve_groups(mesh, pairing, unknown, targets):
+    """Bucket the unknown edges, ask which group states remain possible, and set
+    every edge belonging to a group that has only one possibility left.
+
+    Returns (ok, changed) -- same convention as the rule families.
+    """
+    groups = pair_groups(pairing, unknown)
+    values = [(len(same), len(opposite)) for (same, opposite) in groups]
+    choices = feasible_choices(values, targets)
+    if choices is None:
+        return (False, False)
+
+    changed = False
+    for ((same, opposite), feasible) in zip(groups, choices):
+        if not feasible:
+            # Unreachable: if any combination reached a target, then every group
+            # has at least the choice that combination used. Guarded anyway,
+            # since silently skipping an impossible group would lose a
+            # contradiction.
+            return (False, changed)
+        if len(feasible) > 1:
+            continue  # Both states still possible; nothing forced.
+        state = 'filledIn' if next(iter(feasible)) else 'ruledOut'
+        for (edges, guess) in ((same, state), (opposite, OPPOSITE_GUESS[state])):
+            (ok, did) = _set_edges(mesh, edges, guess)
+            if not ok:
+                return (False, changed)
+            changed = changed or did
+    return (True, changed)
+
+
+def apply_substitution(mesh, pairing):
+    """Rewrite the clue and vertex arithmetic using what the pairing knows.
+
+    The ordinary clue rule asks "can these u unknown edges supply the deficit?"
+    treating each as independently 0 or 1. Once edges are known to be tied, that
+    is too generous: a group of tied edges contributes one of exactly two counts,
+    so some totals the plain rule believes reachable are not. Asking the sharper
+    question is where the design doc expects most of the gain, and it subsumes
+    the three cases the doc lists by hand:
+
+        two unknowns that are EXACTLY ONE form a group contributing 1 either way,
+            so they drop out and the deficit falls by 1;
+        two unknowns that are BOTH OR NEITHER contribute 2 or 0, never 1, so on a
+            face with deficit 1 they must both be empty;
+        and a face with deficit 1 whose only unknowns are one both-or-neither
+            pair is contradictory, since neither 0 nor 2 is 1.
+
+    All three fall out of feasible_choices rather than being coded separately.
+
+    Faces are asked to hit their deficit exactly. Vertices are asked to hit 0 or
+    2 filled in total, which is the same machinery with two targets instead of
+    one -- and it earns its keep: at a vertex with nothing filled and three
+    unknowns, two of them tied both-or-neither, the third edge is ruled out,
+    because it cannot be the lone second edge (its partners supply 0 or 2, so
+    pairing it makes 1 or 3).
+
+    Note this also subsumes apply_vertex_rules and apply_clue_rules, which are
+    the all-singletons case. They stay because they are far cheaper and run
+    first.
+
+    Returns (ok, changed) -- same convention as the other rule families.
+    """
+    changed = False
+
+    for fkey in mesh.faces():
+        clue = mesh.face_attribute(fkey, 'clue')
+        if clue is None:
+            continue
+        filled = 0
+        unknown = []
+        for ekey in mesh.face_halfedges(fkey):
+            guess = mesh.edge_attribute(ekey, 'guess')
+            if guess == 'filledIn':
+                filled += 1
+            elif guess == 'unknown':
+                unknown.append(ekey)
+        if not unknown:
+            continue
+        (ok, did) = _resolve_groups(mesh, pairing, unknown, {clue - filled})
+        if not ok:
+            return (False, changed)
+        changed = changed or did
+
+    for vkey in mesh.vertices():
+        filled = 0
+        unknown = []
+        for nbr in mesh.vertex_neighbors(vkey):
+            ekey = (vkey, nbr)
+            guess = mesh.edge_attribute(ekey, 'guess')
+            if guess == 'filledIn':
+                filled += 1
+            elif guess == 'unknown':
+                unknown.append(ekey)
+        if not unknown:
+            continue
+        # A vertex uses 0 or 2 edges, so the unknowns must supply one of those
+        # less what is already filled. Negative targets are simply unreachable.
+        targets = {0 - filled, 2 - filled}
+        (ok, did) = _resolve_groups(mesh, pairing, unknown, targets)
+        if not ok:
+            return (False, changed)
+        changed = changed or did
+
+    return (True, changed)
+
+
 def pair_forced_by(pairing, clauses, edge, guess):
     """Everything the two stores TOGETHER force, given one edge's state.
 
@@ -655,13 +858,14 @@ def pair_forced_by(pairing, clauses, edge, guess):
 def apply_pair_rules(mesh):
     """Apply edge-pair reasoning: build the pair constraints, then use them.
 
-    Three steps. First the emitters read pairs off the vertex and clue
-    arithmetic. Then any pair that collected both an at-least-one and an
-    at-most-one is promoted to "exactly one" -- the seam where two rule families
-    feed each other, since the two clauses often come from different faces, or
-    from a face and a vertex. Finally each constrained edge is tested both ways:
-    if supposing it filled forces some edge into both states at once, the edge
-    must be ruled out, and vice versa.
+    Four steps. First the emitters read pairs off the vertex and clue arithmetic.
+    Then any pair that collected both an at-least-one and an at-most-one is
+    promoted to "exactly one" -- the seam where two rule families feed each other,
+    since the two clauses often come from different faces, or from a face and a
+    vertex. Then apply_substitution re-asks the clue and vertex arithmetic knowing
+    which edges are tied together. Finally, if that found nothing, each
+    constrained edge is tested both ways: if supposing it filled forces some edge
+    into both states at once, the edge must be ruled out, and vice versa.
 
     That last step is a restricted lookahead, and worth comparing to
     propagate_with_lookahead, which is strictly stronger: it supposes an edge
@@ -695,6 +899,16 @@ def apply_pair_rules(mesh):
     for (edge1, edge2) in clauses.exactly_one_pairs():
         if not pairing.exactly_one(edge1, edge2):
             return (False, False)
+
+    # The substitution queries: cheaper than the supposition test below, and
+    # deterministic, so they go first. If they found anything, hand straight back
+    # so the cheap local rules get to cascade on it before we pay for anything
+    # more; the stores are rebuilt next time round anyway.
+    (ok, changed) = apply_substitution(mesh, pairing)
+    if not ok:
+        return (False, changed)
+    if changed:
+        return (True, True)
 
     # Every edge any constraint mentions, in a stable order for reproducibility.
     candidates = set(pairing.parent) | {edge for (edge, _guess) in clauses.implies}

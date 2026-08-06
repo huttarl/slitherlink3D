@@ -23,9 +23,12 @@ from slisolver import (
     apply_clues,
     apply_color_rules,
     apply_pair_rules,
+    apply_substitution,
     edge_id,
     emit_face_pairs,
     emit_vertex_pairs,
+    feasible_choices,
+    pair_groups,
     apply_pattern_rules,
     apply_rule_c,
     apply_rule_d,
@@ -1295,6 +1298,180 @@ class TestApplyPairRules:
         apply_clues([(2, 1)], 1, cube)
         (ok, _changed) = apply_pair_rules(cube)
         assert ok is False
+
+
+class TestParityRelationRepresentative:
+    def test_reports_an_unseen_item_as_its_own(self):
+        relation = ParityRelation()
+        assert relation.representative('a') == ('a', False)
+
+    def test_does_not_add_an_unseen_item(self):
+        # Bucketing callers ask about many items; inserting each one would grow
+        # the structure with singletons behind the caller's back.
+        relation = ParityRelation()
+        relation.representative('a')
+        assert relation.parent == {}
+
+    def test_reports_parity_within_a_group(self):
+        relation = ParityRelation()
+        relation.relate('a', 'b', opposite=True)
+        (root_a, opposite_a) = relation.representative('a')
+        (root_b, opposite_b) = relation.representative('b')
+        assert root_a == root_b
+        assert opposite_a != opposite_b
+
+
+class TestPairGroups:
+    def test_unrelated_edges_are_singletons(self):
+        groups = pair_groups(EdgePairing(), [(0, 1), (1, 2)])
+        assert sorted(groups) == [([(0, 1)], []), ([(1, 2)], [])]
+
+    def test_tied_edges_share_a_group_split_by_parity(self):
+        pairing = EdgePairing()
+        pairing.both_or_neither((0, 1), (1, 2))
+        pairing.exactly_one((1, 2), (2, 3))
+        groups = pair_groups(pairing, [(0, 1), (1, 2), (2, 3)])
+        assert len(groups) == 1
+        (same, opposite) = groups[0]
+        # (0,1) and (1,2) agree; (2,3) is opposite to both.
+        assert sorted(same) == [(0, 1), (1, 2)]
+        assert opposite == [(2, 3)]
+
+    def test_only_the_edges_asked_about_are_counted(self):
+        # The group has a third member, but it is not on the face we're asking
+        # about, so it must not inflate the counts.
+        pairing = EdgePairing()
+        pairing.both_or_neither((0, 1), (1, 2))
+        pairing.both_or_neither((1, 2), (2, 3))
+        groups = pair_groups(pairing, [(0, 1), (1, 2)])
+        assert groups == [([(0, 1), (1, 2)], [])]
+
+
+class TestFeasibleChoices:
+    """The substitution query. Each group contributes p if its representative is
+    filled and q if empty, and the totals must hit a target."""
+
+    def test_all_singletons_at_zero_forces_every_edge_empty(self):
+        # The plain clue rule's deficit-0 case, as a special case of this.
+        assert feasible_choices([(1, 0), (1, 0), (1, 0)], {0}) == [
+            {False}, {False}, {False}]
+
+    def test_all_singletons_at_full_forces_every_edge_filled(self):
+        assert feasible_choices([(1, 0), (1, 0)], {2}) == [{True}, {True}]
+
+    def test_all_singletons_in_between_forces_nothing(self):
+        assert feasible_choices([(1, 0), (1, 0), (1, 0)], {2}) == [
+            {True, False}, {True, False}, {True, False}]
+
+    def test_both_or_neither_pair_cannot_supply_a_deficit_of_one(self):
+        # The group contributes 2 or 0, so it must contribute 0, and the lone
+        # singleton must supply the 1. This is the doc's worked example.
+        assert feasible_choices([(2, 0), (1, 0)], {1}) == [{False}, {True}]
+
+    def test_both_or_neither_pair_alone_at_deficit_one_is_impossible(self):
+        assert feasible_choices([(2, 0)], {1}) is None
+
+    def test_exactly_one_pair_drops_out_and_reduces_the_deficit(self):
+        # A group with one edge each way contributes 1 whichever state it takes,
+        # so its own state stays open while the rest of the face sees deficit 0.
+        assert feasible_choices([(1, 1), (1, 0)], {1}) == [
+            {True, False}, {False}]
+
+    def test_two_targets_for_a_vertex(self):
+        # Vertex with nothing filled: the unknowns must total 0 or 2. A tied
+        # both-or-neither pair supplies 0 or 2, so the third edge cannot be
+        # filled -- it would make 1 or 3.
+        assert feasible_choices([(2, 0), (1, 0)], {0, 2}) == [
+            {True, False}, {False}]
+
+    def test_unreachable_target_returns_none(self):
+        assert feasible_choices([(1, 0), (1, 0)], {5}) is None
+
+    def test_negative_targets_are_ignored(self):
+        # A vertex with 2 already filled yields targets {-2, 0}; only 0 counts.
+        assert feasible_choices([(1, 0)], {-2, 0}) == [{False}]
+
+
+class TestApplySubstitution:
+    """The queries against a real mesh, with a hand-built pairing so each case is
+    isolated from what the emitters happen to produce. Cube face 2 (front) has
+    edges (0,1), (1,5), (4,5), (0,4)."""
+
+    def test_no_pairings_deduces_nothing_new(self, cube):
+        # With every group a singleton this reduces to the plain clue rule, which
+        # can see nothing here: clue 1 among 4 unknowns forces no edge.
+        fill(cube, [])
+        apply_clues([(2, 1)], 1, cube)
+        (ok, changed) = apply_substitution(cube, EdgePairing())
+        assert (ok, changed) == (True, False)
+
+    def test_both_or_neither_pair_is_ruled_out_at_deficit_one(self, cube):
+        """The doc's example: a face needing one more edge, whose unknowns are a
+        tied pair plus a single edge. The pair must be empty and the single edge
+        filled."""
+        fill(cube, [])
+        set_edge(cube, 4, 5, 'ruledOut')      # leaves three unknowns
+        apply_clues([(2, 1)], 1, cube)
+        pairing = EdgePairing()
+        pairing.both_or_neither((0, 1), (1, 5))
+        (ok, changed) = apply_substitution(cube, pairing)
+        assert (ok, changed) == (True, True)
+        assert guess_of(cube, 0, 1) == 'ruledOut'
+        assert guess_of(cube, 1, 5) == 'ruledOut'
+        assert guess_of(cube, 0, 4) == 'filledIn'
+
+    def test_exactly_one_pair_contradicts_a_deficit_of_zero(self, cube):
+        fill(cube, [])
+        apply_clues([(2, 0)], 1, cube)        # deficit 0: nothing may be filled
+        pairing = EdgePairing()
+        pairing.exactly_one((0, 1), (1, 5))   # one of these two would be filled
+        (ok, _changed) = apply_substitution(cube, pairing)
+        # Contradictory: the pair must supply exactly 1, but the clue allows 0.
+        assert ok is False
+
+    def test_forced_group_is_written_out_in_both_parities(self, cube):
+        """When a group holding edges of both parities is forced, the same-parity
+        edges and the opposite-parity ones must be set opposite ways.
+
+        Face 2 clued 3, with (0,1) and (1,5) tied together and (4,5) opposite to
+        them. That group supplies 2 (rep filled) or 1 (rep empty), and (0,4)
+        supplies 0 or 1, so the only way to reach 3 is 2 + 1.
+        """
+        fill(cube, [])
+        apply_clues([(2, 3)], 1, cube)
+        pairing = EdgePairing()
+        pairing.both_or_neither((0, 1), (1, 5))
+        pairing.exactly_one((1, 5), (4, 5))
+        (ok, changed) = apply_substitution(cube, pairing)
+        assert (ok, changed) == (True, True)
+        assert guess_of(cube, 0, 1) == 'filledIn'
+        assert guess_of(cube, 1, 5) == 'filledIn'
+        assert guess_of(cube, 4, 5) == 'ruledOut'
+        assert guess_of(cube, 0, 4) == 'filledIn'
+
+    def test_contradiction_when_no_combination_reaches_the_deficit(self, cube):
+        fill(cube, [])
+        set_edge(cube, 4, 5, 'ruledOut')
+        set_edge(cube, 0, 4, 'ruledOut')      # only the tied pair is left
+        apply_clues([(2, 1)], 1, cube)
+        pairing = EdgePairing()
+        pairing.both_or_neither((0, 1), (1, 5))
+        (ok, _changed) = apply_substitution(cube, pairing)
+        assert ok is False
+
+    def test_vertex_rule_is_sharpened_too(self, cube):
+        """Cube vertex 0 has edges (0,1), (0,3), (0,4), none filled, so 0 or 2 of
+        them are. Tying two of them both-or-neither means they supply 0 or 2, so
+        the third cannot be filled."""
+        fill(cube, [])
+        pairing = EdgePairing()
+        pairing.both_or_neither((0, 1), (0, 3))
+        (ok, changed) = apply_substitution(cube, pairing)
+        assert (ok, changed) == (True, True)
+        assert guess_of(cube, 0, 4) == 'ruledOut'
+        # The tied pair itself stays open: both empty and both filled are legal.
+        assert guess_of(cube, 0, 1) == 'unknown'
+        assert guess_of(cube, 0, 3) == 'unknown'
 
 
 class TestApplyColorRules:
