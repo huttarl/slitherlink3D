@@ -36,10 +36,28 @@ Finished items live in ideas/TODOs-done.md.
           clue/vertex arithmetic using known pairings. This was indeed where the
           gain was: gp12's uniqueness checks went 26.9s -> 3.5s, and one of its
           puzzles that used to exhaust the time budget is now proven unique.
-        - [ ] Measure against dtC/dtD/dbD, and re-run util/fill_puzzles.py.
-          A first attempt at dtC (1 puzzle, no display) was still running after
-          7 minutes and was abandoned, so these three need either much longer
-          runs or another rule family -- not just more patience.
+        - [x] Measured against dtC, and the answer overturns the assumption that
+          these three need more solver rules. dtC puzzles are NOT hard to solve:
+          clued at 90% of faces, plain propagation finishes all 36 edges on every
+          seed tried. What they are is hard to make UNIQUE. dtC has 8 degree-3
+          apexes, and at each one the loop can either pass through the apex (two
+          edges) or take the base edge between its two degree-8 neighbours (one
+          edge) -- a two-way flip that only a clue on the apex's own triangle can
+          settle. Leave a few triangles unclued and ambiguity is almost certain:
+          at 80% clues, two different seeds each gave exactly 2 solutions
+          (verified by enumerating the completions propagation left open).
+          So uniqueness needs ~22 of 24 clues, and by then the puzzle is trivial
+          for our solver -- there is no "hard but unique" band to aim at.
+        - [ ] Therefore the fix for dtC/dtD/dbD is CLUE PLACEMENT, not more rules:
+          clue every low-degree apex's triangle deliberately, then minimise over
+          the rest. util/genLoosePuzzle.py exists for probing this (it builds a
+          valid puzzle without proving uniqueness, and can survey clue densities).
+          Still unknown: where genSliPuzzles' time actually goes on these solids
+          -- worth profiling rather than guessing, since the minimal clue set
+          being large should have made it fast, not slow.
+        - [ ] Confirm the same diagnosis on dtD (20 degree-3 apexes) and dbD,
+          which has no degree-3 vertices at all, so its flips must involve
+          degree-4 ones and the story may differ.
     - [ ] One thing that should be fruitful is to walk through my manual solving process
       of a puzzle or two, telling Claude along the way what patterns I'm seeing and using,
       and letting it decide whether that's a new rule, or something that's covered by existing
