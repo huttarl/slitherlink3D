@@ -43,12 +43,15 @@ SKIP_UNIQUENESS = {
 }
 
 
-def all_puzzle_cases():
+def all_puzzle_cases(skip=None):
     """One test case per puzzle: (grid_path, puzzles_path, key, puzzle_index),
     with a readable ID like 'cube-puzzle0' or 'eD-display0'.
 
     Display puzzles are swept too: they are shown with their clues on the title
-    screen, so they hold to the same standard as a playable puzzle."""
+    screen, so they hold to the same standard as a playable puzzle.
+
+    @param skip: {test id: reason} to mark as skipped. Per-test, since a puzzle
+        the uniqueness sweep can't afford is still worth the cheaper checks."""
     cases = []
     for puzzles_path in sorted(DATA_DIR.glob('*-puzzles.json')):
         stem = puzzles_path.name[:-len('-puzzles.json')]
@@ -60,8 +63,8 @@ def all_puzzle_cases():
         for (key, label) in (('puzzles', 'puzzle'), ('displayPuzzles', 'display')):
             for i in range(len(data.get(key, []))):
                 case_id = f'{stem}-{label}{i}'
-                marks = ([pytest.mark.skip(reason=SKIP_UNIQUENESS[case_id])]
-                         if case_id in SKIP_UNIQUENESS else [])
+                marks = ([pytest.mark.skip(reason=skip[case_id])]
+                         if skip and case_id in skip else [])
                 cases.append(pytest.param(grid_path, puzzles_path, key, i,
                                           id=case_id, marks=marks))
     return cases
@@ -77,7 +80,7 @@ def test_no_orphan_puzzle_files():
 
 @pytest.mark.slow
 @pytest.mark.parametrize(('grid_path', 'puzzles_path', 'key', 'index'),
-                         all_puzzle_cases())
+                         all_puzzle_cases(skip=SKIP_UNIQUENESS))
 def test_puzzle_solution_is_unique(grid_path, puzzles_path, key, index):
     grid = json.loads(grid_path.read_text())
     mesh = Mesh.from_vertices_and_faces(grid['vertices'], grid['faces'])
@@ -92,6 +95,55 @@ def test_puzzle_solution_is_unique(grid_path, puzzles_path, key, index):
                                 time_budget=TIME_BUDGET_SECONDS)
     assert unique, (f'{puzzles_path.name} {key}[{index}] is not uniquely solvable '
                     f'(or exceeded the {TIME_BUDGET_SECONDS}s time budget)')
+
+
+def loop_edges(solution):
+    """A loop's edges, as frozensets so direction and starting point don't
+    matter."""
+    return {frozenset((solution[i], solution[(i + 1) % len(solution)]))
+            for i in range(len(solution))}
+
+
+@pytest.mark.parametrize(('grid_path', 'puzzles_path', 'key', 'index'),
+                         all_puzzle_cases())
+def test_puzzle_agrees_with_its_grid(grid_path, puzzles_path, key, index):
+    """Every stored puzzle describes a real single loop on its own grid, with
+    clues that count it correctly.
+
+    Fast (no solver), so it runs by default, and it catches a whole class of
+    mistake the uniqueness sweep would only report as "not solvable": a puzzle
+    generated against a different version of the grid, whose vertex numbers no
+    longer mean what they did. That's a live risk now that grids can be
+    regenerated -- util/genGoldberg.py rebuilds one from its parameters.
+    """
+    grid = json.loads(grid_path.read_text())
+    faces = grid['faces']
+    solid_edges = {frozenset((f[i], f[(i + 1) % len(f)]))
+                   for f in faces for i in range(len(f))}
+
+    puzzle = json.loads(puzzles_path.read_text())[key][index]
+    loop = puzzle['solution']
+    edges = loop_edges(loop)
+
+    assert len(set(loop)) == len(loop), 'the loop repeats a vertex'
+    assert len(edges) == len(loop), 'the loop repeats an edge'
+    assert not (edges - solid_edges), \
+        'the loop uses pairs of vertices that are not edges of this solid'
+    # Two loop edges at every vertex it passes through: that is what makes it a
+    # closed path rather than a tree or several pieces.
+    touches = {}
+    for edge in edges:
+        for v in edge:
+            touches[v] = touches.get(v, 0) + 1
+    assert set(touches.values()) == {2}, 'not a single closed loop'
+
+    for (fkey, clue) in enumerate(puzzle['clues']):
+        if clue == -1:
+            continue
+        face = faces[fkey]
+        used = sum(1 for i in range(len(face))
+                   if frozenset((face[i], face[(i + 1) % len(face)])) in edges)
+        assert used == clue, f'face {fkey} says {clue} but the loop uses {used}'
 
 
 def test_display_puzzles_key_is_never_empty():

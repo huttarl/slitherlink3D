@@ -25,20 +25,25 @@ const FAMILY_ORDER = [
     'Archimedean solid',
     'Catalan solid',
     'Johnson solid',
-    // For solids in none of the classical families: GP(1,2) and up. Note the
-    // difference from the cross-cutting 'Goldberg' attribute, which marks the
-    // two solids that ARE Goldberg polyhedra while already belonging to a
-    // classical family (the dodecahedron and the truncated icosahedron). The
-    // families have to partition the collection, so the same name can't do
-    // both jobs.
-    'Goldberg polyhedron',
+    // Everything the classical families don't cover: the Goldberg polyhedra
+    // beyond GP(1,0) and GP(1,1) (which are the dodecahedron and the truncated
+    // icosahedron, so already Platonic and Archimedean), and prisms and
+    // antiprisms when we get to them. A catch-all rather than a family of its
+    // own, but the picker has to file every solid under exactly one heading,
+    // and "Goldberg polyhedra" as a heading would leave those first two in two
+    // families at once. What a solid actually IS still shows on its About card:
+    // GP(1,2) is filed here and carries the 'Goldberg' attribute.
+    'Miscellaneous',
 ];
 
 /** Plural of a category name: "Platonic solid" -> "Platonic solids". */
 function pluralizeCategory(category) {
     // -hedron -> -hedra, so "deltahedron" doesn't come out as "deltahedrons".
+    // A name that already ends in -s is left alone: "Miscellaneous" is a heading
+    // as it stands, and "Miscellaneouss" is not a word.
     const plural = category.endsWith('hedron')
         ? category.replace(/hedron$/, 'hedra')
+        : category.endsWith('s') ? category
         : category + 's';
     return plural.charAt(0).toUpperCase() + plural.slice(1);
 }

@@ -53,9 +53,10 @@ const VIRTUAL_POLYHEDRA = 'https://www.georgehart.com/virtual-polyhedra/';
  */
 const SOLID_PAGE_EXCEPTIONS = {
     // The wiki covers the Goldberg polyhedra in one article and has nothing on
-    // GP(1,2) by itself, so the family article is where the name should lead.
-    // (The rule would derive 'Goldberg_GP' from "Goldberg GP(1,2)" -- it strips
-    // a trailing parenthetical, which here is part of the name.)
+    // GP(1,2) by itself, so that article is where the name should lead. (The rule
+    // would derive 'Goldberg_GP' from "Goldberg GP(1,2)" -- it strips a trailing
+    // parenthetical, which here is part of the name.) The chamfered dodecahedron,
+    // GP(2,0), needs no entry: it has a name and an article of its own.
     'gp12': 'Goldberg_polyhedron',
 };
 
@@ -108,16 +109,18 @@ const CATEGORY_PAGES = {
     'quasiregular': VIRTUAL_POLYHEDRA + 'quasi-regular-info.html',
     'zonohedron': VIRTUAL_POLYHEDRA + 'zonohedra-info.html',
     'chiral': POLYTOPE_WIKI + 'Chirality',
-    // The family and the cross-cutting attribute point at the same article; see
-    // FAMILY_ORDER in catalogue.js for why they're separate categories.
-    'Goldberg polyhedron': POLYTOPE_WIKI + 'Goldberg_polyhedron',
     'Goldberg': POLYTOPE_WIKI + 'Goldberg_polyhedron',
     'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
     'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',
 };
 
 /** Categories we have deliberately decided not to link (see above). */
-export const UNLINKED_CATEGORIES = [];
+export const UNLINKED_CATEGORIES = [
+    // The catch-all family (see FAMILY_ORDER in catalogue.js). There is nothing
+    // to read about being miscellaneous; what such a solid actually is shows in
+    // its other categories, which are linked.
+    'Miscellaneous',
+];
 
 /**
  * The article about one particular polyhedron.

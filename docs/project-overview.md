@@ -30,10 +30,11 @@ The JS side of the app runs directly in the browser with no build process:
 The Python utilities under `util/` have a pytest suite:
 
 - **Run Python tests**: `pytest util/tests` from the repo root. That runs
-  everything, including the `slow`-marked data/ puzzle-uniqueness sweep,
-  in a few seconds — puzzles are generated to be solvable by deduction, so
-  the solver never has to search. `pytest util/tests -m slow` runs only the
-  sweep; `-m "not slow"` skips it, should it ever get expensive again.
+  everything, including the `slow`-marked data/ puzzle-uniqueness sweep. Most of
+  it is fast, puzzles being generated to be solvable by deduction so the solver
+  rarely has to search; the largest grids dominate the runtime. `pytest
+  util/tests -m slow` runs only the sweep; `-m "not slow"` skips it when you want
+  the quick answer.
 - Python deps used by `util/` are declared in `requirements.txt` (`compas`,
   `networkx`, `matplotlib`, `numpy`, `scipy`, `pytest`), with a note there on
   which script needs what. None of them are needed to play or develop the
@@ -83,7 +84,7 @@ The Python utilities under `util/` have a pytest suite:
 On a cold launch, `main.js` also calls `initTitleScreen()` before step 1, to wire
 the two buttons. Everything visual about the title screen — hiding the panel,
 showing the title box — is done by main.html's inline pre-paint script, so it is
-already on screen while the 62-face solid is still loading. Both buttons
+already on screen while the solid is still loading. Both buttons
 navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
 `openHowToPlay()` acts on and then strips from the URL.
 
@@ -195,10 +196,10 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
 - `polyhedronLinks.js` — where the card's links go: Polytope Wiki per solid,
   George Hart's Virtual Polyhedra per family, Plus Magazine for Euler's formula.
   Deliberately not Wikipedia. Per-solid URLs are derived from the polyhedron's
-  name (a MediaWiki title is the name with underscores for spaces), with an
-  exception table that happens to be empty. A polyhedron added later is linked
-  automatically; `npm run test:links` then confirms the pages exist (it needs the
-  network, so the everyday suite skips it).
+  name (a MediaWiki title is the name with underscores for spaces), with a small
+  exception table for the solids that rule gets wrong. A polyhedron added later is
+  linked automatically; `npm run test:links` then confirms the pages exist (it
+  needs the network, so the everyday suite skips it).
 - `solidFacts.js` — the pure topology behind that card: `faceCensus`,
   `facesAroundVertex` (walks the fan of faces round a vertex), and
   `vertexConfiguration`, which returns the shared cycle only when every vertex
@@ -296,6 +297,10 @@ those layers subscribe to its observer callbacks instead.
   - `run_gen.py` — wrapper that runs `genSliPuzzles.py` headlessly with a
     timeout (see "Generating polyhedra and puzzles").
   - `build_catalogue.py` — regenerates `data/grids.json` from the data files.
+  - `catalogue_report.py` — prints what `data/` holds: a line per grid with its
+    counts, puzzles, display puzzles and categories, plus totals, and a note on
+    any grid with no puzzles or (if it's big enough for the title screen) no
+    display puzzle. Takes grid names to report on just those. Reads only.
   - `tests/` — pytest suite covering `slisolver.py`, the region coloring and
     clue-minimization workflow in `genSliPuzzles.py`, and a `slow`-marked
     uniqueness sweep of every puzzle in `data/`.
@@ -503,15 +508,16 @@ progression order. A new grid won't appear in the picker until this has run.
 The project is in active development.
 
 The Python puzzle-generation pipeline (solver + generator) works end-to-end.
-`data/` currently holds **27 grids with 79 playable puzzles**, plus 20
-display-only ones for the title screen: all 5 Platonic solids, all 13
-Archimedean solids, 8 Johnson solids, and the Goldberg polyhedron GP(1,2),
-ranging from the tetrahedron (4 faces, 6 edges) to GP(1,2) itself (72 faces,
-210 edges).
-Every grid offers 3 puzzles except the tetrahedron, which has exactly one
-puzzle in total: its loop is always some face's boundary, that face's clue is
-excluded for having a deficit of 0, and all four faces are equivalent under
-the solid's symmetries, so every such puzzle is the same one turned around.
+`data/` holds the Platonic and Archimedean solids, a selection of Johnson
+solids, and some Goldberg polyhedra, each with a few puzzles. For the actual
+inventory — what's there today, with counts, categories and puzzle numbers —
+run `util/catalogue_report.py`; it reads the data, so it can't go stale the way
+a figure written down here does.
+
+The tetrahedron is the one grid with a single puzzle, and the reason is worth
+knowing: its loop is always some face's boundary, that face's clue is excluded
+for having a deficit of 0, and all four faces are equivalent under the solid's
+symmetries, so every such puzzle is the same one turned around.
 
 Every puzzle is uniquely solvable AND solvable by deduction, and no two on a
 grid are the same board up to rotation or reflection -- verified by the
@@ -519,13 +525,12 @@ solver, and re-verified any time by the `slow`-marked pytest sweep, which
 runs as part of a normal `pytest util/tests`.
 
 Uniqueness checks are time-budgeted, so generation stays bounded even where
-the solver's search would blow up. Generating a couple of puzzles takes
-seconds on small grids and about 9 minutes at 180 edges, which is roughly the
-practical ceiling today. Notably, cost tracks face composition as much as
-size: the 72-edge truncated cuboctahedron generated ~17x faster than the
-90-edge truncated dodecahedron, whose 20 triangles admit only clues 0-3 and so
-give propagation less to work with (see the difficulty discussion in
-`ideas/TODOs.md`).
+the solver's search would blow up. Generating a few puzzles takes seconds on
+small grids and minutes on the largest. Cost tracks face composition as much as
+size, which is the surprise worth remembering: the 72-edge truncated
+cuboctahedron generated ~17x faster than the 90-edge truncated dodecahedron,
+whose 20 triangles admit only clues 0-3 and so give propagation less to work
+with (see the difficulty discussion in `ideas/TODOs.md`).
 
 On the JS side, the core play loop works end-to-end: pick a polyhedron and
 puzzle (dropdowns backed by `?grid=`/`?puzzle=` URL parameters), mark edges

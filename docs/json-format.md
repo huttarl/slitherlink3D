@@ -9,16 +9,16 @@ A JSON object containing the following properties:
 - "categories" (optional): an array of strings, human-readable names for the categories that the polyhedron
   belongs to. E.g. ["Platonic solid", "zonohedron"]
   - Exactly one of these should be a *family* — "Platonic solid", "Archimedean solid",
-    "Catalan solid", "Johnson solid", "Goldberg polyhedron" — since the polyhedron
-    picker groups by family.
+    "Catalan solid", "Johnson solid", "Miscellaneous" — since the polyhedron picker
+    groups by family, and a solid can only be filed under one heading.
     The rest are cross-cutting properties: "deltahedron", "quasiregular", "zonohedron",
     "parallelohedron", "chiral", "self-dual", "Goldberg".
-  - "Goldberg polyhedron" (a family) and "Goldberg" (an attribute) say the same thing
-    about a solid, and no grid says both. The family is for a solid that belongs to no
-    classical family — GP(1,2) and larger; the attribute is for one that does, namely
-    the dodecahedron (Platonic, and GP(1,0)) and the truncated icosahedron
-    (Archimedean, and GP(1,1)). Families have to partition the collection, so the
-    same name can't serve both purposes.
+  - "Miscellaneous" is the catch-all for a solid in none of the classical families:
+    the Goldberg polyhedra past GP(1,1), and prisms and antiprisms when we have them.
+    It says nothing about the solid — what it actually is comes from its other
+    categories, so the chamfered dodecahedron is ["Miscellaneous", "Goldberg"] — and
+    it's the one category with no link, there being nothing to read about being
+    miscellaneous.
   - Where one category implies another, list only the narrowest: every parallelohedron
     is a zonohedron, so the cube says "parallelohedron" and stops there.
   - Names are kept short — "chiral", not "chiral polyhedron"; "Goldberg", not

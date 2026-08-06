@@ -303,7 +303,12 @@ def main():
     (vertices, faces) = goldberg(m, n)
     log(check(m, n, vertices, faces))
 
-    categories = ['Goldberg polyhedron']
+    # "Miscellaneous" is the family for a solid in none of the classical ones,
+    # the picker having to file every solid under exactly one family. GP(1,0) and
+    # GP(1,1) are the exceptions -- they're the dodecahedron and the truncated
+    # icosahedron, so they're Platonic and Archimedean respectively -- and this
+    # script isn't how those two got into data/.
+    categories = ['Miscellaneous', 'Goldberg']
     # GP(m,n) is chiral unless it is its own mirror image, which happens only
     # along the two symmetric edges of the (m,n) family.
     if n != 0 and m != n:

@@ -222,6 +222,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "cD",
+      "gridId": "cD",
+      "gridName": "Chamfered dodecahedron",
+      "categories": ["Miscellaneous", "Goldberg"],
+      "faces": 42,
+      "edges": 120,
+      "vertices": 80,
+      "numPuzzles": 3
+    },
+    {
       "file": "J75",
       "gridId": "J75",
       "gridName": "Trigyrate rhombicosidodecahedron (J75)",
@@ -265,7 +275,7 @@
       "file": "gp12",
       "gridId": "gp12",
       "gridName": "Goldberg GP(1,2)",
-      "categories": ["Goldberg polyhedron", "chiral"],
+      "categories": ["Miscellaneous", "Goldberg", "chiral"],
       "faces": 72,
       "edges": 210,
       "vertices": 140,

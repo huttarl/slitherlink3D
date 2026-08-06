@@ -173,11 +173,7 @@ describe('the catalogue\'s categories', () => {
     // broader is a click away on the narrower one's page, and the card has
     // little room. Every parallelohedron is a zonohedron, so the cube is listed
     // as a parallelohedron and leaves it at that.
-    // 'Goldberg polyhedron' is the family for a solid that belongs to no
-    // classical one; 'Goldberg' is the attribute for a solid that does. Saying
-    // both would be saying the same thing twice.
-    const IMPLIES = [['parallelohedron', 'zonohedron'],
-                     ['Goldberg polyhedron', 'Goldberg']];
+    const IMPLIES = [['parallelohedron', 'zonohedron']];
 
     test('no grid lists both a category and one it implies', () => {
         const redundant = [];
@@ -196,7 +192,7 @@ describe('the catalogue\'s categories', () => {
         // The picker groups by family, and a grid in two of them would have to
         // be filed under one arbitrarily.
         const FAMILIES = ['Platonic solid', 'Archimedean solid', 'Catalan solid',
-                          'Johnson solid', 'Goldberg polyhedron'];
+                          'Johnson solid', 'Miscellaneous'];
         for (const grid of catalogue.grids) {
             const families = (grid.categories || [])
                 .filter(category => FAMILIES.includes(category));
