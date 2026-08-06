@@ -283,7 +283,8 @@ those layers subscribe to its observer callbacks instead.
     for three puzzles on the truncated icosidodecahedron).
 - **docs/** — `json-format.md` (authoritative format reference),
   `project-overview.md` (this file), `upgrading-THREE.md` (how and when to
-  upgrade the vendored THREE.js).
+  upgrade the vendored THREE.js), `edge-pair-constraints.md` (the design for
+  teaching the solver about pairs of edges — planned, not built).
 - **ideas/** — `TODOs.md` and design notes (e.g. `graph-cycles.txt`).
 - **util/** — Python utilities:
   - `genUniformPolyh.py` — generates Platonic/Archimedean grid JSON from exact

@@ -164,14 +164,141 @@ def propagate_constraints(mesh, clues, num_clues):
             return True  # No family can deduce anything further.
 
 
-class FaceColoring:
+# The two determined edge states, each other's negation. Used by the edge-pair
+# machinery, which reasons about "the other state" constantly.
+OPPOSITE_GUESS = {'filledIn': 'ruledOut', 'ruledOut': 'filledIn'}
+
+
+def edge_id(ekey):
+    """A canonical key for an edge, independent of which end is named first.
+
+    COMPAS treats (u,v) and (v,u) as the same edge for attribute lookups, but a
+    plain dict does not, so anything of ours that keys structures by edge has to
+    canonicalize first or it will silently hold one edge twice.
+    """
+    return tuple(sorted(ekey))
+
+
+class ParityRelation:
+    """Tracks which items must be in the same state as each other, and which
+    must be in opposite states, without ever deciding which state is which.
+
+    Union-find over items, but each item also carries one parity bit saying
+    whether it is the same as, or opposite to, its parent. So the structure
+    answers "are these two items the same?" -- never "which one is this?".
+
+    Two subclasses use it, over different variables:
+
+        FaceColoring -- items are faces, "opposite" means opposite colors
+        EdgePairing  -- items are edges, "opposite" means exactly one is filled
+
+    Both are the same question asked about different things, and both are
+    relative-only, which is what makes one implementation serve them. Any
+    hashable item works; subclasses that need a canonical key (as EdgePairing
+    does, since (u,v) and (v,u) are one edge) override _key.
+    """
+
+    def __init__(self):
+        # item -> parent item in the union-find forest.
+        self.parent = {}
+        # item -> True if this item is the OPPOSITE of its parent.
+        self.flipped = {}
+        # root item -> list of every item in its group. Doubles as the group
+        # size for union by size, and lets group() enumerate without a scan.
+        self.members = {}
+
+    def _key(self, item):
+        """The canonical form of an item, for use as a dict key. Identity
+        here; overridden where two spellings mean the same item."""
+        return item
+
+    def _find(self, item):
+        """Return (root, opposite): the group's representative, and whether
+        `item` is the opposite of it. Compresses the path walked."""
+        if item not in self.parent:
+            self.parent[item] = item
+            self.flipped[item] = False
+            self.members[item] = [item]
+            return (item, False)
+
+        # Walk up to the root, accumulating parity as we go.
+        root = item
+        opposite = False
+        while self.parent[root] != root:
+            opposite ^= self.flipped[root]
+            root = self.parent[root]
+
+        # Path compression: re-point everything we walked past straight at the
+        # root, each with its own parity relative to the root. Note we must
+        # read flipped[current] before overwriting it.
+        current = item
+        current_opposite = opposite
+        while self.parent[current] != current:
+            next_item = self.parent[current]
+            next_opposite = current_opposite ^ self.flipped[current]
+            self.parent[current] = root
+            self.flipped[current] = current_opposite
+            current = next_item
+            current_opposite = next_opposite
+
+        return (root, opposite)
+
+    def relate(self, item1, item2, opposite):
+        """Record that the two items are opposites (opposite=True) or the same
+        (opposite=False).
+
+        Returns False if that contradicts what we already know about them,
+        in which case no solution is possible from here.
+        """
+        (root1, opposite1) = self._find(self._key(item1))
+        (root2, opposite2) = self._find(self._key(item2))
+
+        if root1 == root2:
+            # Already in one group, so their relation is already fixed: this
+            # new claim either agrees with it or the puzzle is contradictory.
+            return (opposite1 ^ opposite2) == opposite
+
+        # Attach the smaller group to the larger, choosing the parity bit that
+        # makes the requested relation hold. Note the parity formula is
+        # symmetric in the two operands, so the swap doesn't disturb it.
+        if len(self.members[root1]) < len(self.members[root2]):
+            (root1, root2) = (root2, root1)
+            (opposite1, opposite2) = (opposite2, opposite1)
+        self.parent[root2] = root1
+        self.flipped[root2] = opposite1 ^ opposite ^ opposite2
+        self.members[root1].extend(self.members[root2])
+        del self.members[root2]  # root2 is no longer a root.
+        return True
+
+    def relation(self, item1, item2):
+        """True if the items must be opposites, False if they must be the
+        same, or None if nothing relates them yet."""
+        (root1, opposite1) = self._find(self._key(item1))
+        (root2, opposite2) = self._find(self._key(item2))
+        if root1 != root2:
+            return None
+        return opposite1 ^ opposite2
+
+    def group(self, item):
+        """Every item whose state is tied to this one, as a list of
+        (item, opposite) pairs, where `opposite` is relative to the item asked
+        about. So once `item` is known, so is everything in the list.
+
+        The item itself is included, with opposite=False, so that a caller can
+        apply one uniform rule to the whole list. Querying an item nothing is
+        known about returns just itself.
+        """
+        (root, opposite) = self._find(self._key(item))
+        return [(member, opposite ^ self._find(member)[1])
+                for member in self.members[root]]
+
+
+class FaceColoring(ParityRelation):
     """Tracks which faces must be the same 'color' as each other, and which
     must be opposite, without ever deciding which color is which.
 
-    Union-find over faces, but each face also carries one parity bit saying
-    whether it is the same as, or opposite to, its parent. So the structure
-    answers "are these two faces the same color?" -- never "is this face
-    inside?".
+    A ParityRelation over faces: it answers "are these two faces the same
+    color?" -- never "is this face inside?".
 
     That RELATIVE-only design is not a convenience, it's forced by our
     topology. On a flat Slitherlink grid the region outside the border is
@@ -182,79 +309,6 @@ class FaceColoring:
     they're enough -- colorings that never connect to each other still yield
     deductions in their own neighbourhoods.
     """
-
-    def __init__(self):
-        # face -> parent face in the union-find forest.
-        self.parent = {}
-        # face -> True if this face is the OPPOSITE color from its parent.
-        self.flipped = {}
-        # root face -> size of its group (for union by size).
-        self.size = {}
-
-    def _find(self, face):
-        """Return (root, opposite): the group's representative, and whether
-        `face` is the opposite color from it. Compresses the path walked."""
-        if face not in self.parent:
-            self.parent[face] = face
-            self.flipped[face] = False
-            self.size[face] = 1
-            return (face, False)
-
-        # Walk up to the root, accumulating parity as we go.
-        root = face
-        opposite = False
-        while self.parent[root] != root:
-            opposite ^= self.flipped[root]
-            root = self.parent[root]
-
-        # Path compression: re-point everything we walked past straight at the
-        # root, each with its own parity relative to the root. Note we must
-        # read flipped[current] before overwriting it.
-        current = face
-        current_opposite = opposite
-        while self.parent[current] != current:
-            next_face = self.parent[current]
-            next_opposite = current_opposite ^ self.flipped[current]
-            self.parent[current] = root
-            self.flipped[current] = current_opposite
-            current = next_face
-            current_opposite = next_opposite
-
-        return (root, opposite)
-
-    def relate(self, face1, face2, opposite):
-        """Record that the two faces are opposite colors (opposite=True) or
-        the same color (opposite=False).
-
-        Returns False if that contradicts what we already know about them,
-        in which case no solution is possible from here.
-        """
-        (root1, opposite1) = self._find(face1)
-        (root2, opposite2) = self._find(face2)
-
-        if root1 == root2:
-            # Already in one group, so their relation is already fixed: this
-            # new claim either agrees with it or the puzzle is contradictory.
-            return (opposite1 ^ opposite2) == opposite
-
-        # Attach the smaller group to the larger, choosing the parity bit that
-        # makes the requested relation hold.
-        if self.size[root1] < self.size[root2]:
-            (root1, root2) = (root2, root1)
-            (opposite1, opposite2) = (opposite2, opposite1)
-        self.parent[root2] = root1
-        self.flipped[root2] = opposite1 ^ opposite ^ opposite2
-        self.size[root1] += self.size[root2]
-        return True
-
-    def relation(self, face1, face2):
-        """True if the faces must be opposite colors, False if they must be
-        the same, or None if nothing relates them yet."""
-        (root1, opposite1) = self._find(face1)
-        (root2, opposite2) = self._find(face2)
-        if root1 != root2:
-            return None
-        return opposite1 ^ opposite2
 
 
 def apply_color_rules(mesh):
@@ -314,6 +368,138 @@ def apply_color_rules(mesh):
         changed = True
 
     return True, changed
+
+
+class EdgePairing(ParityRelation):
+    """Which pairs of edges must agree, and which must disagree.
+
+        both or neither    the two edges are in the same state
+        exactly one        the two edges are in opposite states
+
+    A ParityRelation over edges, so transitive closure is free: relate e to f
+    and f to g, and the relation between e and g is already known, however far
+    apart they are on the solid. Contradictions are caught on insertion.
+
+    Why edges need their own structure, when FaceColoring exists: an edge is
+    filled exactly when its two faces differ in colour, so an edge between
+    faces A and B *is* the parity A^B. For two edges sharing a face -- e
+    between A and B, f between B and C -- "e agrees with f" reduces to
+    "A and C are the same colour", which the face colouring can already answer.
+    But two edges sharing only a VERTEX give A^B = C^D, a four-face parity that
+    no pairwise relation over faces can hold. That case is what this is for.
+
+    Edge keys are canonicalized, since COMPAS spells an edge (u,v) or (v,u)
+    interchangeably while a dict would treat those as two items.
+    """
+
+    def _key(self, item):
+        return edge_id(item)
+
+    def both_or_neither(self, edge1, edge2):
+        """Record that the two edges are in the same state. Returns False if
+        that contradicts what is already known."""
+        return self.relate(edge1, edge2, opposite=False)
+
+    def exactly_one(self, edge1, edge2):
+        """Record that exactly one of the two edges is filled. Returns False if
+        that contradicts what is already known."""
+        return self.relate(edge1, edge2, opposite=True)
+
+    def forced_by(self, edge, guess):
+        """The state every tied edge must take, given this edge's state.
+        Returns a dict of edge -> guess, including the edge asked about."""
+        return {other: (OPPOSITE_GUESS[guess] if opposite else guess)
+                for (other, opposite) in self.group(edge)}
+
+
+class EdgeClauses:
+    """The two edge-pair relations that are NOT equivalences:
+
+        at least one    the two edges are not both ruled out
+        at most one     the two edges are not both filled
+
+    These cannot live in a ParityRelation, because they don't relate the two
+    edges' states at all -- they forbid one combination and permit the other
+    three. So they go in an implication store over literals, a literal being an
+    edge together with a state:
+
+        at least one:  e ruled out -> f filled,   f ruled out -> e filled
+        at most one:   e filled    -> f ruled out, f filled   -> e ruled out
+
+    Propagation is then a walk from each newly decided edge, and deriving both
+    states for one edge is the contradiction.
+
+    The two families compose: "exactly one" is at-least-one AND at-most-one, so
+    a pair that collects both clauses -- typically from two different rules --
+    can be promoted into EdgePairing as an opposite-parity relation. See
+    exactly_one_pairs(), which is where separate rule families start feeding
+    each other.
+
+    Both methods expect two distinct edges. A degenerate pair (an edge with
+    itself) is still recorded soundly -- at_most_one(e, e) says e is not filled
+    -- and forced_by will report the contradiction if both are claimed; only
+    exactly_one_pairs ignores such a pair, having nothing to promote.
+    """
+
+    def __init__(self):
+        # literal -> set of literals it forces, a literal being (edge, guess).
+        self.implies = {}
+        # frozenset of the two edges -> which clauses we hold for them. Kept
+        # only so exactly_one_pairs can spot a pair that has collected both.
+        self.kinds = {}
+
+    def _add(self, literal, consequence):
+        self.implies.setdefault(literal, set()).add(consequence)
+
+    def _record(self, edge1, edge2, kind, premise, conclusion):
+        """Add one clause: from either edge in state `premise`, the other is
+        forced to `conclusion`."""
+        (a, b) = (edge_id(edge1), edge_id(edge2))
+        self._add((a, premise), (b, conclusion))
+        self._add((b, premise), (a, conclusion))
+        self.kinds.setdefault(frozenset((a, b)), set()).add(kind)
+
+    def at_least_one(self, edge1, edge2):
+        """Record that the two edges are not both ruled out."""
+        self._record(edge1, edge2, 'at least one', 'ruledOut', 'filledIn')
+
+    def at_most_one(self, edge1, edge2):
+        """Record that the two edges are not both filled."""
+        self._record(edge1, edge2, 'at most one', 'filledIn', 'ruledOut')
+
+    def implications(self, edge, guess):
+        """The literals this one state forces directly, without following the
+        chain any further. Sorted, so callers are reproducible."""
+        return sorted(self.implies.get((edge_id(edge), guess), ()))
+
+    def forced_by(self, edge, guess):
+        """Every edge state that follows from this one, transitively.
+
+        Returns a dict of edge -> guess, including the edge asked about, or
+        None if the assumption is contradictory -- which is itself a useful
+        answer, since it means the edge must take the other state.
+        """
+        start = edge_id(edge)
+        known = {start: guess}
+        queue = [(start, guess)]
+        while queue:
+            literal = queue.pop()
+            for (other, other_guess) in sorted(self.implies.get(literal, ())):
+                if other in known:
+                    if known[other] != other_guess:
+                        return None  # Both states forced for one edge.
+                    continue
+                known[other] = other_guess
+                queue.append((other, other_guess))
+        return known
+
+    def exactly_one_pairs(self):
+        """The pairs holding BOTH clauses, which therefore mean "exactly one"
+        and are ready to be promoted into an EdgePairing. Sorted pairs, in
+        sorted order, so promotion is reproducible."""
+        return sorted(tuple(sorted(pair))
+                      for (pair, kinds) in self.kinds.items()
+                      if len(pair) == 2 and len(kinds) == 2)
 
 
 def face_sides(mesh, fkey):

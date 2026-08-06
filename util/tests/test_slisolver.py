@@ -15,10 +15,14 @@ from compas.datastructures import Mesh
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 from slisolver import (
+    EdgeClauses,
+    EdgePairing,
     FaceColoring,
+    ParityRelation,
     apply_clue_rules,
     apply_clues,
     apply_color_rules,
+    edge_id,
     apply_pattern_rules,
     apply_rule_c,
     apply_rule_d,
@@ -926,6 +930,191 @@ class TestFaceColoring:
         # An even number of flips means same color, odd means opposite.
         assert coloring.relation(0, 40) is False
         assert coloring.relation(0, 39) is True
+
+
+class TestParityRelationGroup:
+    """group() enumerates a whole equivalence class with each member's parity,
+    which is how one known edge determines every edge tied to it. TestFaceColoring
+    above covers the relate/relation behaviour this shares."""
+
+    def test_unrelated_item_is_alone_in_its_group(self):
+        relation = ParityRelation()
+        assert relation.group('a') == [('a', False)]
+
+    def test_group_includes_the_item_itself_as_same(self):
+        relation = ParityRelation()
+        relation.relate('a', 'b', opposite=True)
+        assert dict(relation.group('a'))['a'] is False
+
+    def test_group_reports_each_member_parity(self):
+        relation = ParityRelation()
+        relation.relate('a', 'b', opposite=True)
+        relation.relate('b', 'c', opposite=True)
+        # b is opposite a; c is opposite b, hence same as a.
+        assert dict(relation.group('a')) == {'a': False, 'b': True, 'c': False}
+
+    def test_group_parity_is_relative_to_the_item_asked(self):
+        relation = ParityRelation()
+        relation.relate('a', 'b', opposite=True)
+        relation.relate('b', 'c', opposite=True)
+        # Asked from b, the parities all flip.
+        assert dict(relation.group('b')) == {'a': True, 'b': False, 'c': True}
+
+    def test_group_survives_merging_unequal_groups(self):
+        # Exercises the union-by-size swap: a 4-item group absorbing a 2-item
+        # one, and the reverse order, must both keep every member reachable.
+        relation = ParityRelation()
+        for i in range(3):
+            relation.relate(i, i + 1, opposite=False)      # 0..3, all same
+        relation.relate(10, 11, opposite=False)            # 10,11, all same
+        relation.relate(11, 2, opposite=True)              # bridge the two
+        group = dict(relation.group(0))
+        assert group == {0: False, 1: False, 2: False, 3: False,
+                         10: True, 11: True}
+
+    def test_every_member_sees_the_same_group(self):
+        relation = ParityRelation()
+        for i in range(8):
+            relation.relate(i, i + 1, opposite=(i % 2 == 0))
+        members = {item for (item, _) in relation.group(0)}
+        for item in members:
+            assert {other for (other, _) in relation.group(item)} == members
+
+
+class TestEdgePairing:
+    """The parity relation over EDGES: both-or-neither and exactly-one."""
+
+    def test_edge_orientation_does_not_matter(self):
+        # COMPAS spells one edge either way round; a plain dict would not.
+        pairing = EdgePairing()
+        pairing.exactly_one((0, 1), (1, 2))
+        assert pairing.relation((1, 0), (2, 1)) is True
+
+    def test_both_or_neither_and_exactly_one(self):
+        pairing = EdgePairing()
+        assert pairing.both_or_neither((0, 1), (2, 3)) is True
+        assert pairing.relation((0, 1), (2, 3)) is False
+        assert pairing.exactly_one((4, 5), (6, 7)) is True
+        assert pairing.relation((4, 5), (6, 7)) is True
+
+    def test_relations_compose(self):
+        # e agrees with f, and exactly one of f and g is filled, so exactly one
+        # of e and g is filled.
+        pairing = EdgePairing()
+        pairing.both_or_neither((0, 1), (1, 2))
+        pairing.exactly_one((1, 2), (2, 3))
+        assert pairing.relation((0, 1), (2, 3)) is True
+
+    def test_contradiction_is_reported(self):
+        pairing = EdgePairing()
+        pairing.both_or_neither((0, 1), (1, 2))
+        assert pairing.exactly_one((0, 1), (1, 2)) is False
+
+    def test_forced_by_propagates_states(self):
+        pairing = EdgePairing()
+        pairing.exactly_one((0, 1), (1, 2))
+        pairing.both_or_neither((1, 2), (2, 3))
+        forced = pairing.forced_by((0, 1), 'filledIn')
+        assert forced == {(0, 1): 'filledIn',
+                          (1, 2): 'ruledOut',
+                          (2, 3): 'ruledOut'}
+
+    def test_forced_by_flips_with_the_starting_state(self):
+        pairing = EdgePairing()
+        pairing.exactly_one((0, 1), (1, 2))
+        forced = pairing.forced_by((0, 1), 'ruledOut')
+        assert forced[(1, 2)] == 'filledIn'
+
+    def test_forced_by_unrelated_edge_yields_only_itself(self):
+        pairing = EdgePairing()
+        assert pairing.forced_by((0, 1), 'filledIn') == {(0, 1): 'filledIn'}
+
+
+class TestEdgeClauses:
+    """The clause relations, which forbid one combination rather than tying the
+    two edges' states together."""
+
+    def test_at_least_one_forces_only_from_ruled_out(self):
+        clauses = EdgeClauses()
+        clauses.at_least_one((0, 1), (1, 2))
+        assert clauses.implications((0, 1), 'ruledOut') == [((1, 2), 'filledIn')]
+        # Knowing one IS filled says nothing about the other.
+        assert clauses.implications((0, 1), 'filledIn') == []
+
+    def test_at_most_one_forces_only_from_filled(self):
+        clauses = EdgeClauses()
+        clauses.at_most_one((0, 1), (1, 2))
+        assert clauses.implications((0, 1), 'filledIn') == [((1, 2), 'ruledOut')]
+        assert clauses.implications((0, 1), 'ruledOut') == []
+
+    def test_clauses_are_symmetric(self):
+        clauses = EdgeClauses()
+        clauses.at_most_one((0, 1), (1, 2))
+        assert clauses.implications((1, 2), 'filledIn') == [((0, 1), 'ruledOut')]
+
+    def test_edge_orientation_does_not_matter(self):
+        clauses = EdgeClauses()
+        clauses.at_most_one((1, 0), (2, 1))
+        assert clauses.implications((0, 1), 'filledIn') == [((1, 2), 'ruledOut')]
+
+    def test_forced_by_follows_a_chain(self):
+        # a filled -> b ruled out (at most one), and b ruled out -> c filled
+        # (at least one). Two different clause kinds feeding each other.
+        clauses = EdgeClauses()
+        clauses.at_most_one((0, 1), (1, 2))
+        clauses.at_least_one((1, 2), (2, 3))
+        assert clauses.forced_by((0, 1), 'filledIn') == {(0, 1): 'filledIn',
+                                                        (1, 2): 'ruledOut',
+                                                        (2, 3): 'filledIn'}
+
+    def test_forced_by_reports_a_contradiction(self):
+        # a filled rules out both b and c, but at least one of b, c must be
+        # filled. So a cannot be filled -- the caller can conclude it is out.
+        clauses = EdgeClauses()
+        clauses.at_most_one((0, 1), (1, 2))
+        clauses.at_most_one((0, 1), (2, 3))
+        clauses.at_least_one((1, 2), (2, 3))
+        assert clauses.forced_by((0, 1), 'filledIn') is None
+        # The other supposition survives, which is what makes it a deduction.
+        assert clauses.forced_by((0, 1), 'ruledOut') is not None
+
+    def test_forced_by_unconstrained_edge_yields_only_itself(self):
+        clauses = EdgeClauses()
+        assert clauses.forced_by((0, 1), 'filledIn') == {(0, 1): 'filledIn'}
+
+    def test_both_clauses_promote_to_exactly_one(self):
+        clauses = EdgeClauses()
+        clauses.at_least_one((0, 1), (1, 2))
+        assert clauses.exactly_one_pairs() == []      # one clause isn't enough
+        clauses.at_most_one((2, 1), (1, 0))           # same pair, either spelling
+        assert clauses.exactly_one_pairs() == [((0, 1), (1, 2))]
+
+    def test_promotion_ignores_a_degenerate_self_pair(self):
+        # at_most_one(e, e) is sound -- it says e is not filled -- but there is
+        # no pair to promote, and forced_by is where its contradiction shows up.
+        clauses = EdgeClauses()
+        clauses.at_least_one((0, 1), (0, 1))
+        clauses.at_most_one((0, 1), (0, 1))
+        assert clauses.exactly_one_pairs() == []
+        assert clauses.forced_by((0, 1), 'filledIn') is None
+        assert clauses.forced_by((0, 1), 'ruledOut') is None
+
+    def test_promoted_pair_feeds_the_pairing(self):
+        # The seam between the two stores: a pair that collected both clauses
+        # becomes an opposite-parity relation, and then composes like any other.
+        clauses = EdgeClauses()
+        clauses.at_least_one((0, 1), (1, 2))
+        clauses.at_most_one((0, 1), (1, 2))
+        pairing = EdgePairing()
+        pairing.both_or_neither((1, 2), (2, 3))
+        for (edge1, edge2) in clauses.exactly_one_pairs():
+            assert pairing.exactly_one(edge1, edge2) is True
+        assert pairing.relation((0, 1), (2, 3)) is True
+
+
+class TestEdgeId:
+    def test_canonicalizes_orientation(self):
+        assert edge_id((5, 2)) == edge_id((2, 5)) == (2, 5)
 
 
 class TestApplyColorRules:
