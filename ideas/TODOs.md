@@ -52,9 +52,42 @@ Finished items live in ideas/TODOs-done.md.
           clue every low-degree apex's triangle deliberately, then minimise over
           the rest. util/genLoosePuzzle.py exists for probing this (it builds a
           valid puzzle without proving uniqueness, and can survey clue densities).
-          Still unknown: where genSliPuzzles' time actually goes on these solids
-          -- worth profiling rather than guessing, since the minimal clue set
-          being large should have made it fast, not slow.
+- [ ] genSliPuzzles LIVELOCKS on dtC, in Phase A -- painting the red/blue regions
+    -- and never reaches a clue set at all. Profiled 2026-08-06: of 240s, 210s was
+    ensure_connected, with 137,047 iterations of generate()'s while loop and 1.95M
+    faces repainted (~14 per iteration). For comparison dtO, identical at
+    14/36/24, leaves generate() in 0.008s after 9 iterations and spends its time
+    where you'd expect, in generate_minimal_clueset. So this is not slowness and
+    more patience cannot help.
+    - [x] Capped it: paint_regions() gives up on a coloring after
+      REPAIR_PASS_LIMIT (200) passes and generate() starts over from a fresh
+      random coloring, raising after COLORING_ATTEMPT_LIMIT (20) failures. All
+      three now fail loudly in seconds -- dtC 1.7s, dtD 9.3s, dbD 24.5s -- instead
+      of spinning forever, while dtO still settles in 9 passes and dtI in 7. The
+      attempt limit is deliberately small: cost per pass grows with face count, so
+      a generous limit just means minutes of spinning before the error appears
+      (500 attempts took over 10 minutes on dbD).
+    - [x] Replaced the networkx component search in ensure_connected with a plain
+      BFS (color_components). Measured 1.5x faster unprofiled -- NOT the large
+      factor the profile suggested. Lesson: cProfile charges per call, so it
+      inflates call-heavy library code like networkx's generators and coreviews.
+      It was still right about WHERE the time went structurally (region painting,
+      not the solver); just not about how much a rewrite would save.
+    - [ ] Retrying does NOT rescue these solids: 20 fresh colorings, up to 200
+      repair passes each, and none settle. So the repair approach itself has to go,
+      not just its patience. The loop only exits when a whole pass leaves both
+      colors connected without painting, and the two repairs fight --
+      ensure_connected(blue) grows blue until connected, which can cut red, and
+      vice versa. Prime suspect: adjust_populations calls paint_random_faces to
+      hit its 1/3-of-faces quota, and scattered random faces are almost certain to
+      be disconnected, so the repair is re-armed every pass. (An earlier note here
+      also blamed fix_boring_neighborhoods for not setting the needs_check flags.
+      That was wrong: it paints via paint_face, which sets the other color's flag,
+      and test_painting_flags_the_other_color_for_a_check covers exactly that.)
+    - [ ] The likely fix is to grow ONE connected region and test it, restarting
+      on failure, which is what util/genLoosePuzzle.py does and why it produces
+      dtC solutions instantly. Its find_solution/grow_region could probably be
+      lifted into genSliPuzzles wholesale, replacing RegionColoring's repair loop.
         - [ ] Confirm the same diagnosis on dtD (20 degree-3 apexes) and dbD,
           which has no degree-3 vertices at all, so its flips must involve
           degree-4 ones and the story may differ.

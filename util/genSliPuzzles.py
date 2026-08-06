@@ -414,13 +414,33 @@ def load_existing_puzzles():
     log(f"Keeping {len(kept)} existing puzzle(s) from {existing_puzzles_path}.")
 
 
+# How many repair passes one coloring gets before we abandon it and start over
+# from a fresh random one, and how many fresh starts to try before giving up.
+#
+# Profiled 2026-08-06: the tetrakis hexahedron (dtO) settles in 9 passes, but the
+# triakis octahedron (dtC) can pass 137,000 without ever settling -- red and blue
+# alternately repairing their own connectivity and breaking the other's, about 14
+# faces repainted per pass, making no progress. That looked for a long time like
+# a slow uniqueness proof, when in fact the solver was never reached at all. A
+# coloring that hasn't settled in a couple of hundred passes is not going to, and
+# a fresh start is far more likely to pay off than more patience.
+# The attempt limit is deliberately small. A coloring that settles at all seems to
+# settle on the first attempt (dtO needs 9 passes, dtI 7), so a solid that has
+# failed 20 fresh starts is failing systematically, not unluckily -- and since the
+# cost of each pass grows with the number of faces, a generous limit would mean
+# minutes of spinning on a large solid before the error appears, which is the
+# behavior this cap exists to prevent.
+REPAIR_PASS_LIMIT = 200
+COLORING_ATTEMPT_LIMIT = 20
+
+
 class RegionColoring:
     """The red/blue two-coloring of the faces that a puzzle's solution comes from.
 
     The loop is the boundary between the two colors, so generating a puzzle
     starts by painting the faces: randomly at first, then repaired until each
     color forms one connected region of a reasonable size with no dull
-    all-one-color neighborhoods. See generate.
+    all-one-color neighborhoods. See generate and paint_regions.
 
     This owns the state that used to live in module globals -- which color still
     needs a connectedness check, and how many faces each color has. Holding it
@@ -523,23 +543,50 @@ class RegionColoring:
                 return
             # Otherwise, pick a new face and a new neighbor.
 
+    def color_components(self, color):
+        """The connected groups of faces of the given color, as a list of sets.
+
+        A plain breadth-first search over the mesh's face adjacency. This used to
+        build a networkx subgraph view of the dual graph and call
+        nx.connected_components on it -- once for every single face painted --
+        and profiling put that at the top of the generator's cost by a wide
+        margin: 8.7 million connected_components calls and 2.2 million subgraph
+        constructions in one 240-second run on dtC, about two thirds of the total
+        time. The graph has at most a few hundred nodes, so the library's
+        generality costs far more than the search it performs.
+        """
+        remaining = {fkey for fkey in self.mesh.faces()
+                     if self.mesh.face_attribute(fkey, "color") == color}
+        components = []
+        while remaining:
+            group = {remaining.pop()}
+            stack = list(group)
+            while stack:
+                for nbr in self.mesh.face_neighbors(stack.pop()):
+                    if nbr in remaining:
+                        remaining.discard(nbr)
+                        group.add(nbr)
+                        stack.append(nbr)
+            components.append(group)
+        return components
+
     def ensure_connected(self, color):
         """Check whether faces of the given color are connected.
         If not, add paint until they are.
-        Return True if any faces were painted, False if the faces were already connected."""
+        Return True if any faces were painted, False if the faces were already connected.
+
+        This inner loop is self-limiting: each repair paints one more face this
+        color, and once every face is one color it is trivially connected. So the
+        cap that matters is on the repair PASSES in paint_regions, not here.
+        """
         log(f"Ensuring connectedness of {color} faces.", level=2)
         faces_painted = False
         while True:
-            # Collect face nodes of the given color.
-            this_color_face_nodes = [f for f, d in self.dualG.nodes(data=True)
-                                     if d['color'] == color]
-            subgraph = self.dualG.subgraph(this_color_face_nodes)
-            # Find the smallest connected component.
-            smallest_cc = min(nx.connected_components(subgraph), key=len)
-            is_connected = (len(smallest_cc) == len(this_color_face_nodes))
+            components = self.color_components(color)
+            is_connected = len(components) <= 1
 
-            log(f"Connectedness of {len(this_color_face_nodes)} {color}: {is_connected}.",
-                level=2)
+            log(f"Connectedness of {sum(len(c) for c in components)} {color}: "
+                f"{is_connected}.", level=2)
             update_display(self.mesh)
 
             if is_connected:
@@ -549,7 +596,7 @@ class RegionColoring:
             # But it may be just as effective (and is easier) to just paint a random face.
             # paint_random_faces(color, 1)
             # No ... that seems to take interminable iterations to get to a suitable state.
-            self.paint_neighbor_face(smallest_cc, color)
+            self.paint_neighbor_face(min(components, key=len), color)
             faces_painted = True
 
             update_display(self.mesh)
@@ -594,18 +641,22 @@ class RegionColoring:
                         # Stop processing this face. Check other boring faces (continue outer loop).
                         break
 
-    def generate(self, i):
-        """Paint fresh random regions and repair them into usable ones.
+    def paint_regions(self):
+        """One attempt: paint fresh random regions and repair them into usable ones.
 
         Makes sure each region is connected, reasonably large, and not boring.
-        i is the puzzle index, just used for logging."""
+
+        Returns the number of repair passes it took, or None if it used up
+        REPAIR_PASS_LIMIT without settling. Settling means a whole pass in which
+        neither color needed repainting -- and the two repairs can fight
+        indefinitely, because growing one color to reconnect it can cut the other
+        in half. See REPAIR_PASS_LIMIT for the measurements behind giving up.
+        """
         self.randomize_face_colors()
         update_display(self.mesh)
-        finished = False
         self.blue_needs_check = True
         self.red_needs_check = True
-        iterations = 0
-        while not finished:
+        for passes in range(1, REPAIR_PASS_LIMIT + 1):
             self.adjust_populations()  # Could set red_needs_check or blue_needs_check.
             if self.blue_needs_check:
                 # Make sure blue is connected.
@@ -622,14 +673,41 @@ class RegionColoring:
                 if added_red:
                     self.blue_needs_check = True
             self.fix_boring_neighborhoods()
-            finished = not (self.blue_needs_check or self.red_needs_check)
-            iterations += 1
-            log(f"{iterations} steps. Needs check: blue={self.blue_needs_check} "
+            if not (self.blue_needs_check or self.red_needs_check):
+                return passes
+            log(f"{passes} steps. Needs check: blue={self.blue_needs_check} "
                 f"red={self.red_needs_check}", level=2)
+        return None
 
-        log(f"Generated regions for puzzle {i + 1} with {self.count(red)} red faces "
-            f"and {self.count(blue)} blue faces, in {iterations} steps.")
-        populate_num_walls(self.mesh)
+    def generate(self, i):
+        """Paint usable regions, starting over as often as it takes.
+
+        i is the puzzle index, just used for logging.
+
+        Raises RuntimeError if COLORING_ATTEMPT_LIMIT fresh starts all fail, so
+        that a solid the painter cannot handle fails loudly and quickly instead of
+        spinning. That distinction cost us real time: dtC's silent spinning was
+        twice mistaken for a slow uniqueness proof, and read as evidence that the
+        solver needed more rules.
+        """
+        for attempt in range(1, COLORING_ATTEMPT_LIMIT + 1):
+            passes = self.paint_regions()
+            if passes is not None:
+                log(f"Generated regions for puzzle {i + 1} with {self.count(red)} "
+                    f"red faces and {self.count(blue)} blue faces, in {passes} "
+                    f"steps" + (f" on attempt {attempt}" if attempt > 1 else "")
+                    + ".")
+                populate_num_walls(self.mesh)
+                return
+            log(f"Coloring for puzzle {i + 1} did not settle within "
+                f"{REPAIR_PASS_LIMIT} repair passes (attempt {attempt} of "
+                f"{COLORING_ATTEMPT_LIMIT}); starting over.", level=2)
+
+        raise RuntimeError(
+            f"Could not paint usable regions in {COLORING_ATTEMPT_LIMIT} attempts "
+            f"of up to {REPAIR_PASS_LIMIT} repair passes each. The two colors are "
+            f"probably disconnecting each other faster than they can be repaired; "
+            f"see REPAIR_PASS_LIMIT.")
 
 
 def is_edge_boring(mesh, ekey):
