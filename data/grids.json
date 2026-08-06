@@ -199,7 +199,7 @@
       "faces": 24,
       "edges": 36,
       "vertices": 14,
-      "numPuzzles": 1
+      "numPuzzles": 3
     },
     {
       "file": "dtO",
@@ -389,7 +389,7 @@
       "faces": 60,
       "edges": 90,
       "vertices": 32,
-      "numPuzzles": 0
+      "numPuzzles": 3
     },
     {
       "file": "dtI",
@@ -479,7 +479,7 @@
       "faces": 120,
       "edges": 180,
       "vertices": 62,
-      "numPuzzles": 0
+      "numPuzzles": 3
     },
     {
       "file": "gp12",
