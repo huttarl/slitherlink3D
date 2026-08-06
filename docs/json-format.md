@@ -37,6 +37,17 @@ A JSON object containing the following properties:
   - The arrays for "vertices" and "faces" must be non-empty. There must be at least 4
     vertices and 4 faces.
   - Each face must have at least 3 vertices.
+- IDs: a vertex's or face's ID, in the running grid and everywhere the app or the
+  solver refers to one, is simply its index in these arrays. There is no separate
+  ID field, so reordering "vertices" or "faces" renumbers everything and
+  invalidates any puzzle file built on the grid.
+- File formatting: one line per vertex, per face and per clue list, written that
+  way by `util/json_format.py`. The generators all use it, and
+  `python3 util/json_format.py data/*.json` reformats existing files in place —
+  idempotent, and it refuses to write if the parsed data would change. Neither
+  extreme is readable: minified puts a grid on one 1000-character line, while
+  `indent=3` gave every coordinate a line of its own (491 lines for three puzzles
+  on the truncated icosidodecahedron).
 - Example:
 ```JSON
   {

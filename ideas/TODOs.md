@@ -1,10 +1,17 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
-- [ ] The routine tests seem to be getting really slow. Can we refine our
+- [ ] When a clue is satified (i.e. has the right number of walls filled in around
+  it), change the color of the digit to be gray instead of black. That will help the
+  player visually scan for what can be worked on next.
+- [ ] We could have a setting for automatically marking edges as ruledOut. E.g.
+  when there's a 0 clue, its edges are ruled out; or when a vertex has 0 filled and
+  1 unknown; or 2 filled and any number of unknown.
+- [ ] The routine tests seem to be getting really slow. Can we refine our testing
+  process to require fewer tests unless necessary? Or maybe it's just me.
 - [ ] On the celebration UI, besides the "Next" button, also have a button for
   staying on the current puzzle for a while to look around. Not sure what to call
-  it ... Cancel, Back, "Hang out" or "Stay here". The Esc key should already does the same thing...
+  it ... Cancel, Back, "Hang out" or "Stay here". The Esc key already does this:
   dismiss the "dialog" and let the user explore the just-solved puzzle, and then
   select a new one at their own pace.
 - [ ] Adding more info about each polyhedron, as applicable:

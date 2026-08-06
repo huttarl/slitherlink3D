@@ -90,8 +90,8 @@ fix; there is no "r185.1" in three.js's own naming). Use the release number
    `from 'three'` to `from './three.module.min.js'`, and restore the
    vendoring header comment (pointing to this document).
 
-6. Update the version number in `docs/project-overview.md` (Key
-   Implementation Details), run `npm test`, and browser-smoke a few grids:
+6. Update the version number in `docs/js-architecture.md` ("Conventions worth
+   knowing"), run `npm test`, and browser-smoke a few grids:
    load them, click edges, rotate/zoom, and Check solution.
 
 ## Notes from past upgrades
