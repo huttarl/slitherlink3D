@@ -58,6 +58,14 @@ const SOLID_PAGE_EXCEPTIONS = {
     // parenthetical, which here is part of the name.) The chamfered dodecahedron,
     // GP(2,0), needs no entry: it has a name and an article of its own.
     'gp12': 'Goldberg_polyhedron',
+    // null: no article anywhere, so the card leaves the name as plain text. The
+    // random solids (util/genRandomPolyh.py) are one-offs nobody has written
+    // about -- and unlike a missing entry, this can't quietly become a 404.
+    'RandomsphereA': null,
+    'RandomsphereB': null,
+    'RandomsphereC': null,
+    'RandomsphereD': null,
+    'RandomsphereE': null,
 };
 
 /**
@@ -134,6 +142,12 @@ export const UNLINKED_CATEGORIES = [
  * @returns {string|null} a URL, or null without a name to work from
  */
 export function solidLink(gridId, gridName) {
+    // An entry of null says "no article anywhere", which is the honest answer
+    // for a solid nobody has written about -- the random ones. Distinct from a
+    // missing entry, which means "the rule below gets this right".
+    if (gridId in SOLID_PAGE_EXCEPTIONS && SOLID_PAGE_EXCEPTIONS[gridId] === null) {
+        return null;
+    }
     const title = SOLID_PAGE_EXCEPTIONS[gridId]
         || (gridName ? deriveArticleTitle(gridName) : null);
     return title ? POLYTOPE_WIKI + title : null;
@@ -141,6 +155,10 @@ export function solidLink(gridId, gridName) {
 
 /** The exception table, so a test can check it's honoured. */
 export const SOLID_PAGE_EXCEPTION_IDS = Object.keys(SOLID_PAGE_EXCEPTIONS);
+
+/** The solids we have deliberately left unlinked (a null entry above). */
+export const UNLINKED_SOLID_IDS = Object.keys(SOLID_PAGE_EXCEPTIONS)
+    .filter(gridId => SOLID_PAGE_EXCEPTIONS[gridId] === null);
 
 /**
  * The page about a family or property of polyhedra.

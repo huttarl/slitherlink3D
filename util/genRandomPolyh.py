@@ -1,17 +1,48 @@
+#!/usr/bin/env python3.11
 """Generate random polyhedra, for use in Slitherlink3D puzzles.
 I used Claude to draft the code.
 
-Choose the method in main():
-method = 'random_repulsion': Start with random points on a sphere, then spread them out evenly by simulating repulsion.
-method = 'golden_spiral': Use golden spiral to lay out points evenly (yields more quads around equator).
+Usage: util/genRandomPolyh.py [n] [--name NAME] [--out FILE] [--spiral]
+                             [--no-quads] [--angle DEG] [--quiet]
+See usage() for what each one does, and main() for the defaults.
+
+Two ways to place the points:
+random with repulsion (the default): start with random points on a sphere, then
+spread them out evenly by simulating repulsion.
+--spiral: use a golden spiral to lay out points evenly (yields more quads around
+the equator).
 
 We then to convert to a polyhedron by computing the convex hull, then merge almost-coplanar
-adjacent triangles into quads. The resulting mesh is exported to OBJ format.
+adjacent triangles into quads. The resulting mesh is exported to OBJ format, which
+util/obj2json.py turns into a grid file -- so pass --name to give each solid its
+own gridId.
+
+The shebang selects python3.11, the interpreter carrying numpy/scipy/matplotlib.
 """
+
+import random
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial import ConvexHull
+
+# Our local modules: the polar dual from the Goldberg generator, and the general
+# coplanar-facet merge from the uniform one. Both are already exercised by the
+# grids in data/, so the methods below inherit machinery that is known to work.
+from genGoldberg import polar_dual
+from genUniformPolyh import merge_coplanar_faces
+
+# How far to spread the points by default: some, but not all the way. Fully
+# relaxed points are so even that every vertex degree comes out 5 or 6, which
+# (in the --dual method) means every face is a pentagon or hexagon; unrelaxed
+# points give a wider mix of face sizes but clump. Halfway keeps some of both.
+DEFAULT_RELAX = 0.5
+
+# How much of the room between neighbouring seeds a seed polygon takes up, in
+# the --seeds method. Under 1 so that no two seeds touch, which is what keeps
+# each of them a face of the hull.
+SEED_FILL = 0.8
 
 
 def generate_random_points_on_sphere(n, radius=1.0):
@@ -587,18 +618,21 @@ def visualize_mesh(points, faces, radius=1.0):
     plt.show()
 
 
-def export_mesh_to_obj(points, faces, filename='polyhedron.obj'):
+def export_mesh_to_obj(points, faces, filename='polyhedron.obj',
+                       group='polyhedron'):
     """
     Export a mesh with mixed triangle and quad faces to Wavefront OBJ format.
-    
+
     Args:
         points: numpy array of shape (n, 3) with vertex coordinates
         faces: list of faces, where each face is a list of vertex indices
         filename: output filename (default: 'polyhedron.obj')
+        group: the OBJ group name, which obj2json.py turns into the grid's
+            gridId/gridName -- so give each solid its own
     """
     with open(filename, 'w') as f:
         f.write("# Polyhedron with triangles and quads\n")
-        f.write("g polyhedron\n")
+        f.write(f"g {group}\n")
         f.write("# vertices\n")
         
         # Write all vertices
@@ -635,15 +669,100 @@ def generate_golden_spiral(n):
     return points
 
 
-def main():
-    method = 'random_repulsion'
-    # method = 'golden_spiral'
-    n = 70  # Number of vertices
-    merge_quads = True  # Set to True to merge coplanar triangles into quads
-    angle_threshold = 5.0  # Degrees - lower values = stricter coplanarity requirement
-    adjust_vertices = True  # If True, project quad vertices onto best-fit plane for exact coplanarity
+def usage():
+    print('Usage: util/genRandomPolyh.py [n] [--dual|--seeds] [--name NAME] '
+          '[--out FILE] [--relax T] [--spiral] [--no-quads] [--angle DEG] '
+          '[--quiet]', file=sys.stderr)
+    print('  n           number of vertices (default 70); the hull then has '
+          '2n-4 faces and 3n-6 edges, fewer once quads are merged. With --dual '
+          'it is the number of FACES instead (3n-6 edges, 2n-4 vertices)',
+          file=sys.stderr)
+    print('  --dual      dual of the hull: one face per point, no triangles at '
+          'all, sizes following the points\' degrees', file=sys.stderr)
+    print('  --seeds     scatter regular polygons (3 to 6 sides) and let the '
+          'hull triangulate the gaps between them', file=sys.stderr)
+    print(f'  --relax     how evenly to spread the points, 0 to 1 '
+          f'(default {DEFAULT_RELAX}): 0 leaves them clumped and the face sizes '
+          f'varied, 1 spreads them evenly and narrows the sizes',
+          file=sys.stderr)
+    print('  --name      OBJ group name, which obj2json.py turns into the '
+          "grid's gridId/gridName (default 'polyhedron')", file=sys.stderr)
+    print('  --out       output OBJ path (default polyhedron_with_quads.obj, '
+          'or polyhedron_triangulated.obj with --no-quads)', file=sys.stderr)
+    print('  --spiral    place points on a golden spiral instead of randomly '
+          'with repulsion', file=sys.stderr)
+    print('  --no-quads  leave the hull triangulated', file=sys.stderr)
+    print('  --angle     how near coplanar two triangles must be to merge, in '
+          'degrees (default 5)', file=sys.stderr)
+    print('  --quiet     no matplotlib animation or window -- for scripted '
+          'runs', file=sys.stderr)
+    sys.exit(1)
 
-    points = random_with_repulsion(n) if method == 'random_repulsion' else generate_golden_spiral(n)
+
+def main():
+    """Parse the arguments and write one random polyhedron.
+
+    Arguments rather than the edited-by-hand settings this used to have: making
+    three grids of different sizes meant three edits, and an edited default is
+    a poor record of what produced a file.
+    """
+    args = sys.argv[1:]
+    options = {'--name': 'polyhedron', '--out': None, '--angle': '5.0',
+               '--relax': str(DEFAULT_RELAX)}
+    flags = {'--spiral': False, '--no-quads': False, '--quiet': False,
+             '--dual': False, '--seeds': False}
+    n = 70
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in flags:
+            flags[arg] = True
+        elif arg in options:
+            i += 1
+            if i >= len(args):
+                print(f'{arg} needs a value.', file=sys.stderr)
+                usage()  # exits
+            options[arg] = args[i]
+        elif arg.startswith('-'):
+            print(f"Unrecognized option '{arg}'.", file=sys.stderr)
+            usage()  # exits
+        else:
+            n = int(arg)
+        i += 1
+    if n < 4:
+        print('At least 4 vertices are needed for a polyhedron.', file=sys.stderr)
+        sys.exit(1)
+
+    # A scripted run wants no windows and no animation: with the Agg backend the
+    # animation is wasted work, and plt.show() would block a GUI backend forever.
+    animate = not flags['--quiet']
+    merge_quads = not flags['--no-quads']
+    relax = float(options['--relax'])
+    if flags['--dual'] and flags['--seeds']:
+        print('--dual and --seeds are two different methods; pick one.',
+              file=sys.stderr)
+        sys.exit(1)
+    out = options['--out'] or ('polyhedron_with_quads.obj' if merge_quads
+                               else 'polyhedron_triangulated.obj')
+
+    # The two methods that produce faces other than triangles hand back their own
+    # (vertices, faces) and are done: no quad merging, no separate hull step.
+    # (--seeds places its own points, one batch of centres rather than n
+    # vertices, so it does its own scattering.)
+    if flags['--dual'] or flags['--seeds']:
+        if flags['--dual']:
+            points = (generate_golden_spiral(n) if flags['--spiral']
+                      else relaxed_points(n, relax, animate))
+            (vertices, faces) = dual_of_triangulation(points)
+        else:
+            (vertices, faces) = seeded_solid(n, relax, animate)
+        export_mesh_to_obj(vertices, faces, out, group=options['--name'])
+        if animate:
+            visualize_mesh(vertices, faces, radius=1.0)
+        return
+
+    points = (generate_golden_spiral(n) if flags['--spiral']
+              else relaxed_points(n, relax, animate))
 
     # Compute convex hull
     print("\nComputing convex hull...")
@@ -653,24 +772,167 @@ def main():
     print(f"All vertices are on hull: {len(hull.vertices) == n}")
 
     if merge_quads:
-        # Merge coplanar triangles into quads
-        faces = merge_coplanar_triangles_to_quads(hull, points, angle_threshold, adjust_vertices)
-        export_mesh_to_obj(points, faces, 'polyhedron_with_quads.obj')
-        visualize_mesh(points, faces, radius=1.0)
+        # Merge coplanar triangles into quads. adjust_vertices projects each
+        # quad's corners onto their best-fit plane, so the face is exactly flat.
+        faces = merge_coplanar_triangles_to_quads(hull, points,
+                                                  float(options['--angle']),
+                                                  adjust_vertices=True)
+        export_mesh_to_obj(points, faces, out, group=options['--name'])
+        if animate:
+            visualize_mesh(points, faces, radius=1.0)
     else:
         # Export original triangulated hull
-        export_to_obj(points, hull, 'polyhedron_triangulated.obj')
-        visualize_points_on_sphere(points, radius=1.0, hull=hull)
+        export_to_obj(points, hull, out)
+        if animate:
+            visualize_points_on_sphere(points, radius=1.0, hull=hull)
 
 
-def random_with_repulsion(n: int):
-    # Set random seed for reproducibility (optional)
-    np.random.seed()
+def dual_of_triangulation(points):
+    """The polar dual of the points' convex hull: one face per point, no triangles.
 
-    # Generate random points on unit sphere
-    points = generate_random_points_on_sphere(n, radius=1.0)
+    The hull of points on a sphere is a triangulation, and its dual turns every
+    triangle into a three-valent vertex and every point into a face with as many
+    sides as that point had neighbours. So the face census IS the triangulation's
+    degree distribution: evenly spread points give 12 pentagons and the rest
+    hexagons (Euler's formula forces exactly 12 when no degree strays from 5 or
+    6), while clumpier points give anything from triangles to octagons. That's
+    what --relax steers.
 
+    Polar reciprocation, not centroids-joined-up, so the faces are exactly flat
+    rather than slightly saddle-shaped -- see polar_dual in genGoldberg.py.
+
+    @returns (vertices, faces), scaled to a circumradius of 1
+    """
+    (vertices, faces) = polar_dual(np.asarray(points, dtype=float))
+    longest = np.abs(np.linalg.norm(vertices, axis=1)).max()
+    return (vertices / longest, faces)
+
+
+def choose_seed_sizes(n):
+    """Sizes for the seed polygons of the --seeds method, totalling n vertices.
+
+    Each is 3 plus three coin flips, so 4s and 5s are common and 3s and 6s are
+    the tails (1:3:3:1). The last seed is trimmed or dropped to hit n exactly,
+    since the total has to match the vertex count asked for.
+    """
+    sizes = []
+    while sum(sizes) < n:
+        sizes.append(3 + sum(random.randint(0, 1) for _ in range(3)))
+    excess = sum(sizes) - n
+    if excess:
+        # Trimming the last one keeps it a polygon if it can afford the loss,
+        # and otherwise it goes and the shortfall lands on another seed.
+        last = sizes.pop()
+        if last - excess >= 3:
+            sizes.append(last - excess)
+        else:
+            shortfall = n - sum(sizes)
+            if shortfall >= 3:
+                sizes.append(shortfall)
+            elif shortfall:
+                sizes[-1] += shortfall
+    return sizes
+
+
+def seed_polygon(centre, size, angular_radius, phase):
+    """One seed: `size` points on a small circle about `centre`, on the sphere.
+
+    Points on a circle are coplanar, and evenly spaced ones make a regular
+    polygon -- so the seed is exactly flat and regular before the hull ever sees
+    it, with no relaxation needed to keep it that way.
+    """
+    # Any two directions across the centre will do as the circle's frame.
+    across = np.cross(centre, [0.0, 0.0, 1.0])
+    if np.linalg.norm(across) < 1e-6:
+        across = np.cross(centre, [0.0, 1.0, 0.0])
+    u = across / np.linalg.norm(across)
+    v = np.cross(centre, u)
+
+    points = []
+    for i in range(size):
+        angle = phase + 2 * np.pi * i / size
+        offset = np.cos(angle) * u + np.sin(angle) * v
+        points.append(np.cos(angular_radius) * np.array(centre)
+                      + np.sin(angular_radius) * offset)
+    return points
+
+
+def seeded_solid(n, relax=DEFAULT_RELAX, animate=True):
+    """Scatter seed polygons over a sphere and let the hull fill the gaps.
+
+    The seeds are placed as small regular polygons on the sphere, each within its
+    own cap, so every other vertex lies below its plane and the hull keeps it as
+    a single face. The gaps between seeds come out as triangles, which is what
+    keeps them flat -- no planarization step anywhere.
+
+    Worth knowing what this can and can't give you: with S seeds on n vertices,
+    Euler's formula fixes the number of filler triangles at T = n + 2S - 4, no
+    matter how the seeds are packed. Seeds averaging 4.5 sides means S = n/4.5
+    and so about 15% of the faces are seeds. Tighter packing only makes the
+    triangles smaller. --dual is the method to reach for if you want the census
+    dominated by larger faces.
+
+    @returns (vertices, faces)
+    """
+    sizes = choose_seed_sizes(n)
+    print(f"Seeds: {len(sizes)} polygons of sizes {sorted(sizes)} "
+          f"totalling {sum(sizes)} vertices")
+    centres = relaxed_points(len(sizes), relax, animate)
+
+    # How big each seed can be: most of the way to its nearest neighbour, halved
+    # because that neighbour is coming the other way. Per seed rather than one
+    # global radius, so a seed with room to spare uses it and leaves fewer
+    # filler triangles.
+    cosines = np.clip(centres @ centres.T, -1.0, 1.0)
+    np.fill_diagonal(cosines, -1.0)         # ignore each seed's distance to itself
+    nearest = np.arccos(cosines).min(axis=1)
+
+    vertices = []
+    for (centre, size, gap) in zip(centres, sizes, nearest):
+        vertices += seed_polygon(centre, size, SEED_FILL * gap / 2,
+                                 phase=random.uniform(0, 2 * np.pi))
+    vertices = np.array(vertices)
+
+    hull = ConvexHull(vertices)
+    faces = merge_coplanar_faces(vertices, hull)
+    kept = sorted(len(f) for f in faces if len(f) > 3)
+    if kept != sorted(s for s in sizes if s > 3):
+        print(f"Warning: the hull kept {kept} as faces, but the seeds were "
+              f"{sorted(s for s in sizes if s > 3)} -- a seed's plane may have "
+              f"caught another vertex.", file=sys.stderr)
+    return (vertices, faces)
+
+
+def relaxed_points(n: int, relax: float = DEFAULT_RELAX, animate: bool = True):
+    """n points on the unit sphere, spread out by the given fraction.
+
+    relax=0 leaves them where they fell: clumps, gaps, and a wide spread of
+    vertex degrees. relax=1 spreads them until the repulsion converges, which
+    drives nearly every degree to 5 or 6. In between, the points are moved that
+    fraction of the way to their settled positions and put back on the sphere.
+
+    Interpolating rather than stopping the simulation early, because a fixed
+    iteration count means something different at every n, while "halfway to
+    settled" means the same thing at any size.
+    """
+    raw = generate_random_points_on_sphere(n, radius=1.0)
     print(f"Generated {n} points on unit sphere")
+    if relax <= 0:
+        print("Leaving them unrelaxed (--relax 0)")
+        return raw
+
+    settled = random_with_repulsion(raw.copy(), animate=animate)
+    if relax >= 1:
+        return settled
+
+    blended = (1 - relax) * raw + relax * settled
+    blended /= np.linalg.norm(blended, axis=1)[:, None]
+    print(f"Moved them {relax:.0%} of the way to evenly spread")
+    return blended
+
+
+def random_with_repulsion(points, animate: bool = True):
+    """Spread the given points over the sphere until the repulsion converges."""
     # print("Initial points:")
     # print(points)
 
@@ -686,7 +948,7 @@ def random_with_repulsion(n: int):
         damping=0.75,          # Higher damping for faster convergence
         max_velocity=0.05,     # Allow some movement but cap it
         convergence_threshold=0.001,  # Max movement threshold (per particle)
-        animate=True,
+        animate=animate,
         update_interval=5    # Update display every n iterations
     )
 

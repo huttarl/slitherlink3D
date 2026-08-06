@@ -32,10 +32,17 @@ def process(line):
         pass
 
 def input_group(line):
+    """Take the grid's name from an OBJ group line ("g Hexagonal prism").
+
+    The whole rest of the line, not just the first word: OBJ allows several
+    space-separated group names, but what a generator puts there is a name for
+    the solid, and "g Random sphere B" arriving as "Random" is no use as a
+    gridName. sanitize_for_id then strips the spaces for the gridId.
+    """
     global name
-    s = line.split()
-    if len(s) > 1:
-        name = s[1]
+    rest = line.split(maxsplit=1)
+    if len(rest) > 1:
+        name = rest[1].strip()
 
 def input_vertex(line):
     global vertices # Not strictly necessary, as currently implemented.

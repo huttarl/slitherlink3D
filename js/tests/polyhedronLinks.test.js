@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 
 import {
     categoryLink, EULER_FORMULA_LINK, solidLink, SOLID_PAGE_EXCEPTION_IDS,
-    UNLINKED_CATEGORIES,
+    UNLINKED_CATEGORIES, UNLINKED_SOLID_IDS,
 } from '../polyhedronLinks.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -58,8 +58,8 @@ describe('solidLink', () => {
     });
 
     test('any exception overrides the derived title', () => {
-        // The table is empty today; this starts asserting the moment an entry is
-        // added, so the override can't quietly stop working.
+        // Whether the entry names a different article or is null for "no article
+        // at all", it has to change the answer, or it isn't doing anything.
         for (const gridId of SOLID_PAGE_EXCEPTION_IDS) {
             const entry = catalogue.grids.find(grid => grid.gridId === gridId);
             assert.ok(entry, `exception for unknown gridId ${gridId}`);
@@ -87,9 +87,19 @@ describe('solidLink', () => {
         // space) shows up here rather than as a 404 for a player.
         const bad = catalogue.grids
             .map(grid => [grid.gridName, solidLink(grid.gridId, grid.gridName)])
+            .filter(([, url]) => url !== null)   // covered by the next test
             .filter(([, url]) =>
                 !/^https:\/\/polytope\.miraheze\.org\/wiki\/[\w-]+$/.test(url));
         assert.deepStrictEqual(bad, []);
+    });
+
+    test('only the solids we chose to leave unlinked have no URL', () => {
+        // A missing link should always be a decision (a null in
+        // SOLID_PAGE_EXCEPTIONS), never a name the rule silently gave up on.
+        const linkless = catalogue.grids
+            .filter(grid => solidLink(grid.gridId, grid.gridName) === null)
+            .map(grid => grid.gridId);
+        assert.deepStrictEqual(linkless.sort(), [...UNLINKED_SOLID_IDS].sort());
     });
 });
 

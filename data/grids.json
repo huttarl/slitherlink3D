@@ -172,6 +172,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "randA",
+      "gridId": "RandomsphereA",
+      "gridName": "Random sphere A",
+      "categories": ["Miscellaneous"],
+      "faces": 28,
+      "edges": 42,
+      "vertices": 16,
+      "numPuzzles": 3
+    },
+    {
       "file": "J37",
       "gridId": "J37",
       "gridName": "Elongated square gyrobicupola (J37)",
@@ -189,6 +199,16 @@
       "faces": 26,
       "edges": 48,
       "vertices": 24,
+      "numPuzzles": 3
+    },
+    {
+      "file": "randB",
+      "gridId": "RandomsphereB",
+      "gridName": "Random sphere B",
+      "categories": ["Miscellaneous"],
+      "faces": 35,
+      "edges": 53,
+      "vertices": 20,
       "numPuzzles": 3
     },
     {
@@ -222,6 +242,26 @@
       "numPuzzles": 3
     },
     {
+      "file": "randE",
+      "gridId": "RandomsphereE",
+      "gridName": "Random sphere E",
+      "categories": ["Miscellaneous"],
+      "faces": 47,
+      "edges": 75,
+      "vertices": 30,
+      "numPuzzles": 3
+    },
+    {
+      "file": "randC",
+      "gridId": "RandomsphereC",
+      "gridName": "Random sphere C",
+      "categories": ["Miscellaneous"],
+      "faces": 51,
+      "edges": 77,
+      "vertices": 28,
+      "numPuzzles": 3
+    },
+    {
       "file": "J47",
       "gridId": "J47",
       "gridName": "Gyroelongated pentagonal cupolarotunda (J47)",
@@ -229,6 +269,16 @@
       "faces": 47,
       "edges": 80,
       "vertices": 35,
+      "numPuzzles": 3
+    },
+    {
+      "file": "randD",
+      "gridId": "RandomsphereD",
+      "gridName": "Random sphere D",
+      "categories": ["Miscellaneous"],
+      "faces": 30,
+      "edges": 84,
+      "vertices": 56,
       "numPuzzles": 3
     },
     {

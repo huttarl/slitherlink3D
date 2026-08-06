@@ -302,7 +302,10 @@ those layers subscribe to its observer callbacks instead.
   - `catalogue_report.py` — prints what `data/` holds: a line per grid with its
     counts, puzzles, display puzzles and categories, plus totals, and a note on
     any grid with no puzzles or (if it's big enough for the title screen) no
-    display puzzle. Takes grid names to report on just those. Reads only.
+    display puzzle. `--clues` switches to the puzzle view — face census, the clue
+    values the puzzles use, and how many faces carry a clue — which is how to
+    judge whether a new grid will make decent puzzles. Takes grid names to report
+    on just those. Reads only.
   - `tests/` — pytest suite covering `slisolver.py`, the region coloring and
     clue-minimization workflow in `genSliPuzzles.py`, and a `slow`-marked
     uniqueness sweep of every puzzle in `data/`.
@@ -366,9 +369,10 @@ Three sources:
   python3 util/obj2json.py myPolyhedron.obj > data/myGrid.json
   ```
 
-  The grid's `gridId`/`gridName` are derived from the OBJ's group name.
+  The grid's `gridId`/`gridName` are derived from the OBJ's group name — the
+  whole of it, so `g Random sphere B` gives that name and a `RandomsphereB` id.
   The converter sanity-checks Euler's formula (F + V = E + 2) and fails
-  if it doesn't hold.
+  if it doesn't hold. It writes no `categories`, so add the family by hand.
 
 - **`genGoldberg.py`**: generates a Goldberg polyhedron — 12 pentagons, the
   rest hexagons, three faces at every vertex — from its parameters (m,n):
@@ -414,13 +418,60 @@ Three sources:
 
 - **`genRandomPolyh.py`**: generates a random sphere-like polyhedron —
   scatters points on a sphere (randomly with simulated repulsion to spread
-  them evenly, or via golden spiral), takes the convex hull, then merges
-  nearly-coplanar adjacent triangles into quads. Writes
-  `polyhedron_with_quads.obj`, which then goes through `obj2json.py` as
-  above. There are no command-line arguments; parameters (method, vertex
-  count, quad-merge threshold) are set by editing its `main()`. It also
-  requires `numpy` and `scipy`, and displays a matplotlib animation while
-  running.
+  them evenly, or via golden spiral with `--spiral`), takes the convex hull,
+  then merges nearly-coplanar adjacent triangles into quads. The OBJ it writes
+  then goes through `obj2json.py` as above:
+
+  ```
+  util/genRandomPolyh.py 20 --quiet --name "Random sphere B" --out /tmp/b.obj
+  python3 util/obj2json.py /tmp/b.obj > data/randB.json
+  ```
+
+  `--name` sets the OBJ group name, which is where `obj2json.py` gets the
+  grid's name, so each solid needs its own. `--quiet` skips the matplotlib
+  animation and the window, which a scripted run wants. Requires `numpy` and
+  `scipy`.
+
+  What the plain method gives is worth knowing before reaching for it. Repulsion
+  spreads the points so evenly that hardly any adjacent triangles end up
+  coplanar, so the result is nearly all triangles — 0 quads out of 28 faces at
+  n=16, 1 out of 35 at n=20 — and neither `--spiral` nor a looser `--angle`
+  changes that much (2 and 4 quads respectively at n=20). Triangles admit clues
+  0–2 only, so those grids have the same narrow clue vocabulary as the
+  icosahedron; what they add is irregularity, with vertex degrees and face sizes
+  varying across the solid. Puzzle generation on them is quick, and the clue
+  density it settles on (51–61% of faces) is mid-pack for the collection. Small n
+  is wasted: 12 points under repulsion converge on the icosahedron exactly, which
+  `data/` already has.
+
+  Two other methods produce faces that aren't triangles. Both end in a convex
+  hull, so neither needs a planarization or canonicalization pass:
+
+  - `--dual` takes the hull — a triangulation — and returns its **polar dual**
+    (`polar_dual` from `genGoldberg.py`). Every triangle becomes a three-valent
+    vertex and every point becomes a face with as many sides as that point had
+    neighbours, so there are *no* triangles at all and n is the FACE count
+    (3n−6 edges, 2n−4 vertices). The face census is the triangulation's degree
+    distribution, which is what `--relax` steers: fully spread points give 12
+    pentagons and hexagons for the rest (Euler forces exactly 12 when no degree
+    strays from 5 or 6), unrelaxed ones anything from triangles to octagons.
+  - `--seeds` scatters regular polygons of 3 to 6 sides (sizes drawn as 3 plus
+    three coin flips, so 4s and 5s dominate) over the sphere and lets the hull
+    triangulate the gaps. Each seed's corners sit on a small circle within its
+    own cap, so they are exactly coplanar and no other vertex lies above their
+    plane — which is what makes the hull keep each seed as one face.
+    `merge_coplanar_faces` from `genUniformPolyh.py` recovers them from the
+    triangulation. The catch is arithmetic, not implementation: with S seeds on n
+    vertices, Euler's formula fixes the filler count at **T = n + 2S − 4**
+    regardless of how well the seeds are packed, so seeds averaging 4.5 sides
+    leave about 15% of the faces non-triangular. Tighter packing only shrinks the
+    triangles. Reach for `--dual` when you want the census dominated by larger
+    faces, and `--seeds` when you want to choose the face sizes yourself.
+
+  `--relax` (0 to 1, default 0.5) is how evenly the points are spread: the
+  repulsion is run to convergence and the points are then moved that fraction of
+  the way there, so the knob means the same thing at every n — unlike stopping
+  the simulation after a fixed number of iterations.
 
 ### Step 2: Generate puzzles for the grid
 
