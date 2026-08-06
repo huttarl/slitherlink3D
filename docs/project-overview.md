@@ -468,10 +468,27 @@ Three sources:
     triangles. Reach for `--dual` when you want the census dominated by larger
     faces, and `--seeds` when you want to choose the face sizes yourself.
 
-  `--relax` (0 to 1, default 0.5) is how evenly the points are spread: the
-  repulsion is run to convergence and the points are then moved that fraction of
-  the way there, so the knob means the same thing at every n — unlike stopping
-  the simulation after a fixed number of iterations.
+  `--relax` (0 to 1) is how evenly the points are spread: the repulsion is run to
+  convergence and the points are then moved that fraction of the way there, so
+  the knob means the same thing at every n — unlike stopping the simulation after
+  a fixed number of iterations. It defaults to 0.5, but to 0.9 with `--seeds`,
+  which can afford it: there the relaxation only spreads the seed *centres*,
+  while the seed sizes are drawn separately, so unlike `--dual` a high setting
+  costs nothing in face variety and it keeps unevenly spaced seeds from leaving
+  sliver triangles in the gaps. Measured over 6 solids per setting at n=30, the
+  sharpest corner any face had was 19° at relax 0.5, 23° at 0.75 and 27° at 0.9,
+  with no gain at 1.0; `SEED_FILL` matters as much, at 27° for 0.7 against 8° for
+  0.97, where seeds nearly touch and squeeze the fillers flat.
+
+  `--min-edge` (default 0.4, and only used by `--dual`) is the shortest edge to
+  tolerate, as a fraction of the median. The dual puts a vertex at each
+  triangle's pole, so two nearly coplanar triangles produce two vertices almost
+  on top of each other — an edge nobody can see, between two vertices nobody can
+  tell apart. One solid had 5 of its 84 edges under 0.10 against a median of
+  0.38, the worst at 0.015, where the drawn vertex spheres alone are 0.04 across.
+  `separate_short_edges` walks those apart and re-flattens the faces after each
+  nudge. The faces then aren't *exactly* flat any more, but the residual is
+  smaller than the rounding `obj2json.py` applies anyway.
 
 ### Step 2: Generate puzzles for the grid
 

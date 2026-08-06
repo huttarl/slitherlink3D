@@ -39,10 +39,30 @@ from genUniformPolyh import merge_coplanar_faces
 # points give a wider mix of face sizes but clump. Halfway keeps some of both.
 DEFAULT_RELAX = 0.5
 
+# --seeds wants more than that, and can afford it. Relaxation only spreads the
+# seed CENTRES there, and the seed sizes are drawn independently, so unlike
+# --dual it costs nothing in face variety -- while unevenly spaced seeds leave
+# sliver triangles in the gaps between them. Measured over 6 solids per setting
+# at n=30, the sharpest corner any face had: 19 degrees at relax 0.5, 23 at 0.75,
+# 27 at 0.9, and no better at 1.0.
+DEFAULT_SEEDS_RELAX = 0.9
+
 # How much of the room between neighbouring seeds a seed polygon takes up, in
 # the --seeds method. Under 1 so that no two seeds touch, which is what keeps
-# each of them a face of the hull.
-SEED_FILL = 0.8
+# each of them a face of the hull -- and well under, because seeds that nearly
+# touch squeeze the filler triangles between them into slivers. From the same
+# measurements: median sharpest corner 27 degrees at 0.7, 21 at 0.8, and 8 at
+# 0.97, where some faces became unusable splinters.
+SEED_FILL = 0.7
+
+# The shortest edge the --dual method will leave alone, as a fraction of the
+# median edge length. The dual puts a vertex at each triangle's pole, and two
+# nearly coplanar triangles have poles almost on top of each other -- which draws
+# as a single blob, since a vertex sphere's radius is a third of a typical edge
+# (see VERTEX_RADIUS and EDGE_RADIUS in js/constants.js). Measured on one such
+# solid: 5 of its 84 edges came out under 0.10 with a median of 0.38, the worst
+# at 0.015. See separate_short_edges.
+MIN_EDGE_FRACTION = 0.4
 
 
 def generate_random_points_on_sphere(n, radius=1.0):
@@ -681,9 +701,12 @@ def usage():
           'all, sizes following the points\' degrees', file=sys.stderr)
     print('  --seeds     scatter regular polygons (3 to 6 sides) and let the '
           'hull triangulate the gaps between them', file=sys.stderr)
-    print(f'  --relax     how evenly to spread the points, 0 to 1 '
-          f'(default {DEFAULT_RELAX}): 0 leaves them clumped and the face sizes '
-          f'varied, 1 spreads them evenly and narrows the sizes',
+    print(f'  --relax     how evenly to spread the points, 0 to 1 (default '
+          f'{DEFAULT_RELAX}, or {DEFAULT_SEEDS_RELAX} with --seeds): 0 leaves '
+          f'them clumped and the face sizes varied, 1 spreads them evenly and '
+          f'narrows the sizes', file=sys.stderr)
+    print(f'  --min-edge  with --dual, the shortest edge to allow as a fraction '
+          f'of the median (default {MIN_EDGE_FRACTION}; 0 to leave them alone)',
           file=sys.stderr)
     print('  --name      OBJ group name, which obj2json.py turns into the '
           "grid's gridId/gridName (default 'polyhedron')", file=sys.stderr)
@@ -707,8 +730,10 @@ def main():
     a poor record of what produced a file.
     """
     args = sys.argv[1:]
+    # --relax starts as None so that a method can pick its own default; see
+    # DEFAULT_SEEDS_RELAX for why --seeds wants a different one.
     options = {'--name': 'polyhedron', '--out': None, '--angle': '5.0',
-               '--relax': str(DEFAULT_RELAX)}
+               '--relax': None, '--min-edge': str(MIN_EDGE_FRACTION)}
     flags = {'--spiral': False, '--no-quads': False, '--quiet': False,
              '--dual': False, '--seeds': False}
     n = 70
@@ -737,7 +762,8 @@ def main():
     # animation is wasted work, and plt.show() would block a GUI backend forever.
     animate = not flags['--quiet']
     merge_quads = not flags['--no-quads']
-    relax = float(options['--relax'])
+    relax = (float(options['--relax']) if options['--relax'] is not None
+             else (DEFAULT_SEEDS_RELAX if flags['--seeds'] else DEFAULT_RELAX))
     if flags['--dual'] and flags['--seeds']:
         print('--dual and --seeds are two different methods; pick one.',
               file=sys.stderr)
@@ -753,7 +779,8 @@ def main():
         if flags['--dual']:
             points = (generate_golden_spiral(n) if flags['--spiral']
                       else relaxed_points(n, relax, animate))
-            (vertices, faces) = dual_of_triangulation(points)
+            (vertices, faces) = dual_of_triangulation(
+                points, float(options['--min-edge']))
         else:
             (vertices, faces) = seeded_solid(n, relax, animate)
         export_mesh_to_obj(vertices, faces, out, group=options['--name'])
@@ -787,7 +814,7 @@ def main():
             visualize_points_on_sphere(points, radius=1.0, hull=hull)
 
 
-def dual_of_triangulation(points):
+def dual_of_triangulation(points, min_edge=MIN_EDGE_FRACTION):
     """The polar dual of the points' convex hull: one face per point, no triangles.
 
     The hull of points on a sphere is a triangulation, and its dual turns every
@@ -801,11 +828,99 @@ def dual_of_triangulation(points):
     Polar reciprocation, not centroids-joined-up, so the faces are exactly flat
     rather than slightly saddle-shaped -- see polar_dual in genGoldberg.py.
 
+    @param min_edge: shortest edge to allow, as a fraction of the median; 0 to
+        leave the poles exactly where they fall (see separate_short_edges)
     @returns (vertices, faces), scaled to a circumradius of 1
     """
     (vertices, faces) = polar_dual(np.asarray(points, dtype=float))
+    if min_edge > 0:
+        vertices = separate_short_edges(vertices, faces, min_edge)
     longest = np.abs(np.linalg.norm(vertices, axis=1)).max()
     return (vertices / longest, faces)
+
+
+def edges_of(faces):
+    """Every edge of a face list, as (lower index, higher index) pairs."""
+    return {tuple(sorted((face[i], face[(i + 1) % len(face)])))
+            for face in faces for i in range(len(face))}
+
+
+def flatten_faces(vertices, faces, strength=1.0):
+    """Nudge each face's corners towards that face's own best-fit plane.
+
+    A vertex belongs to three faces pulling it three ways, so the corrections are
+    averaged rather than applied one after another. Called after moving vertices
+    around, to win back the flatness that the move cost.
+    """
+    corrections = np.zeros_like(vertices)
+    counts = np.zeros(len(vertices))
+    for face in faces:
+        corner = vertices[face]
+        centre = corner.mean(axis=0)
+        # The least-spread direction is the fitted plane's normal.
+        (*_, singular) = np.linalg.svd(corner - centre)
+        normal = singular[-1]
+        for (i, v) in enumerate(face):
+            offset = np.dot(corner[i] - centre, normal)
+            corrections[v] -= strength * offset * normal
+            counts[v] += 1
+    counts[counts == 0] = 1
+    return vertices + corrections / counts[:, None]
+
+
+def separate_short_edges(vertices, faces, min_fraction=MIN_EDGE_FRACTION,
+                         rounds=200):
+    """Push apart vertices that landed almost on top of one another.
+
+    The dual of a triangulation puts a vertex at each triangle's pole, and two
+    nearly coplanar triangles give two poles a hair apart -- an edge the player
+    can't see, between two vertices they can't tell apart. This walks the short
+    edges apart to min_fraction of the median edge length, re-flattening the
+    faces after each nudge so they don't bow in the process.
+
+    Both steps are small and local, so the solid stays convex and roughly
+    spherical; what it stops being is EXACTLY flat-faced, and the residual bow is
+    reported by the caller. (An alternative would be to merge the offending pair
+    of triangles before dualizing, which keeps flatness exact but costs a face.)
+
+    @returns the adjusted vertices
+    """
+    vertices = np.array(vertices, dtype=float)
+    edges = sorted(edges_of(faces))
+    if not edges:
+        return vertices
+
+    def lengths(points):
+        return np.array([np.linalg.norm(points[a] - points[b]) for (a, b) in edges])
+
+    target = min_fraction * float(np.median(lengths(vertices)))
+    print(f'Separating vertices closer than {target:.3f} '
+          f'({min_fraction:.0%} of the median edge)')
+
+    for round_number in range(rounds):
+        current = lengths(vertices)
+        short = [i for (i, length) in enumerate(current) if length < target]
+        if not short:
+            break
+        for i in short:
+            (a, b) = edges[i]
+            gap = vertices[b] - vertices[a]
+            distance = np.linalg.norm(gap)
+            if distance < 1e-12:
+                # Exactly coincident: any direction will do to get them apart.
+                gap = np.random.normal(size=3)
+                distance = np.linalg.norm(gap)
+            # Half the shortfall each, damped so neighbouring short edges don't
+            # fight each other into an overshoot.
+            push = 0.25 * (target - distance) * gap / distance
+            vertices[a] -= push
+            vertices[b] += push
+        vertices = flatten_faces(vertices, faces)
+
+    final = lengths(vertices)
+    print(f'  shortest edge {final.min():.3f} after {round_number + 1} rounds '
+          f'(target {target:.3f})')
+    return vertices
 
 
 def choose_seed_sizes(n):
