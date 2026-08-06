@@ -3,11 +3,30 @@
 Design notes for teaching the solver to reason about *pairs* of edges, not only
 about single edges.
 
-**Status.** The data model is built and unit-tested in `util/slisolver.py`:
-`ParityRelation` (extracted from `FaceColoring`, which now subclasses it),
-`EdgePairing`, and `EdgeClauses`. Nothing generates or consumes pair constraints
-yet, so the solver behaves exactly as before — the emitters and the queries are
-the next two stages, tracked in `ideas/TODOs.md`.
+**Status.** Built and unit-tested in `util/slisolver.py`: the data model
+(`ParityRelation`, extracted from `FaceColoring`, which now subclasses it, plus
+`EdgePairing` and `EdgeClauses`) and the emitters (`emit_vertex_pairs`,
+`emit_face_pairs`, driven by `apply_pair_rules`, which runs in
+`propagate_constraints` after coloring stalls). Still to come: the substitution
+queries described below, which rewrite the clue arithmetic rather than only
+propagating. Tracked in `ideas/TODOs.md`.
+
+Two things measured once the emitters were working, both worth recording:
+
+- **It fires where the doc predicted and nowhere else.** From positions where the
+  older families had stalled, `apply_pair_rules` deduced something in 156 of 200
+  cases on the pentakis dodecahedron (`dtI`) and 127 of 200 on the tetrakis
+  hexahedron (`dtO`) — triangle-faced, high-degree solids — and in **0 of 200** on
+  the dodecahedron. That is the locality and degree argument below, confirmed: a
+  3-valent solid with pentagonal faces gives the emitters almost nothing to say,
+  because `f == 0, u == 3` yields no pair constraint at all and Rules A and B
+  already cover the rest.
+- **It pays for itself, modestly.** Timing `solution_is_unique` over the stored
+  puzzles with the pass enabled vs stubbed out, in one process: `sD` 0.39s vs
+  0.56s, `bD` 1.63s vs 1.93s, `gp12` 25.06s vs 26.98s, and no measurable
+  difference on the small ones. Never slower, roughly 7–30% faster on the large
+  solids, and the set of puzzles proven unique was identical — as it must be,
+  since a sound rule cannot change the solution set, only how fast we reach it.
 
 The four relations that come up constantly when solving these puzzles by hand:
 
@@ -148,6 +167,15 @@ no pair is constrained.
 
 Those two lines generalise the cases that turn up by hand. Both are `O(u²)` pairs
 per face, which is nothing for `u ≤ 10`.
+
+**These emitters subsume pattern Rules A and B**, which is a useful correctness
+check and was verified directly. Rule A is a -1 face (deficit `u−1`, so
+at-least-one) at a vertex whose other edges are ruled out (`f == 0, u == 2`, so
+both-or-neither); at-least-one plus both-or-neither forces both edges filled,
+which is exactly what Rule A concludes. Rule B is the same shape with clue 1,
+deficit 1 and at-most-one, forcing both ruled out. Keep the patterns anyway: they
+are far cheaper, and they model what a player recognizes at a glance, which is
+the same reason `apply_pattern_rules` coexists with `propagate_with_lookahead`.
 
 ## The payoff is in the queries, not the propagation
 

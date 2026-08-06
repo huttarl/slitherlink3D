@@ -123,9 +123,11 @@ def apply_clues(clues, num_clues, mesh):
 def propagate_constraints(mesh, clues, num_clues):
     """Apply deterministic inference rules until no more progress can be made.
 
-    Alternates apply_vertex_rules, apply_clue_rules, apply_pattern_rules and
-    apply_color_rules in a fixed-point loop, cheapest first. Bails on the
-    first contradiction from any family.
+    Alternates apply_vertex_rules, apply_clue_rules, apply_pattern_rules,
+    apply_color_rules and apply_pair_rules in a fixed-point loop, cheapest
+    first: each family runs only once every cheaper one has stalled, and any
+    deduction sends us back to the cheap rules. Bails on the first contradiction
+    from any family.
 
     Each pass either changes at least one edge or returns. Since the
     set of edge states is finite and rules only refine 'unknown' edges
@@ -160,7 +162,17 @@ def propagate_constraints(mesh, clues, num_clues):
         (ok, changed_col) = apply_color_rules(mesh)
         if not ok:
             return False
-        if not changed_col:
+        if changed_col:
+            continue  # Back to the cheap rules with the new facts.
+
+        # Coloring has stalled too. Edge-pair reasoning is the most expensive
+        # family (it builds two stores and then tests each constrained edge both
+        # ways), so it goes last, for the same reason coloring goes after the
+        # local rules.
+        (ok, changed_pair) = apply_pair_rules(mesh)
+        if not ok:
+            return False
+        if not changed_pair:
             return True  # No family can deduce anything further.
 
 
@@ -308,6 +320,16 @@ class FaceColoring(ParityRelation):
     blue seed faces arbitrarily. Relative relationships are all there is, and
     they're enough -- colorings that never connect to each other still yield
     deductions in their own neighbourhoods.
+
+    To be precise about what "relative" rules out, since it isn't the labels:
+    naming the two patches red and blue is perfectly fine, and each group's
+    parity bits amount to exactly that, read as "same as my root face" or "not".
+    What's missing is an ANCHOR. No face is known red the way a flat grid's
+    border region is known outside, so a group's labeling is fixed only up to
+    swapping the two colors, and two groups that have never been connected
+    can't be compared at all. Hence the interface offers relation() and not
+    color_of(): the pairwise answer is invariant under that swap, and an
+    absolute one wouldn't be.
     """
 
 
@@ -381,10 +403,10 @@ class EdgePairing(ParityRelation):
     apart they are on the solid. Contradictions are caught on insertion.
 
     Why edges need their own structure, when FaceColoring exists: an edge is
-    filled exactly when its two faces differ in colour, so an edge between
+    filled exactly when its two faces differ in color, so an edge between
     faces A and B *is* the parity A^B. For two edges sharing a face -- e
     between A and B, f between B and C -- "e agrees with f" reduces to
-    "A and C are the same colour", which the face colouring can already answer.
+    "A and C are the same color", which the face coloring can already answer.
     But two edges sharing only a VERTEX give A^B = C^D, a four-face parity that
     no pairwise relation over faces can hold. That case is what this is for.
 
@@ -500,6 +522,199 @@ class EdgeClauses:
         return sorted(tuple(sorted(pair))
                       for (pair, kinds) in self.kinds.items()
                       if len(pair) == 2 and len(kinds) == 2)
+
+
+def emit_vertex_pairs(mesh, pairing, clauses):
+    """Read pair constraints off the vertex rule, one vertex at a time.
+
+    A vertex uses 0 or 2 of its edges. With f of them already filled and u
+    still unknown, that alone relates the unknowns:
+
+        f == 1, u == 2   exactly one of the two (the vertex needs one more)
+        f == 0, u == 2   both or neither (it needs none or both)
+        f == 1, u > 2    at most one, for each of the C(u,2) pairs
+        f == 2           every unknown is ruled out -- apply_vertex_rules
+                         already does that, so nothing pairwise is needed
+
+    Note f == 0, u >= 3 yields NOTHING pairwise: for any two of those edges,
+    both-filled is legal (the vertex's two) and both-empty is legal (two others
+    are, or none are). The information there is "0 or 2 of these u", which is
+    not a statement about any pair.
+
+    The pairs this produces all share a vertex, which is half of the locality
+    argument in docs/edge-pair-constraints.md -- we never enumerate a pair no
+    rule can speak about.
+
+    Returns False if a relation contradicts one already recorded.
+    """
+    for vkey in mesh.vertices():
+        filled = []
+        unknown = []
+        for nbr in mesh.vertex_neighbors(vkey):
+            ekey = (vkey, nbr)
+            guess = mesh.edge_attribute(ekey, 'guess')
+            if guess == 'filledIn':
+                filled.append(ekey)
+            elif guess == 'unknown':
+                unknown.append(ekey)
+        f = len(filled)
+        u = len(unknown)
+
+        if (f, u) == (1, 2):
+            if not pairing.exactly_one(unknown[0], unknown[1]):
+                return False
+        elif (f, u) == (0, 2):
+            if not pairing.both_or_neither(unknown[0], unknown[1]):
+                return False
+        elif f == 1 and u > 2:
+            for (edge1, edge2) in itertools.combinations(unknown, 2):
+                clauses.at_most_one(edge1, edge2)
+
+    return True
+
+
+def emit_face_pairs(mesh, pairing, clauses):
+    """Read pair constraints off the clue arithmetic, one clued face at a time.
+
+    For a face with clue k, f edges filled and u unknown, the deficit k - f is
+    how many of the unknowns must still be filled. Two cases speak about pairs:
+
+        deficit == 1       exactly one more edge is filled, so AT MOST ONE of
+                           any pair of unknowns
+        deficit == u - 1   exactly one unknown stays empty, so AT LEAST ONE of
+                           any pair of unknowns is filled
+
+    When u == 2 and deficit == 1 both conditions hold, so the pair collects both
+    clauses and becomes "exactly one" -- which is why the caller promotes rather
+    than special-casing it here.
+
+    The extreme deficits (0 and u) determine every unknown outright and belong to
+    apply_clue_rules; this only speaks where that rule is silent. `pairing` is
+    unused, and is taken so both emitters have one signature.
+
+    Returns True always -- a clause can't contradict on insertion the way a
+    parity relation can, since it rules out one combination rather than tying
+    two edges together.
+    """
+    for fkey in mesh.faces():
+        clue = mesh.face_attribute(fkey, 'clue')
+        if clue is None:
+            continue
+
+        filled = []
+        unknown = []
+        for ekey in mesh.face_halfedges(fkey):
+            guess = mesh.edge_attribute(ekey, 'guess')
+            if guess == 'filledIn':
+                filled.append(ekey)
+            elif guess == 'unknown':
+                unknown.append(ekey)
+        u = len(unknown)
+        deficit = clue - len(filled)
+
+        if u < 2:
+            continue  # No pair to speak about.
+
+        # Not elif: at u == 2, deficit == 1 satisfies both, which is the point.
+        if deficit == 1:
+            for (edge1, edge2) in itertools.combinations(unknown, 2):
+                clauses.at_most_one(edge1, edge2)
+        if deficit == u - 1:
+            for (edge1, edge2) in itertools.combinations(unknown, 2):
+                clauses.at_least_one(edge1, edge2)
+
+    return True
+
+
+def pair_forced_by(pairing, clauses, edge, guess):
+    """Everything the two stores TOGETHER force, given one edge's state.
+
+    Walks parity groups and clause implications in one search, because the
+    payoff is in their interaction: a parity step can land on an edge whose
+    clause then forces a third, and so on.
+
+    Returns a dict of edge -> guess including the edge asked about, or None if
+    the supposition is impossible. None is the useful answer: it means the edge
+    must take the other state.
+    """
+    known = {}
+    queue = [(edge_id(edge), guess)]
+    while queue:
+        (current, current_guess) = queue.pop()
+        if current in known:
+            if known[current] != current_guess:
+                return None  # Both states forced for one edge.
+            continue
+        known[current] = current_guess
+        # Everything tied to it by parity, then everything its state implies.
+        queue.extend(pairing.forced_by(current, current_guess).items())
+        queue.extend(clauses.implications(current, current_guess))
+    return known
+
+
+def apply_pair_rules(mesh):
+    """Apply edge-pair reasoning: build the pair constraints, then use them.
+
+    Three steps. First the emitters read pairs off the vertex and clue
+    arithmetic. Then any pair that collected both an at-least-one and an
+    at-most-one is promoted to "exactly one" -- the seam where two rule families
+    feed each other, since the two clauses often come from different faces, or
+    from a face and a vertex. Finally each constrained edge is tested both ways:
+    if supposing it filled forces some edge into both states at once, the edge
+    must be ruled out, and vice versa.
+
+    That last step is a restricted lookahead, and worth comparing to
+    propagate_with_lookahead, which is strictly stronger: it supposes an edge
+    and runs the FULL rule set, so it sees everything this does and more. The
+    difference is cost. This walks a few small local structures and touches no
+    mesh attributes, cheap enough to sit inside the fixed-point loop, where
+    lookahead is an outer layer used only after everything else has stalled.
+
+    Known overlap: this subsumes pattern Rules A and B. Rule A is a -1 face
+    (deficit u-1, giving at-least-one) at a vertex whose other edges are ruled
+    out (giving both-or-neither), and at-least-one plus both-or-neither forces
+    both edges filled. Rule B is the same with clue 1, deficit 1 and
+    at-most-one, forcing both ruled out. The patterns are kept because they are
+    much cheaper and because they model what a player recognises at a glance --
+    the same reason apply_pattern_rules coexists with lookahead.
+
+    The stores are built from scratch on every call and thrown away, exactly as
+    apply_color_rules does with its FaceColoring, so save_state stays a plain
+    list of edge guesses and backtracking has no constraint database to unwind.
+
+    Returns (ok, changed) -- same convention as the other rule families.
+    """
+    pairing = EdgePairing()
+    clauses = EdgeClauses()
+
+    if not emit_vertex_pairs(mesh, pairing, clauses):
+        return (False, False)
+    if not emit_face_pairs(mesh, pairing, clauses):
+        return (False, False)
+
+    for (edge1, edge2) in clauses.exactly_one_pairs():
+        if not pairing.exactly_one(edge1, edge2):
+            return (False, False)
+
+    # Every edge any constraint mentions, in a stable order for reproducibility.
+    candidates = set(pairing.parent) | {edge for (edge, _guess) in clauses.implies}
+
+    changed = False
+    for ekey in sorted(candidates):
+        # Earlier deductions in this same scan may have settled it already.
+        if mesh.edge_attribute(ekey, 'guess') != 'unknown':
+            continue
+        impossible = [guess for guess in ('filledIn', 'ruledOut')
+                      if pair_forced_by(pairing, clauses, ekey, guess) is None]
+        if len(impossible) == 2:
+            return (False, changed)  # Neither state works: the position is dead.
+        if impossible:
+            (ok, did) = _set_edges(mesh, [ekey], OPPOSITE_GUESS[impossible[0]])
+            if not ok:
+                return (False, changed)
+            changed = changed or did
+
+    return (True, changed)
 
 
 def face_sides(mesh, fkey):

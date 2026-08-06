@@ -22,7 +22,10 @@ from slisolver import (
     apply_clue_rules,
     apply_clues,
     apply_color_rules,
+    apply_pair_rules,
     edge_id,
+    emit_face_pairs,
+    emit_vertex_pairs,
     apply_pattern_rules,
     apply_rule_c,
     apply_rule_d,
@@ -1115,6 +1118,183 @@ class TestEdgeClauses:
 class TestEdgeId:
     def test_canonicalizes_orientation(self):
         assert edge_id((5, 2)) == edge_id((2, 5)) == (2, 5)
+
+
+def emit(mesh):
+    """Run both emitters over a mesh, returning the two stores."""
+    pairing = EdgePairing()
+    clauses = EdgeClauses()
+    assert emit_vertex_pairs(mesh, pairing, clauses) is True
+    assert emit_face_pairs(mesh, pairing, clauses) is True
+    return (pairing, clauses)
+
+
+class TestEmitVertexPairs:
+    """Pair constraints read off the 0-or-2 vertex rule. Cube vertex 0 has
+    edges (0,1), (0,3), (0,4); octahedron vertex 0 has four, to vertices 2-5.
+
+    Every assertion names a specific pair, because the emitter scans all
+    vertices and other vertices legitimately contribute their own pairs.
+    """
+
+    def test_f0_u2_gives_both_or_neither(self, cube):
+        fill(cube, [])
+        set_edge(cube, 0, 3, 'ruledOut')
+        (pairing, _clauses) = emit(cube)
+        assert pairing.relation((0, 1), (0, 4)) is False
+
+    def test_f1_u2_gives_exactly_one(self, cube):
+        fill(cube, [(0, 3)])            # (0,3) filled, the other two unknown
+        (pairing, _clauses) = emit(cube)
+        assert pairing.relation((0, 1), (0, 4)) is True
+
+    def test_f1_u3_gives_at_most_one_for_every_pair(self, octahedron):
+        fill(octahedron, [(0, 2)])      # one filled, three unknown at vertex 0
+        (pairing, clauses) = emit(octahedron)
+        for (edge1, edge2) in (((0, 3), (0, 4)), ((0, 3), (0, 5)),
+                               ((0, 4), (0, 5))):
+            assert clauses.implications(edge1, 'filledIn') != []
+            assert (edge2, 'ruledOut') in clauses.implications(edge1, 'filledIn')
+        # At most one is not a parity relation, so the pairing stays silent.
+        assert pairing.relation((0, 3), (0, 4)) is None
+
+    def test_f0_u3_gives_nothing(self, cube):
+        # 0 or 2 of three edges: for any pair, both-filled and both-empty are
+        # each still possible, so no pair is constrained.
+        fill(cube, [])
+        (pairing, clauses) = emit(cube)
+        assert pairing.parent == {}
+        assert clauses.implies == {}
+
+    def test_f2_gives_nothing_pairwise(self, cube):
+        # apply_vertex_rules already rules out the third edge outright.
+        fill(cube, [(0, 1), (0, 3)])
+        (_pairing, clauses) = emit(cube)
+        assert clauses.implications((0, 4), 'filledIn') == []
+
+
+class TestEmitFacePairs:
+    """Pair constraints read off the clue arithmetic. Cube face 2 (front) has
+    edges (0,1), (1,5), (4,5) and (0,4)."""
+
+    def test_deficit_one_gives_at_most_one(self, cube):
+        fill(cube, [])
+        apply_clues([(2, 1)], 1, cube)
+        (_pairing, clauses) = emit(cube)
+        assert ((1, 5), 'ruledOut') in clauses.implications((0, 1), 'filledIn')
+        # Deficit 1 says nothing about a pair both being empty.
+        assert clauses.implications((0, 1), 'ruledOut') == []
+
+    def test_deficit_u_minus_one_gives_at_least_one(self, cube):
+        # Clue 3 on a quad: exactly one edge stays empty, so no two can.
+        fill(cube, [])
+        apply_clues([(2, 3)], 1, cube)
+        (_pairing, clauses) = emit(cube)
+        assert ((1, 5), 'filledIn') in clauses.implications((0, 1), 'ruledOut')
+        assert clauses.implications((0, 1), 'filledIn') == []
+
+    def test_two_unknowns_and_deficit_one_promote_to_exactly_one(self, cube):
+        # With two of the four edges ruled out, deficit 1 == u - 1, so the pair
+        # collects both clauses and means "exactly one".
+        fill(cube, [])
+        set_edge(cube, 1, 5, 'ruledOut')
+        set_edge(cube, 4, 5, 'ruledOut')
+        apply_clues([(2, 1)], 1, cube)
+        (_pairing, clauses) = emit(cube)
+        assert ((0, 1), (0, 4)) in clauses.exactly_one_pairs()
+
+    def test_extreme_deficits_give_nothing(self, cube):
+        # Deficit 0 (clue 0) and deficit u (clue 4) determine every edge, which
+        # is apply_clue_rules' job, so no pair constraint is emitted.
+        for clue in (0, 4):
+            fill(cube, [])
+            apply_clues([(2, clue)], 1, cube)
+            (_pairing, clauses) = emit(cube)
+            assert clauses.implies == {}
+
+    def test_unclued_face_is_ignored(self, cube):
+        fill(cube, [])
+        (_pairing, clauses) = emit(cube)
+        assert clauses.implies == {}
+
+
+class TestApplyPairRules:
+    """The whole pass: emit, promote, then test each constrained edge both ways."""
+
+    def test_no_clues_deduces_nothing(self, cube):
+        fill(cube, [])
+        (ok, changed) = apply_pair_rules(cube)
+        assert (ok, changed) == (True, False)
+
+    def test_reproduces_rule_a(self, cube):
+        """A -1 face at a settled vertex forces both its edges there filled.
+
+        Rule A's deduction, reached instead by composition: the clue gives
+        at-least-one for the pair (deficit == u - 1) and the settled vertex gives
+        both-or-neither, and together those force both edges filled.
+        """
+        fill(cube, [])
+        apply_clues([(2, 3)], 1, cube)
+        set_edge(cube, 0, 3, 'ruledOut')
+        (ok, changed) = apply_pair_rules(cube)
+        assert (ok, changed) == (True, True)
+        assert guess_of(cube, 0, 1) == 'filledIn'
+        assert guess_of(cube, 0, 4) == 'filledIn'
+
+    def test_reproduces_rule_b(self, cube):
+        """The mirror image: clue 1 gives at-most-one, the settled vertex gives
+        both-or-neither, so both edges are ruled out."""
+        fill(cube, [])
+        apply_clues([(2, 1)], 1, cube)
+        set_edge(cube, 0, 3, 'ruledOut')
+        (ok, changed) = apply_pair_rules(cube)
+        assert (ok, changed) == (True, True)
+        assert guess_of(cube, 0, 1) == 'ruledOut'
+        assert guess_of(cube, 0, 4) == 'ruledOut'
+
+    def test_deduces_what_no_other_family_can(self, octahedron):
+        """The distinguishing case, and the one that needs both stores.
+
+        Octahedron, clue 1 on face 0 = [0,2,3], with (0,2) ruled out and (1,3)
+        filled. Then:
+
+          - face 0 has two unknowns left, (0,3) and (2,3), and needs one filled,
+            so the pair collects both clauses and promotes to EXACTLY ONE;
+          - vertex 3 has one filled edge, (1,3), and three unknown -- (0,3),
+            (2,3), (3,4) -- so AT MOST ONE of any of those pairs is filled.
+
+        Suppose (3,4) were filled: it rules out both (0,3) and (2,3), yet
+        exactly one of them must be filled. So (3,4) is ruled out.
+
+        Verified by brute force over all 2^12 edge assignments: 10 single-loop
+        solutions satisfy this position, and (3,4) is empty in every one.
+        """
+        fill(octahedron, [(1, 3)])
+        set_edge(octahedron, 0, 2, 'ruledOut')
+        apply_clues([(0, 1)], 1, octahedron)
+
+        # Every older family is helpless here.
+        assert apply_vertex_rules(octahedron) == (True, False)
+        assert apply_clue_rules(octahedron) == (True, False)
+        assert apply_pattern_rules(octahedron) == (True, False)
+        assert apply_color_rules(octahedron) == (True, False)
+        assert guess_of(octahedron, 3, 4) == 'unknown'
+
+        (ok, changed) = apply_pair_rules(octahedron)
+        assert (ok, changed) == (True, True)
+        assert guess_of(octahedron, 3, 4) == 'ruledOut'
+
+    def test_detects_a_contradiction(self, cube):
+        """Face 2 clued 1 with two edges ruled out leaves exactly one of (0,1)
+        and (0,4) filled, while vertex 0 with (0,3) ruled out demands both or
+        neither. Unsatisfiable, and the promotion step is what notices."""
+        fill(cube, [])
+        set_edge(cube, 1, 5, 'ruledOut')
+        set_edge(cube, 4, 5, 'ruledOut')
+        set_edge(cube, 0, 3, 'ruledOut')
+        apply_clues([(2, 1)], 1, cube)
+        (ok, _changed) = apply_pair_rules(cube)
+        assert ok is False
 
 
 class TestApplyColorRules:

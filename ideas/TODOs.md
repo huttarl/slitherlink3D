@@ -1,6 +1,7 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
+- [ ] The routine tests seem to be getting really slow. Can we refine our
 - [ ] On the celebration UI, besides the "Next" button, also have a button for
   staying on the current puzzle for a while to look around. Not sure what to call
   it ... Cancel, Back, "Hang out" or "Stay here". The Esc key should already does the same thing...
@@ -25,12 +26,31 @@ Finished items live in ideas/TODOs-done.md.
         - [x] The data model: ParityRelation extracted from FaceColoring, plus
           EdgePairing and EdgeClauses in slisolver.py, with promotion of a
           both-clauses pair to "exactly one". Unit-tested; nothing calls it yet.
-        - [ ] Emitters: derive pairs from vertex arithmetic (f==1,u==2 etc.) and
-          from face deficits, as an apply_pair_rules pass beside apply_color_rules.
+        - [x] Emitters: emit_vertex_pairs and emit_face_pairs, driven by
+          apply_pair_rules, which runs in propagate_constraints after coloring
+          stalls. Subsumes Rules A and B (verified). Fires often on
+          triangle-faced high-degree solids and never on the dodecahedron;
+          7-30% faster uniqueness checks on the large solids. Figures are in
+          docs/edge-pair-constraints.md.
         - [ ] Queries: rewrite the clue/vertex arithmetic using known pairings
           (drop an exactly-one pair and reduce the deficit by 1, and so on).
           This is where the doc expects most of the gain.
         - [ ] Measure against dtC/dtD/dbD, and re-run util/fill_puzzles.py.
+    - [ ] One thing that should be fruitful is to walk through my manual solving process
+      of a puzzle or two, telling Claude along the way what patterns I'm seeing and using,
+      and letting it decide whether that's a new rule, or something that's covered by existing
+      rules.
+- [ ] A while back, when we were getting the puzzle verifier to work, it had heuristics for
+    what to try next (I think this was for a depth search), and I said that a very good heuristic would
+    be to pick the state for an edge that would determine where the loop goes next (or something like that).
+    Anyway Claude timed the results with that heuristic and others, and said that mine actually resulted
+    in worse times, and removed that heuristic in favor of another. I allowed that at the time, but it seems to me that
+    this was a strong heuristic for pruning the remaining search space. So, given that we're running up against
+    time limits in verifying puzzles, maybe we should reintroduce that heuristic ... not instead of others,
+    but in conjunction with others. Seems like it can't hurt.
+    Claude responded to this paragraph: "For whatever it's worth on the substance: the heuristic you're describing is chain-following, which is option (b) in the note in select_edge_for_branching — it measured worst of the three (96.6s and 4 timeouts, against naive's 80.8s and 3). But that note also records why, and it supports your point rather than undercutting it: the per-call scoring overhead outweighed the search-tree reduction, and no selector helped the pathological instances that dominate total time. So "it can't hurt" was contradicted only by the bookkeeping cost, not by the pruning logic. Combining heuristics as you suggest would add cost rather than remove it, so if we revisit this, the thing to attack first is making the selector cheap to evaluate — and the pair stores now being built during propagation may give it that information for free."
+    However, now that we're focusing on making sure puzzles are "deductively solvable" rather than "uniquely solvable," maybe these
+    search heuristics aren't even being used anymore.
 - [ ] The buttons are of slightly uneven sizes.
         E.g. the "upright" and "Reset" buttons look a little shorter on top than the others.
         Actually on careful inspection, the buttons with icons (Unicode symbols) are slightly *taller* than the icons with words.
