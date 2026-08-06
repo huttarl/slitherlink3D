@@ -84,10 +84,30 @@ Finished items live in ideas/TODOs-done.md.
       also blamed fix_boring_neighborhoods for not setting the needs_check flags.
       That was wrong: it paints via paint_face, which sets the other color's flag,
       and test_painting_flags_the_other_color_for_a_check covers exactly that.)
-    - [ ] The likely fix is to grow ONE connected region and test it, restarting
-      on failure, which is what util/genLoosePuzzle.py does and why it produces
-      dtC solutions instantly. Its find_solution/grow_region could probably be
-      lifted into genSliPuzzles wholesale, replacing RegionColoring's repair loop.
+    - [x] Done: paint_regions now grows ONE connected region and tests it,
+      discarding failures, with generate() retrying -- genLoosePuzzle's approach
+      lifted in, replacing the repair loop entirely. All 49 grids now generate,
+      dtC/dtD/dbD for the first time; slowest is gp12 at 24.7s, 44 of 49 under 5s.
+      One wrinkle the lift did not anticipate: the loop IS the region's boundary,
+      so growing uniformly makes compact regions and loops only 40-60% as long as
+      the old painter's on larger solids (gp12 39 edges against a stored 112).
+      Growing at the region's tips restores the length, but a dendritic region
+      keeps touching itself at a vertex, which has to be discarded, and that is
+      fatal on the highest-degree solids (dbD failed 2000 attempts running). So
+      raggedness now starts at 1.0 and eases off by 0.1 every RAGGEDNESS_PATIENCE
+      attempts, letting each grid find its own tolerance.
+    - [ ] The three newly-working solids get poor puzzles, for the same reason
+      they were hard in the first place: being high-degree, they are forced down to
+      low raggedness, so their loops stay short and cover little of the solid --
+      dbD is a 21-edge loop on a 180-edge solid needing 79 clues across 120 faces,
+      and dtD is 14 edges with 34 clues. Worth a better idea than backing off
+      raggedness globally: perhaps grow raggedly but repair only the pinches.
+    - [ ] Six RegionColoring methods are dead now (ensure_connected,
+      fix_boring_neighborhoods, paint_neighbor_face, adjust_populations,
+      paint_random_faces, randomize_face_colors) plus the two *_needs_check flags,
+      which nothing reads. Left in place for now because their docstrings record
+      real historical bugs; delete them (and the three tests that only cover them)
+      once we have decided that history can live in git alone.
         - [ ] Confirm the same diagnosis on dtD (20 degree-3 apexes) and dbD,
           which has no degree-3 vertices at all, so its flips must involve
           degree-4 ones and the story may differ.
