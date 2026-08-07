@@ -94,7 +94,25 @@ def output():
 #         "puzzles": []
         }))
     
+def usage():
+    """Print how to run this, and exit. Reached when there's no filename to
+    read, which used to raise IndexError from sys.argv[1] and print a traceback
+    that said nothing about what was wrong."""
+    print("Usage: util/obj2json.py myPolyhedron.obj > data/myGrid.json",
+          file=sys.stderr)
+    print("Converts an OBJ export (e.g. from polyHedronisme) to grid JSON.",
+          file=sys.stderr)
+    print("The grid's name and id come from the OBJ's group ('g') line, so give",
+          file=sys.stderr)
+    print("each solid its own; see docs/generating-grids.md.", file=sys.stderr)
+    sys.exit(1)
+
 def main():
+    # One argument, the OBJ file: the JSON goes to stdout, so there's no output
+    # filename to give. "-h" is worth catching separately, or we'd go looking
+    # for a file called "-h".
+    if len(sys.argv) != 2 or sys.argv[1] in ("-h", "--help"):
+        usage()  # exits
     try:
         with open(sys.argv[1], "r") as f:
             for line in f:
