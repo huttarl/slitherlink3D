@@ -559,6 +559,54 @@ export class PuzzleGrid extends Grid {
     }
 
     /**
+     * Fills in the stored solution outright, as ONE undoable compound move.
+     *
+     * A DEVELOPMENT shortcut, not player assistance: it hands over the answer.
+     * Its only caller is the debug-gated key in wireKeyboardShortcuts, which
+     * exists so the solve celebration can be watched over and over without
+     * hand-solving a 131-edge loop first.
+     *
+     * Leaves the ruled-out and unknown marks alone and only clears FILLED edges
+     * that aren't in the solution. Two reasons: that is the minimum needed to
+     * make the board check out, and it leaves the celebration's first beat -- the
+     * non-loop edges fading toward ruled-out -- with something visible to do. If
+     * this ruled everything else out, that beat would have nothing to fade and a
+     * bug in it could never be seen.
+     *
+     * @returns {number} how many edges changed
+     */
+    fillInSolution() {
+        const loop = this.getCurrentPuzzle().solution;
+        const inSolution = new Set();
+        for (let i = 0; i < loop.length; i++) {
+            const edgeId = this.findEdgeByVertices(loop[i],
+                                                   loop[(i + 1) % loop.length]);
+            if (edgeId !== undefined && edgeId !== null) inSolution.add(edgeId);
+        }
+
+        const deltas = [];
+        for (const [edgeId, edge] of this.edges) {
+            const was = edge.metadata.userGuess;
+            // 1 = filled in, 0 = unknown.
+            const wanted = inSolution.has(edgeId) ? 1 : (was === 1 ? 0 : was);
+            if (wanted !== was) {
+                deltas.push({edgeId, prevState: was, newState: wanted});
+            }
+        }
+        if (deltas.length === 0) {
+            return 0;   // Already solved; don't record an empty move.
+        }
+        this.undoStack.push(deltas);
+        this.redoStack.length = 0;
+        for (const delta of deltas) {
+            this.applyEdgeState(delta.edgeId, delta.newState);
+        }
+        this.clearEdgeHighlights();
+        this.historyChanged();
+        return deltas.length;
+    }
+
+    /**
      * Clears (sets back to unknown) every guess that contradicts the
      * puzzle's stored solution, as ONE undoable compound move -- so an
      * unwanted "clear errors" is recovered with a single Undo.

@@ -159,6 +159,11 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   `?debug=1` in the URL, or `SLI_DEBUG=1` in the environment for the Node
   tests. The checker's and scene builder's traces go through it, so a genuine
   console warning isn't lost among them.
+  - `?debug=1` also enables the **`s` key: solve the puzzle outright** and run the
+    check (`PuzzleGrid.fillInSolution`, then a click on Check). It exists so the
+    solve celebration can be watched repeatedly without hand-solving a 131-edge
+    loop each time, and it is gated because it hands over the answer. Recorded as
+    one compound move, so a single Undo puts the board back.
 
 ## Cross-reference structures (interaction critical)
 

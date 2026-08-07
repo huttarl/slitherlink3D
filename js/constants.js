@@ -186,11 +186,8 @@ export const CELEBRATION_COLORS = {
 export const CELEBRATION_TIMING = {
     // Beat 1: fading the non-loop edges down.
     clearSeconds: 0.3,
-    // Beat 2: how long the running lights have the stage, and how many times
-    // round the loop they get in that time. More than one circuit is what shows
-    // the loop is closed -- a head arriving back where it began.
+    // Beat 2: how long the running lights have the stage.
     pulseSeconds: 1.2,
-    pulseCircuits: 2,
     // Every nth edge carries a head, so the loop reads as a chase rather than
     // one lonely spark. Best if n > 2: alternating bright
     // and dark is symmetric, so 2 gives no clue which way the lights are
@@ -200,11 +197,22 @@ export const CELEBRATION_TIMING = {
     // thirds puts a bright edge, a half-lit one and a dark one in each group of
     // three, which is the bright/medium/dark that shows direction.
     trailFraction: 0.75,
+    // Both speeds are EDGES per second, not circuits per second. That was the
+    // first attempt and it was wrong: a circuit means 3 edges on the tetrahedron
+    // and 131 on gp12, so one rate in circuits made the lights crawl on small
+    // solids and blur into a streak on big ones -- 0.3 circuits/s came out as 39
+    // edges/s on gp12. Per-edge speeds look the same on every grid.
+    //
+    // No head need go all the way round for this to work. All the heads move
+    // together, so the pattern repeats every headSpacingEdges: once the heads
+    // have advanced that far, every edge has been lit and the arrangement is back
+    // where it started. Travelling further only repeats it.
+    pulseEdgesPerSecond: 9,
     // Beat 3: the shimmer it settles into, and keeps up while the player looks
     // around. Low amplitude and slow, so it marks the board as solved without
     // asking for attention.
     shimmerAmplitude: 0.22,
-    shimmerCyclesPerSecond: 0.3,
+    shimmerEdgesPerSecond: 2,
     // How long beat 2 takes to become beat 3 -- the pulse easing down to the
     // shimmer and the other edges coming back up. Long enough not to look like a
     // cut, short enough that it is over before the dialog opens.
@@ -213,15 +221,16 @@ export const CELEBRATION_TIMING = {
     // still stand out afterwards. Not 1 either, or the solid would read as
     // permanently half-drawn.
     settleDimFraction: 0.35,
-    // How much thicker the loop's edges get at the height of the pulse, easing
-    // back to 1 as it settles. The cord pulled taut.
+    // How much thicker an edge gets as a head passes over it, easing back to 1 as
+    // the chase settles. The swelling travels WITH the light, so what it looks
+    // like is a bulge running along a hose, not a cord under tension.
     thickenFactor: 1.5,
     // When the celebration dialog appears, and when the tumble starts. Both wait
     // for the same reason: the box is centered over the solid and would hide what
     // it is congratulating, and a turning solid makes the running lights harder
     // to follow. By this point beats 1 and 2 are done and beat 3 has settled, so
     // there is nothing left that needs a still, unobstructed board.
-    dialogSeconds: 2.0,
+    dialogSeconds: 3.0,
 };
 
 // The little tune that plays over the celebration: up the scale and back, twice,

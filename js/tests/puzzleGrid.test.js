@@ -175,6 +175,44 @@ describe('checkUserSolution (active mode, headless)', () => {
     });
 });
 
+describe('fillInSolution', () => {
+    test('solves the board, and one undo puts it back', () => {
+        const pg = makePuzzle();
+        const changed = pg.fillInSolution();
+        assert.strictEqual(changed, SOLUTION.length);   // the four bottom edges
+        assert.strictEqual(pg.checkUserSolution(true).status, 2);   // solved
+        // ONE move, so a single undo undoes the lot.
+        assert.strictEqual(pg.undoStack.length, 1);
+        pg.undo();
+        assert.strictEqual(pg.hasAnyFilledEdges(), false);
+    });
+
+    test('clears a wrong filled edge, since it would fail the check', () => {
+        const pg = makePuzzle();
+        const wrongId = pg.findEdgeByVertices(4, 5);    // a top-face edge
+        pg.setEdgeState(wrongId, 1);
+        pg.fillInSolution();
+        assert.strictEqual(pg.edges.get(wrongId).metadata.userGuess, 0);
+        assert.strictEqual(pg.checkUserSolution(true).status, 2);
+    });
+
+    test('leaves ruled-out marks alone, so beat 1 still has something to fade', () => {
+        const pg = makePuzzle();
+        const ruledId = pg.findEdgeByVertices(4, 5);
+        pg.setEdgeState(ruledId, 2);                    // 2 = ruled out
+        pg.fillInSolution();
+        assert.strictEqual(pg.edges.get(ruledId).metadata.userGuess, 2);
+    });
+
+    test('on an already-solved board, records no move', () => {
+        const pg = makePuzzle();
+        fillSolution(pg);
+        const before = pg.undoStack.length;
+        assert.strictEqual(pg.fillInSolution(), 0);
+        assert.strictEqual(pg.undoStack.length, before);
+    });
+});
+
 describe('isReadyToCheck', () => {
     test('an untouched board is not ready', () => {
         assert.strictEqual(makePuzzle().isReadyToCheck(), false);

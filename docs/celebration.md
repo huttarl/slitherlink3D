@@ -15,9 +15,11 @@ That test is what ranks the options below, ahead of how impressive each looks.
 
 **1. Running lights along the loop.** The strongest, and what the current
 implementation is built around. It draws the eye along precisely the thing the
-player made, and it is a *visual proof of the win condition*: a pulse that
-travels and returns to where it began demonstrates "one loop, closed" better than
-any wording could. Nearly free, too — every edge already owns its own material,
+player made: a chase with no gap and no beginning says "one loop, closed" better
+than any wording could. (The first version claimed something stronger — a single
+head *returning* to its start, proving closure. Per-edge speeds gave that up; see
+the note under the sequence below.) Nearly free, too — every edge already owns its
+own material,
 and the stored solution is an ordered vertex list, so each edge's position along
 the loop is already known. No particles, no new geometry. It also survives
 repetition, since it can settle into a slow shimmer rather than a one-shot bang.
@@ -70,15 +72,29 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
    *emerges*. Fading them DARK was tried first and was worse: it made every other
    edge look like the dark blue of the loop itself. The clue digits go gray over
    the same moment for free, since solving satisfies every clue.
-2. **Running lights** (0.3 → 1.5s). Bright heads about three edges apart chase
-   round the loop, twice over, each trailing a falloff and bulging the edges it
-   passes — a cord pulled taut. Three edges apart rather than two on purpose:
-   alternating bright and dark is symmetric and so says nothing about which way
-   the lights are moving, while bright/medium/dark does. Going round more than
-   once is what shows the loop is closed.
+2. **Running lights** (0.3 → 1.5s). Bright heads a few edges apart chase round the
+   loop, each trailing a falloff and swelling the edges it passes, the way a bulge
+   runs along a hose when the pressure surges. More than two edges apart on
+   purpose: alternating bright and dark is symmetric and so says nothing about
+   which way the lights are moving, while bright/medium/dark does.
 3. **Settle** (1.5s on). The chase eases to a slow shimmer at low amplitude, the
    thickening relaxes, and the other edges come most of the way back so the solid
    reads normally again. This continues while the player looks around.
+
+**Both speeds are in edges per second, not circuits per second** — and getting
+that wrong was the one real mistake in the first version. A circuit is 3 edges on
+the tetrahedron and 131 on `gp12`, so a single rate in circuits made the lights
+crawl on small solids and blur into an unreadable streak on big ones: the
+shimmer's 0.3 circuits/s worked out at 39 edges/s on `gp12`.
+
+That change costs the effect one thing worth being honest about. The original
+argument was that a head returning to where it began *proves* the loop is closed
+— but at a fixed per-edge speed no head necessarily completes a circuit, and it
+needn't: all the heads move together, so the pattern repeats every
+`headSpacingEdges`, and once they have advanced that far every edge has been lit
+and the arrangement is back where it started. What remains is a chase with no gap
+and no beginning, which still reads as a cycle, but it is an implication rather
+than a demonstration.
 
 **The dialog and the tumble both wait 2 seconds.** This is the part that made the
 whole thing possible. The celebration box is centered over the solid, so anything

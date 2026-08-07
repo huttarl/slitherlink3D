@@ -15,6 +15,7 @@ import {updateClueColors} from "./clueRenderer.js";
 import {wantsTitleScreen} from "./titleScreen.js";
 import {startCelebration, stopCelebration} from "./celebration.js";
 import {CELEBRATION_TIMING} from "./constants.js";
+import {isDebugEnabled} from "./debug.js";
 
 /**
  * Sets up the UI event listeners for the game.
@@ -209,12 +210,28 @@ function wireKeyboardShortcuts(puzzleGrid) {
         // answers Space as well as Enter, so a stray Space would check the
         // puzzle. Here the highlight means "Enter does this", which is true from
         // wherever the player's focus happens to be.
-        if (e.key === 'Enter' && !isOverlayVisible() && !focusOwnsEnter()) {
+        if (e.key === 'Enter' && !isOverlayVisible() && !focusOwnsKeystrokes()) {
             const checkButton = document.getElementById('checkSolution');
             if (!checkButton.disabled && puzzleGrid.isReadyToCheck()) {
                 e.preventDefault();
                 checkButton.click();
             }
+        }
+
+        // DEBUG ONLY, behind ?debug=1: "s" solves the puzzle outright and runs
+        // the check, so the celebration can be watched again and again without
+        // hand-solving a 131-edge loop each time. Gated because it is a spoiler
+        // and a cheat, and a bare letter is safe only while it is gated.
+        //
+        // Clicks the button rather than calling checkUserSolution directly, so
+        // this goes down the same path a player's Check does -- feedback panel
+        // and all -- which is the point of a shortcut meant for testing it.
+        if (isDebugEnabled() && e.key.toLowerCase() === 's'
+                && !e.ctrlKey && !e.metaKey && !e.altKey && !focusOwnsKeystrokes()) {
+            e.preventDefault();
+            puzzleGrid.fillInSolution();
+            document.getElementById('checkSolution').click();
+            return;
         }
 
         // Undo/redo keyboard shortcuts: Ctrl+Z (Cmd+Z on Mac) to undo;
@@ -305,14 +322,15 @@ function isOverlayVisible() {
 }
 
 /**
- * Is focus on something that acts on Enter itself?
+ * Is focus on a control that acts on keystrokes itself?
  *
- * If it is, leave the key alone: otherwise Enter would both work that control
- * and check the puzzle. The common case is the player having just clicked a
- * panel button, which keeps focus afterwards -- so without this, Enter would
- * press that button AND run a check.
+ * If it is, leave the key alone. For Enter that stops it both working the
+ * control and checking the puzzle -- the common case being a player who has just
+ * clicked a panel button, which keeps focus afterwards. For the debug solve key
+ * it stops a bare letter being stolen from a <select>, where typing a letter
+ * jumps to the matching option.
  */
-function focusOwnsEnter() {
+function focusOwnsKeystrokes() {
     const focused = document.activeElement;
     if (!focused || focused === document.body) return false;
     return focused.matches('button, a[href], select, input, textarea, summary');

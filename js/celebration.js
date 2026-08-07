@@ -1,12 +1,11 @@
 /**
- * Celebrating a solve: a pulse of light that runs once round the solution loop
- * and settles into a shimmer.
+ * Celebrating a solve: lights chasing round the solution loop, settling into a
+ * shimmer.
  *
  * The point is that it celebrates WHAT THE PLAYER DID. They found the single
- * closed loop, so the loop is what goes on stage -- and a head of light that
- * travels it and returns to where it began is a visual proof of the win
- * condition, which no burst of confetti could be. See docs/celebration.md for
- * the ideas this was chosen over.
+ * closed loop, so the loop is what goes on stage -- and a chase with no gap and
+ * no beginning reads as the cycle they made, which no burst of confetti could.
+ * See docs/celebration.md for the ideas this was chosen over.
  *
  * Three beats, all of them just colors and scales on edge meshes that already
  * exist, advanced once per frame from the render loop:
@@ -14,7 +13,8 @@
  *   1. the edges NOT in the loop fade toward the ruled-out near-white, so the
  *      loop is briefly the only dark thing on the solid;
  *   2. bright heads a few edges apart chase round the loop, trailing a falloff,
- *      the edges bulging as each passes -- a cord pulled taut;
+ *      the edges swelling as each passes, the way a bulge runs along a hose when
+ *      the pressure surges;
  *   3. they ease into a slow, low shimmer and the other edges come most of the
  *      way back, which marks the board as solved without demanding attention.
  *
@@ -186,20 +186,24 @@ export function updateCelebration(gameState, delta) {
         mesh.material.color.copy(was).lerp(CELEBRATION_COLORS.quiet, running.dim);
     }
 
-    // The lights wait for beat 1 to finish, go round pulseCircuits times during
-    // beat 2, then carry on at the shimmer's slower rate. Phase counts CIRCUITS
-    // of the loop, and accumulating it rather than deriving it from t is what
-    // makes the transition between the two rates seamless.
+    const base = EDGE_COLORS.filledIn;
+    const count = running.loop.length;
+
+    // The lights wait for beat 1 to finish, chase at the pulse's rate through
+    // beat 2, then carry on at the shimmer's slower one.
+    //
+    // Phase counts CIRCUITS of the loop, but both rates are given in EDGES per
+    // second, so dividing by the edge count is what keeps the apparent speed the
+    // same on a 3-edge loop and a 131-edge one. Accumulating the phase rather than
+    // deriving it from t is what makes the change of rate seamless.
     if (t >= timing.clearSeconds) {
-        running.phase += (t <= pulseEnd)
-            ? delta * timing.pulseCircuits / timing.pulseSeconds
-            : delta * timing.shimmerCyclesPerSecond;
-        running.phase %= 1;
+        const edgesPerSecond = (t <= pulseEnd)
+            ? timing.pulseEdgesPerSecond
+            : timing.shimmerEdgesPerSecond;
+        running.phase = (running.phase + delta * edgesPerSecond / count) % 1;
     }
     running.amplitude = 1 - settling * (1 - timing.shimmerAmplitude);
 
-    const base = EDGE_COLORS.filledIn;
-    const count = running.loop.length;
     for (let i = 0; i < count; i++) {
         const mesh = running.loop[i];
         // Where this edge sits behind the nearest head. Scaling the way round the
