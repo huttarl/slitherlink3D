@@ -67,10 +67,6 @@ export const PICK_DEPTH_TOLERANCE = PICK_RADIUS * 2;
 // long-press gestures, so it should feel neither twitchy nor sluggish.
 export const LONG_PRESS_MS = 500;
 
-// Face color states
-export const FACE_DEFAULT_COLOR = new THREE.Color(0xeeeeee);
-export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44); // Used for debugging
-
 // How fast the view turns while tumbling (see SceneManager.updateTumble).
 // Celebrating a solve is one caller of the tumble. If some
 // other use wants a different speed, that belongs in a parameter to
@@ -116,6 +112,10 @@ export const TITLE_SCREEN_MIN_FACES = 11;
 // 62 faces of three kinds, intricate from any angle).
 export const TITLE_SCREEN_FALLBACK_GRID = 'eD';
 
+// Face color states
+export const FACE_DEFAULT_COLOR = new THREE.Color(0xeeeeee);
+export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44); // Used for debugging
+
 // Edge state machine configuration
 export const EDGE_COLORS = {
     unknown: new THREE.Color(0x808080), // 50% gray
@@ -125,5 +125,18 @@ export const EDGE_COLORS = {
     error: new THREE.Color(0xff8888), // red
 };
 export const EDGE_STATES = ['unknown', 'filledIn', 'ruledOut'];
+
+// Clue digit colors. Unlike EDGE_COLORS these are CSS color strings, not
+// THREE.Color: the digits are drawn into a 2D canvas by clueRenderer.js, which
+// then uses it as a texture, so they are set as fillStyle/strokeStyle.
+//
+// A clue whose walls are all accounted for goes gray, leaving the black digits
+// as the list of what is still to do. The gray has to stay legible against
+// FACE_DEFAULT_COLOR (0xeeeeee) while reading as clearly quieter than black,
+// which is what the same 50% gray as an unmarked edge does.
+export const CLUE_COLORS = {
+    unsatisfied: '#000000',
+    satisfied: '#808080',
+};
 
 

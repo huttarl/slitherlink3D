@@ -100,6 +100,34 @@ export function findClueViolations(grid, faceIds, requireExact) {
 }
 
 /**
+ * Is a face's clue satisfied -- exactly as many of its edges filled in as the
+ * clue asks for?
+ *
+ * "Satisfied" here means only that the count matches RIGHT NOW; it is not a
+ * claim that the marks around the face are correct, since the loop may still
+ * have to change. That is why this is separate from findClueViolations, which
+ * asks whether a clue has become impossible. A face can be satisfied and later
+ * stop being so, and that is normal play, not an error.
+ *
+ * A 0 clue therefore starts out satisfied, and stops being so the moment one of
+ * its edges is filled in. A face with MORE filled edges than its clue is not
+ * satisfied either -- it's over -- which findClueViolations reports as a
+ * violation; this query just declines to call it done.
+ *
+ * Used to gray out satisfied clue digits, so the player can see at a glance
+ * which faces still have something to work out.
+ *
+ * @param {Grid} grid - the grid the face belongs to
+ * @param {Face} face - the face to test
+ * @returns {boolean} false for a face with no clue, which is never "satisfied"
+ */
+export function isClueSatisfied(grid, face) {
+    const clue = face.metadata.clue;
+    if (clue < 0) return false;
+    return countGuesses(grid, face.edgeIDs).numEdgesFilled === clue;
+}
+
+/**
  * Find the user's marks that contradict the puzzle's known solution:
  * edges filled in that aren't part of the solution loop, or ruled out
  * although they are part of it. Unknown edges are never mismatches.

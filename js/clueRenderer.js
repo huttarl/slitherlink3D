@@ -8,30 +8,30 @@
  */
 import * as THREE from './three/three.module.min.js';
 import { findCentroid, findFaceMinRadius, findFaceNormal } from './geometryUtils.js';
+import { CLUE_COLORS } from './constants.js';
+import { isClueSatisfied } from './solutionChecker.js';
+
+// The largest clue any face could carry, so a full set of digit textures can be
+// built up front: a clue counts a face's edges, and the biggest face in data/ is
+// a decagon.
+const MAX_CLUE = 12;
 
 /**
- * Creates text meshes that are "painted" onto polyhedron faces
- * @param {GameState} gameState - The topology containing face data
- * @returns {THREE.Group} Group containing all text meshes
+ * One material per digit 0..MAX_CLUE, all drawn in the given color.
+ *
+ * Every face showing the same digit in the same state SHARES one material, so
+ * these must never be recolored in place -- updateClueColors switches a mesh
+ * between the two sets instead. Hence two sets, built once, rather than one set
+ * whose color is tweaked per face.
+ *
+ * @param {string} color - CSS color for both fill and outline
+ * @param {Intl.NumberFormat} numberFormat - localized digits
+ * @returns {Object<number, THREE.Material>} keyed by clue value
  */
-export function createClueTexts(gameState) {
-    const grid = gameState.getPuzzleGrid();
-    const textGroup = new THREE.Group();
-
-    // Cache the number format for performance.
-    const numberFormat = Intl.NumberFormat(gameState.numberLocale);
-
-    // Create a canvas for text rendering
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-
-    // Create materials for numbers 0-12
-    const maxClue = 12
+function makeDigitMaterials(color, numberFormat) {
     const materials = {};
-
-    for (let i = 0; i <= maxClue; i++) {
-        // Create a separate canvas for each number
+    for (let i = 0; i <= MAX_CLUE; i++) {
+        // A separate canvas per number, since each becomes its own texture.
         // TODO sometime: make canvas size, font size (and line width?) depend on minimum face size?
         const digitCanvas = document.createElement('canvas');
         digitCanvas.width = 256;
@@ -41,10 +41,11 @@ export function createClueTexts(gameState) {
         // Clear canvas with transparent background
         digitContext.clearRect(0, 0, 256, 256);
 
-        // Set text properties
+        // Set text properties. Outline in the same color as the fill: outlining
+        // a gray digit in black would put the black back and undo the graying.
         digitContext.font = 'bold 240px Arial';
-        digitContext.fillStyle = 'black'; // was 'white'
-        digitContext.strokeStyle = 'black';
+        digitContext.fillStyle = color; // was 'white'
+        digitContext.strokeStyle = color;
         digitContext.lineWidth = 4;
         digitContext.textAlign = 'center';
         digitContext.textBaseline = 'middle';
@@ -65,12 +66,38 @@ export function createClueTexts(gameState) {
             alphaTest: 0.1
         });
     }
+    return materials;
+}
+
+/**
+ * Creates text meshes that are "painted" onto polyhedron faces
+ * @param {GameState} gameState - The topology containing face data
+ * @returns {THREE.Group} Group containing all text meshes
+ */
+export function createClueTexts(gameState) {
+    const grid = gameState.getPuzzleGrid();
+    const textGroup = new THREE.Group();
+
+    // Cache the number format for performance.
+    const numberFormat = Intl.NumberFormat(gameState.numberLocale);
+
+    // Both color sets are built now, even though a fresh board uses the gray one
+    // only for its 0 clues: they're needed the moment the player fills an edge,
+    // and building a texture set mid-play would stutter.
+    const materials = {
+        unsatisfied: makeDigitMaterials(CLUE_COLORS.unsatisfied, numberFormat),
+        satisfied: makeDigitMaterials(CLUE_COLORS.satisfied, numberFormat),
+    };
+    // Kept on the group so updateClueColors can find them without module state,
+    // which would otherwise be shared across every board of the page's lifetime.
+    textGroup.userData.materials = materials;
 
     // Create text meshes for each face with a clue
     for (const [faceId, face] of grid.faces) {
         const clue = face.metadata.clue;
         if (clue >= 0) {
-            const textMesh = createTextMeshForFace(faceId, face, grid, materials[clue]);
+            const textMesh = createTextMeshForFace(faceId, face, grid,
+                                                   materials.unsatisfied[clue]);
             if (textMesh) {
                 // Add to, rather than replace, the userData that
                 // createTextMeshForFace already filled in (the face normal).
@@ -82,6 +109,33 @@ export function createClueTexts(gameState) {
     }
 
     return textGroup;
+}
+
+/**
+ * Recolors every clue digit: gray where the clue is satisfied, black where it
+ * isn't. Call after any change to the player's edge guesses.
+ *
+ * Cheap enough to do wholesale rather than tracking which faces a change could
+ * have affected: it is a few edge lookups per clue, on boards of at most 120
+ * faces, and only on a board change rather than per frame.
+ *
+ * @param {GameState} gameState - holds the grid and the clue text group
+ */
+export function updateClueColors(gameState) {
+    const clueTexts = gameState.sceneManager.clueTexts;
+    // Nothing to recolor before the clue digits are built, or on a grid whose
+    // puzzle has no clues at all.
+    if (!clueTexts) return;
+
+    const grid = gameState.getPuzzleGrid();
+    const materials = clueTexts.userData.materials;
+    for (const mesh of clueTexts.children) {
+        const face = grid.faces.get(mesh.userData.faceId);
+        if (!face) continue;
+        const set = isClueSatisfied(grid, face) ? materials.satisfied
+                                               : materials.unsatisfied;
+        mesh.material = set[mesh.userData.clue];
+    }
 }
 
 /**

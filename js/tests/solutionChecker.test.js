@@ -9,6 +9,7 @@ import {
     countGuesses,
     findVertexViolations,
     findClueViolations,
+    isClueSatisfied,
     findSolutionMismatches,
     checkSingleLoop,
 } from '../solutionChecker.js';
@@ -98,6 +99,58 @@ describe('findClueViolations', () => {
         assert.strictEqual(findClueViolations(grid, [0], true).length, 1);
         setEdge(grid, 3, 2, 1); // now exactly 2
         assert.deepStrictEqual(findClueViolations(grid, [0], true), []);
+    });
+});
+
+describe('isClueSatisfied', () => {
+    test('an unclued face is never satisfied', () => {
+        const grid = makeCubeGrid();
+        // Face 0 keeps its clue of -1; fill an edge so the count isn't 0 either.
+        setEdge(grid, 0, 3, 1);
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), false);
+    });
+
+    test('a 0 clue starts satisfied and stops when an edge is filled', () => {
+        const grid = makeCubeGrid();
+        grid.faces.get(0).metadata.clue = 0;
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), true);
+        setEdge(grid, 0, 3, 1);
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), false);
+    });
+
+    test('satisfied exactly when the filled count reaches the clue', () => {
+        const grid = makeCubeGrid();
+        grid.faces.get(0).metadata.clue = 2;
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), false);
+        setEdge(grid, 0, 3, 1);
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), false);
+        setEdge(grid, 3, 2, 1);
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), true);
+    });
+
+    test('overfilled is not satisfied', () => {
+        const grid = makeCubeGrid();
+        grid.faces.get(0).metadata.clue = 1;
+        setEdge(grid, 0, 3, 1);
+        setEdge(grid, 3, 2, 1); // 2 filled, clue 1: over, not done
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), false);
+    });
+
+    test('ruled-out edges do not count toward the clue', () => {
+        const grid = makeCubeGrid();
+        grid.faces.get(0).metadata.clue = 1;
+        setEdge(grid, 0, 3, 2); // ruled out, not filled
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), false);
+        setEdge(grid, 3, 2, 1);
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), true);
+    });
+
+    test('counts only the face\'s own edges', () => {
+        const grid = makeCubeGrid();
+        grid.faces.get(0).metadata.clue = 0;
+        // An edge of the top face, which face 0 (the bottom) does not touch.
+        setEdge(grid, 4, 7, 1);
+        assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), true);
     });
 });
 

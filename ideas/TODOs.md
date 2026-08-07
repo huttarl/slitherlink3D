@@ -1,9 +1,9 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
-- [ ] When a clue is satified (i.e. has the right number of walls filled in around
+- [x] When a clue is satisfied (i.e. has the right number of walls filled in around
   it), change the color of the digit to be gray instead of black. That will help the
-  player visually scan for what can be worked on next.
+  player visually scan for what can be worked on next. This would include any faces with 0​, unless they have a wall filled in (on which we may later paint the clue digit red or something).
 - [ ] We could have a setting for automatically marking edges as ruledOut. E.g.
   when there's a 0 clue, its edges are ruled out; or when a vertex has 0 filled and
   1 unknown; or 2 filled and any number of unknown.

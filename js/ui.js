@@ -12,6 +12,8 @@ import {hideCheckFeedback, initCheckFeedback, showStartupNotice} from "./checkFe
 import {markPuzzleSolved, setupSelectors} from "./puzzlePicker.js";
 import {isConfirmDialogOpen} from "./confirmDialog.js";
 import {initAboutSolid} from "./aboutSolid.js";
+import {updateClueColors} from "./clueRenderer.js";
+import {wantsTitleScreen} from "./titleScreen.js";
 
 /**
  * Sets up the UI event listeners for the game.
@@ -61,6 +63,8 @@ export function setupUI(gameState) {
 function observePuzzleGrid(gameState, puzzleGrid) {
     puzzleGrid.onHistoryChanged = () => {
         updateUndoRedoButtons(puzzleGrid);
+        // A change may have satisfied a clue, or unsatisfied one that was.
+        updateClueColors(gameState);
         // Any board change makes the last check's feedback stale.
         hideCheckFeedback();
     };
@@ -71,6 +75,11 @@ function observePuzzleGrid(gameState, puzzleGrid) {
     // Sync the buttons now: setupScene already loaded a puzzle (and so reset
     // the history) before these observers existed.
     updateUndoRedoButtons(puzzleGrid);
+    // Likewise the clue colors, which start with every 0 clue already gray.
+    // Not on the title screen, though: its board has the whole solution loop
+    // drawn on it, so every clue there is satisfied and every digit would go
+    // gray -- and there is nothing to scan for on a board nobody is playing.
+    if (!wantsTitleScreen()) updateClueColors(gameState);
 }
 
 /** The checkboxes in the drawer: what to show, and how much help to give. */
