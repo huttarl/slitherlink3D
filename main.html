@@ -135,12 +135,16 @@
             gap: 0.35em;
         }
 
-        /* The name absorbs the squeeze... */
+        /* The name absorbs the squeeze: shrink yes, GROW NO. Growing is what
+           made the number drift to the far end of a wide strip, which reads as
+           belonging to the buttons beside it rather than to the name. At 0 1 auto
+           the name takes only the width of its text, so the number sits right
+           after it however much room there is. */
         #whereAmIGrid {
             overflow: hidden;
             text-overflow: ellipsis;
             min-width: 0;
-            flex: 1 1 auto;
+            flex: 0 1 auto;
         }
 
         /* ...while the number holds its ground. */
@@ -188,6 +192,22 @@
             font-size: 20px;
             line-height: 1;
             flex: 0 0 auto;
+        }
+
+        /* A disclosure triangle, not a hamburger: this button reveals the rest
+           of THIS panel, where a hamburger would promise a menu of somewhere
+           else to go. Pointing down when the panel is open and right when it is
+           shut, as a <details> marker does -- the same idiom as "How to Play"
+           just below it.
+           In CSS rather than set by JS so it is right in the FIRST paint:
+           main.html's inline script adds .collapsed before any script runs, and
+           a glyph written by initPanelLayout would flip a frame later. */
+        #panelToggle::before {
+            content: '\25BE';   /* down-pointing small triangle */
+        }
+
+        #info.collapsed #panelToggle::before {
+            content: '\25B8';   /* right-pointing small triangle */
         }
 
         #stripButtons {
@@ -560,9 +580,14 @@
                  by CSS rather than duplicated, so their wiring, disabled
                  states and keyboard shortcuts have only one implementation. -->
             <div id="infoStrip">
+                <!-- No text content: the triangle is a ::before, so the glyph
+                     follows .collapsed without JS having to write it. The
+                     accessible name therefore comes from aria-label, and the
+                     open/shut state from aria-expanded. -->
                 <button id="panelToggle" title="Show or hide the full panel"
-                        aria-label="Menu" aria-expanded="true"
-                        aria-controls="infoDrawer">&#x2261;</button>
+                        aria-label="Show or hide the full panel"
+                        aria-expanded="true"
+                        aria-controls="infoDrawer"></button>
                 <!-- The title shares the strip's line when expanded, so the
                      toggle costs no vertical space; collapsed, the where-am-I
                      label takes its place.
@@ -574,9 +599,16 @@
                      the puzzle number stays readable: it's the part that
                      changes as you play, and "Tetrahedron ·" without a number
                      tells you nothing you didn't know. -->
+                <!-- A title on each span, so hovering the name and hovering the
+                     number say different things: both open the same pickers, but
+                     a bare "· 2" needs telling that it is the puzzle number. A
+                     child's title wins over its ancestor's, so the button's own
+                     title is what the padding between and around them shows. -->
                 <button id="whereAmI" title="Choose a polyhedron or puzzle"
                         aria-label="Current puzzle; opens the pickers"
-                    ><span id="whereAmIGrid"></span><span id="whereAmIPuzzle"></span></button>
+                    ><span id="whereAmIGrid" title="Choose a polyhedron"
+                    ></span><span id="whereAmIPuzzle" title="Choose a puzzle"
+                    ></span></button>
                 <span id="stripButtons"></span>
             </div>
             <div id="infoDrawer">
