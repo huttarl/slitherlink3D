@@ -7,7 +7,6 @@
  * yes/no dialog in confirmDialog.js.
  */
 import {makeInteraction} from "./interaction.js";
-import {GameState} from "./GameState.js";
 import {hideCheckFeedback, initCheckFeedback, showStartupNotice} from "./checkFeedback.js";
 import {markPuzzleSolved, setupSelectors} from "./puzzlePicker.js";
 import {isConfirmDialogOpen} from "./confirmDialog.js";
@@ -226,11 +225,27 @@ export function displayOverlay(title, message) {
     bodyEl.innerHTML = message;
 
     overlay.classList.remove('hidden');
+
+    // Move focus into the box, onto the action a player most likely wants next.
+    // Without this, focus stayed on whatever opened the overlay -- normally
+    // "Check solution" -- so Enter re-checked the puzzle just solved and reopened
+    // this same box with a longer time on it. Focusing the button also makes
+    // Enter do the obvious thing without a key handler of our own.
+    //
+    // Nothing needs to restore focus on dismissal: hiding a focused element
+    // moves focus to the body, which leaves Enter doing nothing -- and returning
+    // it to "Check solution" is precisely what we're getting away from.
+    const nextButton = document.getElementById('overlayNextPuzzle');
+    const stayButton = document.getElementById('overlayStayHere');
+    (nextButton.classList.contains('hidden') ? stayButton : nextButton).focus();
 }
 
 function hideOverlay() {
     document.getElementById('overlayMessage').classList.add('hidden');
-
-    // Stop the celebration spin, if it was running.
-    GameState.getInstance().sceneManager.stopTumble();
+    // The celebration spin deliberately KEEPS RUNNING. Dismissing this is the
+    // player saying they want to look at what they just solved, and a solid
+    // already turning is the invitation to do that -- so stopping it here was
+    // taking away the very thing they asked for. The first press on the board
+    // hands the view back (see onPointerDown in interaction.js), which is the
+    // right moment: that press is someone taking hold of it.
 }

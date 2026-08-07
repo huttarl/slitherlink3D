@@ -574,6 +574,27 @@
             padding: 0.3em 0.9em;
         }
 
+        /* The default action, filled where the others are the usual pale #cce.
+           This carries the "press Enter and you get this" message on its own,
+           because focus can't: :focus-visible deliberately withholds its ring
+           when focus arrives by mouse, so a player who clicked "Check solution"
+           would otherwise see no hint at all -- even though Enter would work. */
+        #overlayNextPuzzle {
+            background: #3355aa;
+            color: #fff;
+            border: 1px solid #223a6e;
+            font-weight: bold;
+        }
+
+        /* ...and for a keyboard user, the ring. Stated rather than left to the
+           browser, whose default is easy to lose against a filled button: 3px
+           and offset outward, so it reads against both the dark primary and the
+           pale secondary. */
+        .message-box button:focus-visible {
+            outline: 3px solid #223;
+            outline-offset: 2px;
+        }
+
         .hidden {
             display: none;
         }
