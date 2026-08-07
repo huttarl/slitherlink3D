@@ -780,6 +780,19 @@
                 <button id="overlayNextPuzzle" class="hidden">Next puzzle &#x25B8;</button>
                 <p id="overlayEndNote" class="hidden">You've solved your way to the
                     end of the available puzzles!</p>
+                <!-- The way to decline, for a player who wants to look at what
+                     they just solved. Esc and a click anywhere already do this;
+                     this is the visible affordance for it, since nothing on
+                     screen said so.
+                     Placed AFTER the end note so it reads sensibly either way:
+                     beside Next when there is one (the note being display:none
+                     puts them on the same line), and below the note when there
+                     isn't, so the explanation comes before the only button.
+                     Never hidden -- at the end of the catalogue it is the one
+                     button left. -->
+                <button id="overlayStayHere"
+                        title="Close this and look around the solved puzzle"
+                        >Stay here</button>
                 <!-- Facts about the solid just solved (aboutSolid.js). BELOW the
                      Next button on purpose: many players want to move straight
                      on, and on a phone anything above it pushes it toward the

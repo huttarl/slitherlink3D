@@ -2,6 +2,26 @@ Completed items, moved out of TODOs.md (2026-08-05) to keep the live list
 readable. Text is verbatim, including the notes recording how each was settled.
 Anything still marked [~] or containing open sub-items stayed in TODOs.md.
 
+- [x] The buttons are of slightly uneven sizes.
+        E.g. the "upright" and "Reset" buttons look a little shorter on top than the others.
+        Actually on careful inspection, the buttons with icons (Unicode symbols) are slightly *taller* than the icons with words.
+        (In general, the disabled buttons look taller, probably because their grayed edge contrasts more with the dark background.
+        But that's not what I'm talking about. The buttons with icons are actually taller by measurement.)
+    - [x] In the collapsed strip, and the expanded panel, the upper padding looks bigger than the lower. It looks funny.
+- [x] When a clue is satisfied (i.e. has the right number of walls filled in around
+  it), change the color of the digit to be gray instead of black. That will help the
+  player visually scan for what can be worked on next. This would include any faces with 0​, unless they have a wall filled in (on which we may later paint the clue digit red or something).
+- [x] A while back, when we were getting the puzzle verifier to work, it had heuristics for
+    what to try next (I think this was for a depth search), and I said that a very good heuristic would
+    be to pick the state for an edge that would determine where the loop goes next (or something like that).
+    Anyway Claude timed the results with that heuristic and others, and said that mine actually resulted
+    in worse times, and removed that heuristic in favor of another. I allowed that at the time, but it seems to me that
+    this was a strong heuristic for pruning the remaining search space. So, given that we're running up against
+    time limits in verifying puzzles, maybe we should reintroduce that heuristic ... not instead of others,
+    but in conjunction with others. Seems like it can't hurt.
+    Claude responded to this paragraph: "For whatever it's worth on the substance: the heuristic you're describing is chain-following, which is option (b) in the note in select_edge_for_branching — it measured worst of the three (96.6s and 4 timeouts, against naive's 80.8s and 3). But that note also records why, and it supports your point rather than undercutting it: the per-call scoring overhead outweighed the search-tree reduction, and no selector helped the pathological instances that dominate total time. So "it can't hurt" was contradicted only by the bookkeeping cost, not by the pruning logic. Combining heuristics as you suggest would add cost rather than remove it, so if we revisit this, the thing to attack first is making the selector cheap to evaluate — and the pair stores now being built during propagation may give it that information for free."
+    However, now that we're focusing on making sure puzzles are "deductively solvable" rather than "uniquely solvable," maybe these
+    search heuristics aren't even being used anymore.
 - [x] On launch, have a title screen that shows an impressive polyhedron (rotating) with puzzle clues
     (and possibly marks too... maybe the solution to a puzzle, but one that's extra, not a spoiler).
     Have a semitransparent overlay in the center with the title "Slitherlink 3D" and maybe buttons

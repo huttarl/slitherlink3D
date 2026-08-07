@@ -134,9 +134,23 @@ function wireActionButtons(gameState, puzzleGrid) {
     });
 }
 
-/** A click anywhere on the overlay dismisses it. */
+/**
+ * A click anywhere on the overlay dismisses it, as does Escape (see
+ * wireKeyboardShortcuts) and the "Stay here" button.
+ *
+ * Three ways to do one thing, which is deliberate: the click and Escape were
+ * already there but invisible, so a player who wanted to admire the solid they
+ * had just finished had no way of knowing they could. "Stay here" is that
+ * affordance. Its own listener is strictly redundant while the whole overlay
+ * dismisses on click -- the click would bubble up to that handler anyway -- but
+ * a button whose behaviour depends on its container's is a trap for whoever
+ * narrows the blanket handler later.
+ */
 function wireOverlay() {
     document.getElementById('overlayMessage').addEventListener('click', () => {
+        hideOverlay();
+    });
+    document.getElementById('overlayStayHere').addEventListener('click', () => {
         hideOverlay();
     });
 }
