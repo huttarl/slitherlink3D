@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """Generate the dual of a grid -- which is how the Catalan solids are made.
 
 Usage:
@@ -25,7 +25,7 @@ recipes too.
 Each solid is verified before being written -- Euler's formula, congruent faces,
 flatness and outward winding -- and one that fails is not written. See check().
 
-The shebang selects python3.11, the interpreter carrying numpy.
+Needs numpy, so it needs a python3 that has it; see docs/project-overview.md.
 """
 import json
 import sys

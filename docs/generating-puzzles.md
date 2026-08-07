@@ -63,8 +63,8 @@ Two ways:
   ```
 
   Defaults: 1 puzzle, 60-second timeout (exit status 124 on timeout, like
-  GNU `timeout`). The wrapper's shebang selects `python3.11`; edit that if
-  your compas-equipped interpreter is a different one.
+  GNU `timeout`). It runs the generator under its own interpreter, so the two
+  can't end up on different Pythons.
 
 - **Directly** (opens the interactive matplotlib 3D view of the mesh):
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """Generate random polyhedra, for use in Slitherlink3D puzzles.
 I used Claude to draft the code.
 
@@ -17,7 +17,8 @@ adjacent triangles into quads. The resulting mesh is exported to OBJ format, whi
 util/obj2json.py turns into a grid file -- so pass --name to give each solid its
 own gridId.
 
-The shebang selects python3.11, the interpreter carrying numpy/scipy/matplotlib.
+Needs numpy, scipy and matplotlib, so it needs a python3 that has them; see
+docs/project-overview.md.
 """
 
 import random

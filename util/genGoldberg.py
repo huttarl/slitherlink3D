@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """Generate a Goldberg polyhedron GP(m,n) as a grid JSON file.
 
 Usage: util/genGoldberg.py m n [gridId] [gridName]

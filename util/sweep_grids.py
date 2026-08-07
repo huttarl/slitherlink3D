@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """Generate one puzzle for every grid and report how good it is, without writing
 anything. The regression test for changes to the puzzle GENERATOR.
 
@@ -33,7 +33,7 @@ varying seed each run draws different solutions and small differences per grid a
 noise. Same seed and same grids means the same draws, so a difference is real.
 
 Reporting only, and writes nothing: use util/fill_puzzles.py to actually produce
-puzzles. Needs python3.11 for compas and networkx.
+puzzles. Needs a python3 carrying compas and networkx.
 """
 import argparse
 import json

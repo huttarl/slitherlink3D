@@ -76,17 +76,32 @@ script needs what. None of them are needed to play or develop the browser app.
     python3 -m venv .venv
     .venv/bin/pip install -r requirements.txt
 
-A venv matters more than it looks: on a machine with several Pythons, the one
-first on `PATH` is easily not the one carrying these libraries, and the
-generators then fail with a bare `ModuleNotFoundError`.
+A venv is close to required rather than merely tidy. Homebrew's Pythons from 3.12
+on refuse `pip install` into their own `site-packages` (PEP 668, and Homebrew's own
+error says so), and Homebrew has no formula for `matplotlib`, `networkx` or
+`compas`, so those must come from pip whatever else you do. Put
+`~/.venvs/default/bin` first on `PATH` and `python3` *and* `pip` both mean that
+environment, with nothing extra to remember. A venv holds no interpreter of its
+own, only a symlink to one plus a `site-packages`, so moving to a new minor version
+means recreating it — cheap if you keep the `pip freeze` output.
 
 **Run these scripts directly** — `util/grid_quality.py dbD`, not `python3
-util/grid_quality.py dbD` — because each one's shebang already names the
-interpreter it needs: `python3` for the ones that are standard-library only, and
-`python3.11` for those wanting `numpy`, `scipy` or `compas`. A shebang also marks
-what is meant to be run: the shared libraries (`grid_topology.py`,
-`grid_checks.py`, `slisolver.py`) have none, and are not executable.
+util/grid_quality.py dbD`. They all name plain `python3` and deliberately pin no
+minor version, so whichever Python your environment puts first is the one that
+runs, and it must be one carrying the packages above; otherwise they fail with a
+bare `ModuleNotFoundError` that says nothing about why. A shebang also marks what
+is meant to be run: the shared libraries (`grid_topology.py`, `grid_checks.py`,
+`slisolver.py`) have none, and are not executable.
 `util/about-scripts.md` groups all of them by purpose.
+
+Two habits that save a lot of confusion when a library seems to be missing. Prefer
+`python -m pip install X` to a bare `pip install X`: `pip` is merely whatever comes
+first on `PATH`, which need not belong to the `python3` you get, while
+`python -m pip` always targets the interpreter you just named. And ask the
+interpreter itself rather than guessing —
+`python3 -c 'import sys; print(sys.executable)'`. Editors such as PyCharm ignore
+`PATH` altogether and use a per-project interpreter setting, so they can disagree
+with your shell for reasons nothing on the command line will reveal.
 
 The usual sequence for adding a solid is: generate the grid
 (`docs/generating-grids.md`), generate puzzles for it

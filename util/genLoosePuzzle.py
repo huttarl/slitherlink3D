@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """Generate a valid puzzle WITHOUT proving it uniquely or deductively solvable.
 
 Usage:

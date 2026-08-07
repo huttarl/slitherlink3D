@@ -1,12 +1,12 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """Run genSliPuzzles.py headlessly, with a timeout — for testing/smoke runs.
 
 Wraps the generator so that:
   - matplotlib uses the non-interactive Agg backend (no GUI windows,
     safe to run headless or from automation);
   - the run is killed after a timeout (macOS has no `timeout` command);
-  - the generator runs under this same interpreter (python3.11, which
-    has compas/networkx/matplotlib installed — the default python3 may not).
+  - the generator runs under this same interpreter, whichever python3 that
+    turned out to be, so it can't end up on a different one than this wrapper.
 
 Usage:
     util/run_gen.py [--quiet|--verbose] <grid.json> [num_puzzles] [timeout_seconds]
@@ -97,8 +97,9 @@ def main():
     # other warnings still come through, including under --quiet.
     env = dict(os.environ, MPLBACKEND="Agg",
                PYTHONWARNINGS="ignore:FigureCanvasAgg is non-interactive")
-    # sys.executable is the interpreter running this wrapper (python3.11),
-    # so the generator gets the same one.
+    # sys.executable is the interpreter running this wrapper, so the generator
+    # gets exactly the same one -- which matters because "python3" on PATH is
+    # not necessarily the python3 that started this script.
     cmd = [sys.executable, str(generator), grid_file, num_puzzles] + flags
 
     proc = subprocess.Popen(cmd, env=env)

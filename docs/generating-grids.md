@@ -5,11 +5,12 @@ How the `data/<id>.json` grid files are produced. Once a grid exists, see
 `docs/json-format.md` for the file format.
 
 Run these scripts directly — `util/genPrism.py 6 ...`, not `python3
-util/genPrism.py 6 ...`. Each one's shebang names the interpreter it needs, which
-matters here: the ones using `numpy`/`scipy` ask for `python3.11`, because the
-system default `python3` may well not have those installed, and the failure is a
-bare `ModuleNotFoundError` that says nothing about why. In `util/`, a shebang also
-means the file is meant to be run: the shared libraries (`grid_topology.py`,
+util/genPrism.py 6 ...`. Every one of them asks for plain `python3`, so it is your
+environment that decides which Python they get, and it must be one carrying
+`numpy`, `scipy` and `matplotlib` (see "Python utilities" in
+`docs/project-overview.md`). If it isn't, the failure is a bare
+`ModuleNotFoundError` that says nothing about why. In `util/`, a shebang also means
+the file is meant to be run: the shared libraries (`grid_topology.py`,
 `grid_checks.py`, `slisolver.py`) have none.
 
 There are several sources, in rough order of preference: exact coordinates where
