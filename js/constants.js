@@ -112,6 +112,23 @@ export const TITLE_SCREEN_MIN_FACES = 11;
 // 62 faces of three kinds, intricate from any angle).
 export const TITLE_SCREEN_FALLBACK_GRID = 'eD';
 
+// Light intensities, as plain multipliers (see SceneManager.setupLighting for
+// what each light is FOR). Grouped because they only make sense relative to each
+// other: what matters is the ratio between the key and the fill, and how little
+// of the total comes from the ambient floor.
+//
+// Measured rather than guessed. With the original 0.45/0.55/0.75 the brightest
+// pixel anywhere on the solid was 182 of 255 and nothing clipped, so a third of
+// the range was going unused -- which is why the solid read as gray. These raise
+// the two directional lights hard and the ambient floor barely, since raising
+// ambient is the one change that would brighten the solid by FLATTENING it:
+// it lifts every face equally and so washes out the shading that reads as shape.
+export const LIGHT_INTENSITIES = {
+    ambient: 0.5,
+    directional: 0.7,
+    headlight: 1.15,
+};
+
 // The three palettes below are all THREE.Color objects keyed by state name, so
 // they read alike and a color can be moved between them. Note that these are the
 // colors as AUTHORED: what reaches the screen is lit, and the polyhedron's

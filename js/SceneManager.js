@@ -2,7 +2,7 @@ import * as THREE from './three/three.module.min.js';
 import { OrbitControls } from './three/OrbitControls.js';
 import { TrackballControls } from './three/TrackballControls.js';
 import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, CAMERA_HEIGHT, CAMERA_MAX_ZOOM,
-        CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS,
+        CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS, LIGHT_INTENSITIES,
         TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED,
         TUMBLE_DEGREES_PER_SEC} from "./constants.js";
 import {debug} from "./debug.js";
@@ -489,14 +489,17 @@ export class SceneManager {
      * used to fall back to ambient alone.
      */
     setupLighting() {
-        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+        this.ambientLight = new THREE.AmbientLight(0xffffff,
+                                                   LIGHT_INTENSITIES.ambient);
         this.scene.add(this.ambientLight);
 
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.55);
+        this.directionalLight = new THREE.DirectionalLight(
+            0xffffff, LIGHT_INTENSITIES.directional);
         this.directionalLight.position.set(5, 5, 5);
         this.scene.add(this.directionalLight);
 
-        this.headlight = new THREE.DirectionalLight(0xffffff, 0.75);
+        this.headlight = new THREE.DirectionalLight(0xffffff,
+                                                   LIGHT_INTENSITIES.headlight);
         // Positioned by updateHeadlight, both once at startup and every frame
         // after. Its target is the default, the world origin, which is where the
         // solid is centered -- so aiming it is just a matter of moving it to the
