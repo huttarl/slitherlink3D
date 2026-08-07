@@ -168,4 +168,49 @@ export const CLUE_COLORS = {
     satisfied: new THREE.Color(0x808080), // 50% gray, as an unmarked edge
 };
 
+// Celebrating a solve: a pulse of light running round the solution loop. See
+// docs/celebration.md for why this and not confetti, and js/celebration.js for
+// the sequence these drive.
+export const CELEBRATION_COLORS = {
+    // The travelling head. Near-white with a cyan cast, so it reads as light on
+    // the loop rather than as another edge state.
+    pulse: new THREE.Color(0xeaffff),
+    // What the edges NOT in the loop fade to, so the loop is briefly the only
+    // thing drawn. Dark rather than transparent: they still describe the solid's
+    // shape, and losing them entirely makes it read as a different polyhedron.
+    quiet: new THREE.Color(0x2a2a33),
+};
+
+export const CELEBRATION_TIMING = {
+    // Beat 1: fading the non-loop edges down.
+    clearSeconds: 0.3,
+    // Beat 2: one circuit of the loop, head returning to where it started --
+    // which is what shows the loop is closed. Slow enough for the eye to follow
+    // round the back of the solid, which it cannot see.
+    pulseSeconds: 1.2,
+    // How much of the loop the pulse's trail covers, as a fraction of its length.
+    // Long enough to read as motion, short enough that the head is distinct.
+    trailFraction: 0.22,
+    // Beat 3: the shimmer it settles into, and keeps up while the player looks
+    // around. Low amplitude and slow, so it marks the board as solved without
+    // asking for attention.
+    shimmerAmplitude: 0.22,
+    shimmerCyclesPerSecond: 0.3,
+    // How long beat 2 takes to become beat 3 -- the pulse easing down to the
+    // shimmer and the other edges coming back up. Long enough not to look like a
+    // cut, short enough that it is over before the dialog opens.
+    settleSeconds: 0.6,
+    // How dimmed the non-loop edges stay once settled. Not 0: the loop should
+    // still stand out afterwards. Not 1 either, or the solid would read as
+    // permanently half-drawn.
+    settleDimFraction: 0.35,
+    // How much thicker the loop's edges get at the height of the pulse, easing
+    // back to 1 as it settles. The cord pulled taut.
+    thickenFactor: 2.0,
+    // When the celebration dialog appears. The box is centered over the solid, so
+    // anything played underneath it is half hidden; this lets the loop have the
+    // stage first, and by the time it opens the sequence is in its quiet state.
+    dialogSeconds: 2.0,
+};
+
 

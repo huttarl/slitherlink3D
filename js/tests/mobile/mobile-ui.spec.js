@@ -589,14 +589,51 @@ test.describe('the title screen', () => {
 test.describe('the celebration overlay', () => {
     test.beforeEach(({page}) => openDefaultPuzzle(page));
 
+    /**
+     * Solve, check, and wait for the congratulation box to actually arrive.
+     *
+     * The wait is the point: the dialog is deliberately held back while the
+     * pulse of light runs round the solution loop, because the box is centered
+     * over the solid and would hide it (see docs/celebration.md). Without this,
+     * every assertion below races the delay and reads an empty overlay.
+     *
+     * Targets #overlayMessage rather than .message-box, which the confirmation
+     * dialog shares -- two matches, and Playwright's strict mode refuses to
+     * guess. #overlayMessage is also the element whose .hidden class decides
+     * whether the celebration is up.
+     */
+    async function solveAndAwaitCelebration(page) {
+        await solvePuzzle(page);
+        await page.getByRole('button', {name: /check/i}).click();
+        await expect(page.locator('#overlayMessage')).toBeVisible();
+    }
+
+    test('the dialog waits for the loop animation, then arrives',
+        async ({page}) => {
+            // Also the only test that watches the celebration animate. It runs
+            // once per frame for a couple of seconds, so a mistake in it would
+            // throw dozens of times -- and throw INSIDE requestAnimationFrame,
+            // where nothing else would notice: animate() re-schedules itself
+            // before doing any work, so the render loop survives and the only
+            // trace is the console.
+            const errors = collectConsoleErrors(page);
+            await solvePuzzle(page);
+            await page.getByRole('button', {name: /check/i}).click();
+            // Not immediately: the loop gets the stage first.
+            await expect(page.locator('#overlayMessage')).toBeHidden();
+            // But it does come -- toBeVisible retries until it does.
+            await expect(page.locator('#overlayMessage')).toBeVisible();
+            expect(errors, 'the celebration logged errors while animating')
+                .toEqual([]);
+        });
+
     test('Next puzzle stays on screen with the About card below it',
         async ({page}) => {
             // The About-this-solid card is deliberately BELOW the Next button
             // (see aboutSolid.js): many players want to move straight on, and on
             // a phone anything added above the button pushes it toward the fold.
             // This is the guard on that ordering.
-            await solvePuzzle(page);
-            await page.getByRole('button', {name: /check/i}).click();
+            await solveAndAwaitCelebration(page);
 
             const next = await visibleWithinViewport(page, '#overlayNextPuzzle');
             expect(next.rendered, 'the Next puzzle button is not shown').toBe(true);
@@ -615,8 +652,7 @@ test.describe('the celebration overlay', () => {
         });
 
     test('the whole overlay fits the screen', async ({page}) => {
-        await solvePuzzle(page);
-        await page.getByRole('button', {name: /check/i}).click();
+        await solveAndAwaitCelebration(page);
         const box = await visibleWithinViewport(page, '.message-box');
         expect(box.rendered).toBe(true);
         expect(box.insideViewport,

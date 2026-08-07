@@ -1,6 +1,8 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
+- [ ] Once the user has done "Check solution" and it's correct, stop the clock.
+  Otherwise they might fire the button again, and now their solution time is longer.
 - [ ] We could have a setting for automatically marking edges as ruledOut. E.g.
   when there's a 0 clue, its edges are ruled out; or when a vertex has 0 filled and
   1 unknown; or 2 filled and any number of unknown.

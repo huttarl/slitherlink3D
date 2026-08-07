@@ -1,4 +1,5 @@
 import {updateTextVisibility} from './clueRenderer.js';
+import {updateCelebration} from './celebration.js';
 import {createGameState} from "./scene.js";
 import {setupUI} from "./ui.js";
 import {expandDrawer, initPanelLayout} from "./panelLayout.js";
@@ -84,6 +85,11 @@ async function main() {
         // leaves the controls' zoom in effect, since the tumble takes the
         // camera's current distance as given.
         sceneManager.updateTumble(delta);
+
+        // The solve celebration, if one is running (a no-op otherwise). Before
+        // the render and independent of the camera: it only recolours and
+        // rescales edge meshes.
+        updateCelebration(gameState, delta);
 
         // Now that the camera is final for this frame, orient/cull the clues
         // and move the headlight to where the camera ended up.

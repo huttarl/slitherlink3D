@@ -13,6 +13,8 @@ import {isConfirmDialogOpen} from "./confirmDialog.js";
 import {initAboutSolid} from "./aboutSolid.js";
 import {updateClueColors} from "./clueRenderer.js";
 import {wantsTitleScreen} from "./titleScreen.js";
+import {startCelebration, stopCelebration} from "./celebration.js";
+import {CELEBRATION_TIMING} from "./constants.js";
 
 /**
  * Sets up the UI event listeners for the game.
@@ -65,8 +67,10 @@ function observePuzzleGrid(gameState, puzzleGrid) {
         // A change may have satisfied a clue, or unsatisfied one that was.
         updateClueColors(gameState);
         markCheckReady(puzzleGrid);
-        // Any board change makes the last check's feedback stale.
+        // Any board change makes the last check's feedback stale -- and ends any
+        // celebration, which was about a loop that may no longer be there.
         hideCheckFeedback();
+        cancelCelebration(gameState);
     };
     puzzleGrid.onSolved = () => {
         markPuzzleSolved();
@@ -240,9 +244,19 @@ export function updateUndoRedoButtons(puzzleGrid) {
     document.getElementById('redoMove').disabled = (puzzleGrid.redoStack.length === 0);
 }
 
+/** The pending congratulation dialog, while the loop animation has the stage. */
+let dialogTimer = null;
+
 /**
- * Celebrates the user's success in solving the puzzle: spins the camera and
- * shows a congratulation overlay. Called via PuzzleGrid's onSolved observer.
+ * Celebrates the user's success in solving the puzzle: spins the camera, runs a
+ * pulse of light round the solution loop, and shows a congratulation overlay.
+ * Called via PuzzleGrid's onSolved observer.
+ *
+ * The dialog WAITS for the animation, because the box is centered over the solid
+ * and would otherwise hide the very thing being celebrated. It opens once the
+ * sequence has reached its quiet state -- or at once if the animation declined to
+ * run, since then there is nothing to wait for (see startCelebration).
+ *
  * @param {GameState} gameState
  */
 function celebrateSolved(gameState) {
@@ -251,10 +265,35 @@ function celebrateSolved(gameState) {
     const name = gameState.getPuzzleGrid().gridName;
     const elapsedTimeSec = Math.round(gameState.sceneManager.timer.getElapsed());
     const min = Math.floor(elapsedTimeSec / 60), sec = elapsedTimeSec % 60;
-
     // TODO: add HTML markup to body, and name of grid, time taken, etc.
-    displayOverlay("Congratulations!", `You solved this ${name} puzzle in ${min}m ${sec}s!`);
-    // TODO: give appropriate feedback to the user. special effects.
+    const show = () => {
+        dialogTimer = null;
+        displayOverlay("Congratulations!",
+                       `You solved this ${name} puzzle in ${min}m ${sec}s!`);
+    };
+
+    if (startCelebration(gameState)) {
+        dialogTimer = setTimeout(show, CELEBRATION_TIMING.dialogSeconds * 1000);
+    } else {
+        show();
+    }
+}
+
+/**
+ * Ends the celebration early, because the board has changed under it.
+ *
+ * Both halves have to go: a shimmering loop that no longer exists is nonsense,
+ * and so is a "Congratulations" arriving two seconds after the player has broken
+ * their own loop.
+ *
+ * @param {GameState} gameState
+ */
+function cancelCelebration(gameState) {
+    if (dialogTimer !== null) {
+        clearTimeout(dialogTimer);
+        dialogTimer = null;
+    }
+    stopCelebration(gameState);
 }
 
 /** Is the celebration overlay up? While it is, it owns Enter: its own default
