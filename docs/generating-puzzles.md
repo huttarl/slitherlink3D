@@ -148,8 +148,9 @@ generating and before committing: face census, the clue values the puzzles use,
 clue density, the loop length against the most this solid could have, and the
 largest connected patch of faces the loop never touches. That last column is the
 one that catches a dull puzzle — a big patch is a field of 0 clues with nothing to
-do in it. It is how you can see at a glance that `dbD`'s stored puzzles leave
-44–66 of its 120 faces untouched while every other grid manages 0–2.
+do in it. It is how the old repair-based colorer was caught leaving 44–66 of
+`dbD`'s 120 faces untouched — a whole dead hemisphere — while every other grid
+managed 0–2. Since the rewrite no grid exceeds 6, and `dbD` itself is down to 4.
 
 ## Judging whether a generator change helped
 
