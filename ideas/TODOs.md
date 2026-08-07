@@ -133,7 +133,7 @@ Finished items live in ideas/TODOs-done.md.
     Claude responded to this paragraph: "For whatever it's worth on the substance: the heuristic you're describing is chain-following, which is option (b) in the note in select_edge_for_branching — it measured worst of the three (96.6s and 4 timeouts, against naive's 80.8s and 3). But that note also records why, and it supports your point rather than undercutting it: the per-call scoring overhead outweighed the search-tree reduction, and no selector helped the pathological instances that dominate total time. So "it can't hurt" was contradicted only by the bookkeeping cost, not by the pruning logic. Combining heuristics as you suggest would add cost rather than remove it, so if we revisit this, the thing to attack first is making the selector cheap to evaluate — and the pair stores now being built during propagation may give it that information for free."
     However, now that we're focusing on making sure puzzles are "deductively solvable" rather than "uniquely solvable," maybe these
     search heuristics aren't even being used anymore.
-- [ ] The buttons are of slightly uneven sizes.
+- [x] The buttons are of slightly uneven sizes.
         E.g. the "upright" and "Reset" buttons look a little shorter on top than the others.
         Actually on careful inspection, the buttons with icons (Unicode symbols) are slightly *taller* than the icons with words.
         (In general, the disabled buttons look taller, probably because their grayed edge contrasts more with the dark background.

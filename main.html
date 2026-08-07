@@ -184,11 +184,6 @@
         }
 
         #panelToggle {
-            /* Comfortably tappable: 44px is the usual minimum touch target,
-               and this is the one control that must never be fiddly, since
-               it's the way back to everything else. */
-            min-width: 44px;
-            min-height: 44px;
             font-size: 20px;
             line-height: 1;
             flex: 0 0 auto;
@@ -216,12 +211,28 @@
             flex: 0 0 auto;
         }
 
-        /* In the strip, the borrowed buttons get touch-sized and lose the
-           vertical margins they carry in the drawer. */
+        /* In the strip, the borrowed buttons lose the vertical margins they
+           carry in the drawer. Their size comes from the shared rule below. */
         #stripButtons button {
             margin: 0;
-            min-width: 44px;
-            min-height: 44px;
+        }
+
+        /* Every button in the strip is the same size, set in ONE place so the
+           toggle and the borrowed buttons can't drift apart -- they sit side by
+           side, where a few pixels of difference is obvious.
+           Was 44px, the usual minimum touch target, on the reasoning that these
+           are the controls a player reaches for mid-puzzle and the toggle is the
+           way back to everything else, so none of them should be fiddly. But 44
+           left every one of them looking oversized for the glyph inside it. 36
+           still clears the 24px floor WCAG 2.5.8 asks for at AA, and is enough
+           for a thumb; if it ever proves fiddly in use, this is the number to
+           raise.
+           Only the icon buttons come out square: "Check" carries text, so its
+           width is set by that and this is only its minimum. */
+        #panelToggle,
+        #stripButtons button {
+            min-width: 36px;
+            min-height: 36px;
         }
 
         /* --- Check-result toast (collapsed panel only) ------------------- */
