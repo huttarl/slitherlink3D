@@ -45,11 +45,12 @@ the 90-edge truncated dodecahedron, whose 20 triangles admit only clues 0-3 and 
 give propagation less to work with. An all-triangle solid is the hard case, not a
 big one (see the difficulty discussion in `ideas/TODOs.md`).
 
-`slisolver.py` is the solver both phases lean on; `slisolver_old.py` beside it is
-a retired earlier draft, kept for reference. The pytest suite under `util/tests/`
-covers the solver, the region coloring and clue-minimization workflow in
-`genSliPuzzles.py`, the catalogue report's staleness guard, and a `slow`-marked
-sweep that re-proves every puzzle in `data/` unique.
+`slisolver.py` is the solver both phases lean on. The pytest suite under
+`util/tests/` covers it, the region coloring and clue-minimization workflow in
+`genSliPuzzles.py`, the shared topology helpers, the catalogue report's staleness
+guard, and a `slow`-marked sweep that re-proves every puzzle in `data/` unique.
+
+`util/about-scripts.md` groups every script in `util/` by what it is for.
 
 ## Running it
 
@@ -138,11 +139,17 @@ progression order. A new grid won't appear in the picker until this has run.
 `util/catalogue_report.py` then prints what `data/` holds: a line per grid with
 its counts, puzzles, display puzzles and categories, plus totals, and a note on
 any grid with no puzzles or (if it's big enough for the title screen) no display
-puzzle. `--clues` switches to the puzzle view — face census, the clue values the
-puzzles use, and how many faces carry a clue — which is how to judge whether a
-new grid will make decent puzzles. It takes grid names to report on just those,
-and warns if the catalogue is older than the data files it summarizes, since its
-puzzle counts come from the catalogue rather than from the puzzle files.
+puzzle. It takes grid names to report on just those, and warns if the catalogue is
+older than the data files it summarizes, since its puzzle counts come from the
+catalogue rather than from the puzzle files.
+
+`--puzzles` switches to the per-puzzle view, and this is the one to run after
+generating and before committing: face census, the clue values the puzzles use,
+clue density, the loop length against the most this solid could have, and the
+largest connected patch of faces the loop never touches. That last column is the
+one that catches a dull puzzle — a big patch is a field of 0 clues with nothing to
+do in it. It is how you can see at a glance that `dbD`'s stored puzzles leave
+44–66 of its 120 faces untouched while every other grid manages 0–2.
 
 ## Judging whether a generator change helped
 

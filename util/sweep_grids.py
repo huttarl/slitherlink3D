@@ -56,7 +56,8 @@ import networkx as nx  # noqa: E402  (after MPLBACKEND)
 from compas.datastructures import Mesh  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import genSliPuzzles  # noqa: E402  (needs the path set up first)
+import grid_topology  # noqa: E402  (needs the path set up first)
+import genSliPuzzles  # noqa: E402
 from genSliPuzzles import (  # noqa: E402
     RegionColoring, enumerate_solution, generate_minimal_clueset,
 )
@@ -72,39 +73,12 @@ def _out_of_time(_signum, _frame):
     raise OutOfTime()
 
 
-def loop_edges(loop):
-    """The loop's edges as frozensets, for membership tests."""
-    return {frozenset((loop[i], loop[(i + 1) % len(loop)]))
-            for i in range(len(loop))}
-
-
-def face_is_quiet(mesh, fkey, edges):
-    """True if none of this face's edges is on the loop, i.e. its clue is 0."""
-    verts = mesh.face_vertices(fkey)
-    return not any(frozenset((verts[i], verts[(i + 1) % len(verts)])) in edges
-                   for i in range(len(verts)))
-
-
-def largest_quiet_patch(mesh, edges):
-    """Size of the biggest connected group of faces the loop never touches."""
-    quiet = {f for f in mesh.faces() if face_is_quiet(mesh, f, edges)}
-    biggest = 0
-    while quiet:
-        group = {quiet.pop()}
-        stack = list(group)
-        while stack:
-            for nbr in mesh.face_neighbors(stack.pop()):
-                if nbr in quiet:
-                    quiet.discard(nbr)
-                    group.add(nbr)
-                    stack.append(nbr)
-        biggest = max(biggest, len(group))
-    return biggest
-
-
-def load_mesh(stem):
-    grid = json.loads((DATA_DIR / f'{stem}.json').read_text())
-    return Mesh.from_vertices_and_faces(grid['vertices'], grid['faces'])
+def load_grid(stem):
+    """(mesh, faces) for a grid: the COMPAS mesh the generator needs, and the raw
+    face list the metrics work from."""
+    grid = grid_topology.load_grid(DATA_DIR / f'{stem}.json')
+    return (Mesh.from_vertices_and_faces(grid['vertices'], grid['faces']),
+            grid['faces'])
 
 
 def dual_graph(mesh):
@@ -116,7 +90,7 @@ def dual_graph(mesh):
     return graph
 
 
-def stored_means(stem, mesh):
+def stored_means(stem, faces, adjacency):
     """Mean loop length, quiet patch and clue count over the stored puzzles."""
     path = DATA_DIR / f'{stem}-puzzles.json'
     if not path.exists():
@@ -125,9 +99,10 @@ def stored_means(stem, mesh):
     puzzles = data.get('puzzles', []) + data.get('displayPuzzles', [])
     if not puzzles:
         return (None, None, None)
-    return (statistics.mean(len(p['solution']) for p in puzzles),
-            statistics.mean(largest_quiet_patch(mesh, loop_edges(p['solution']))
-                            for p in puzzles),
+    loops = [grid_topology.loop_edges(p['solution']) for p in puzzles]
+    return (statistics.mean(len(loop) for loop in loops),
+            statistics.mean(grid_topology.largest_quiet_patch(faces, loop, adjacency)
+                            for loop in loops),
             statistics.mean(sum(1 for c in p['clues'] if c != -1)
                             for p in puzzles))
 
@@ -142,7 +117,8 @@ def one_grid(stem, budget, seed):
     """Generate a single puzzle for one grid. Returns a result dict."""
     if not (DATA_DIR / f'{stem}.json').exists():
         return {'outcome': 'no grid file'}
-    mesh = load_mesh(stem)
+    (mesh, faces) = load_grid(stem)
+    adjacency = grid_topology.face_adjacency(faces)
     # generate_minimal_clueset and the coloring read these module globals.
     genSliPuzzles.mesh = mesh
     genSliPuzzles.dualG = dual_graph(mesh)
@@ -161,10 +137,14 @@ def one_grid(stem, budget, seed):
                 continue        # a coloring with no single loop; try another
             clues = generate_minimal_clueset(mesh)
             if clues:
-                return {'outcome': 'ok', 'mesh': mesh,
+                loop = grid_topology.loop_edges(solution)
+                return {'outcome': 'ok',
+                        'faces': faces, 'adjacency': adjacency,
+                        'ceiling': grid_topology.loop_ceiling(faces),
                         'seconds': time.monotonic() - started,
                         'loop': len(solution),
-                        'patch': largest_quiet_patch(mesh, loop_edges(solution)),
+                        'patch': grid_topology.largest_quiet_patch(
+                            faces, loop, adjacency),
                         'clues': sum(1 for c in clues if c != -1)}
         return {'outcome': 'no clue set'}
     except OutOfTime:
@@ -209,11 +189,11 @@ def main():
             problems.append((stem, result['outcome']))
             sys.stdout.flush()
             continue
-        mesh = result['mesh']
-        (loop_was, patch_was, clues_was) = stored_means(stem, mesh)
+        (loop_was, patch_was, clues_was) = stored_means(
+            stem, result['faces'], result['adjacency'])
         print(f'{stem:6} {"ok":14} {result["seconds"]:>6.2f} '
               f'{result["loop"]:>5} {show(loop_was):>5} '
-              f'{mesh.number_of_vertices():>4} '
+              f'{result["ceiling"]:>4} '
               f'{result["patch"]:>6} {show(patch_was):>5} '
               f'{result["clues"]:>6} {show(clues_was):>5}')
         sys.stdout.flush()

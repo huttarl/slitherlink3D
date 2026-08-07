@@ -2,18 +2,33 @@
 """Report what data/ currently holds: one line per grid, plus totals.
 
 Usage:
-    util/catalogue_report.py [--clues] [stem_or_gridId ...]
+    util/catalogue_report.py [--puzzles] [stem_or_gridId ...]
 
 With no arguments, every grid in data/grids.json, in catalogue order (which is
 progression order: by edges, then faces). With arguments, only the grids whose
 file stem or gridId matches -- handy after adding or regenerating one.
 
---clues reports on the puzzles instead of the categories: each grid's face
-census, the clue values its puzzles actually use, and how many of its faces
-carry a clue. That's the "will these make decent puzzles?" view -- a face with k
-sides admits clues 0..k-1, so an all-triangle grid can only ever say 0, 1 or 2,
-and comparing a new grid's clue density against the collection says whether the
+Columns in the default view: file, gridId, name, F/E/V counts, puz (playable
+puzzles), disp (display puzzles), categories.
+
+--puzzles reports on the puzzles instead of the categories, and is the one to run
+after generating and before committing. Columns:
+
+    census    faces by size, as "12x5, 15x6" -- 12 pentagons and 15 hexagons
+    clues     the clue values the puzzles actually use
+    dens      share of faces carrying a clue, as a range over the puzzles
+    loop/max  loop length, against the most this solid could have
+    patch     largest connected group of faces the loop never touches
+
+The first three answer "will these make decent puzzles?" -- a face with k sides
+admits clues 0..k-1, so an all-triangle grid can only ever say 0, 1 or 2, and
+comparing a new grid's clue density against the collection says whether the
 generator had to work unusually hard.
+
+The last two are about how the puzzles LOOK, which the others miss entirely. A big
+patch is a field of 0 clues with nothing to do in it, and that is a real defect --
+one generated puzzle covered barely half its solid, and it took someone looking at
+the screen to notice, because no report showed it.
 
 Reads data/grids.json for the geometry and playable-puzzle counts, and each
 data/<stem>-puzzles.json for the display puzzles and clues, which the catalogue
@@ -29,6 +44,9 @@ Standard library only, so plain python3 runs it -- no compas or numpy needed.
 import json
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import grid_topology  # noqa: E402  (needs the path set up first)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
 
@@ -101,6 +119,45 @@ def face_census(stem):
             ', '.join(f'{count}x{size}' for (size, count) in sorted(sizes.items())))
 
 
+def as_range(values, suffix=''):
+    """"3" for one distinct value, "3-7" for several. Empty for nothing."""
+    if not values:
+        return ''
+    (low, high) = (min(values), max(values))
+    return f'{low}{suffix}' if low == high else f'{low}-{high}{suffix}'
+
+
+def shape_summary(stem):
+    """How interesting the grid's stored puzzles look, as (loop, patch).
+
+    loop is the loop length over the puzzles against the most this solid could
+    have (its vertex count, since the loop is a simple cycle through vertices),
+    e.g. "19-28/62". patch is the largest connected group of faces the loop never
+    touches -- the field of 0 clues a player sees as a dull blank area, and the
+    thing that catches a puzzle covering only part of the solid.
+
+    Display puzzles count too: one is shown on the title screen, so a dull one is
+    the first thing anybody sees.
+    """
+    grid_path = DATA_DIR / f'{stem}.json'
+    puzzle_path = DATA_DIR / f'{stem}-puzzles.json'
+    if not grid_path.exists() or not puzzle_path.exists():
+        return ('', '')
+    data = json.loads(puzzle_path.read_text())
+    puzzles = data.get('puzzles', []) + data.get('displayPuzzles', [])
+    if not puzzles:
+        return ('', '')
+
+    faces = grid_topology.load_grid(grid_path)['faces']
+    adjacency = grid_topology.face_adjacency(faces)
+    loops = [grid_topology.loop_edges(p['solution']) for p in puzzles]
+    lengths = [len(loop) for loop in loops]
+    patches = [grid_topology.largest_quiet_patch(faces, loop, adjacency)
+               for loop in loops]
+    return (f'{as_range(lengths)}/{grid_topology.loop_ceiling(faces)}',
+            as_range(patches))
+
+
 def clue_summary(stem, num_faces):
     """What the grid's playable puzzles do with clues.
 
@@ -131,8 +188,8 @@ def main():
     warn_if_stale()
     catalogue = json.loads((DATA_DIR / 'grids.json').read_text())
     args = sys.argv[1:]
-    clues = '--clues' in args
-    wanted = [a for a in args if a != '--clues']
+    per_puzzle = '--puzzles' in args
+    wanted = [a for a in args if a != '--puzzles']
     grids = [g for g in catalogue['grids']
              if not wanted or g['file'] in wanted or g['gridId'] in wanted]
     if not grids:
@@ -140,15 +197,17 @@ def main():
               f'run with no arguments to list them all.', file=sys.stderr)
         sys.exit(1)
 
-    if clues:
-        print(f'{"file":6} {"name":32} {"E":>4} {"puz":>4}  {"faces":26} '
-              f'{"clues":8} density')
+    if per_puzzle:
+        print(f'{"file":6} {"name":28} {"E":>4} {"puz":>4}  {"census":22} '
+              f'{"clues":7} {"dens":8} {"loop/max":>9} {"patch":>6}')
         for g in grids:
             stem = g['file']
             (num_faces, census) = face_census(stem)
             (values, density) = clue_summary(stem, num_faces)
-            print(f'{stem:6} {g["gridName"][:32]:32} {g["edges"]:4} '
-                  f'{g["numPuzzles"]:4}  {census:26} {values:8} {density}')
+            (loop, patch) = shape_summary(stem)
+            print(f'{stem:6} {g["gridName"][:28]:28} {g["edges"]:4} '
+                  f'{g["numPuzzles"]:4}  {census:22} {values:7} {density:8} '
+                  f'{loop:>9} {patch:>6}')
     else:
         print(f'{"file":6} {"gridId":7} {"name":42} {"F":>4} {"E":>4} {"V":>4} '
               f'{"puz":>4} {"disp":>4}  categories')

@@ -23,6 +23,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # Our local module
+import grid_topology
 import json_format
 import slisolver
 
@@ -467,6 +468,11 @@ class RegionColoring:
         self.mesh = mesh
         self.dualG = dualG
         self.num_faces = mesh.number_of_faces()
+        # Face adjacency, built once. Asking the mesh for a face's neighbors is
+        # the innermost operation of the whole painter, and improve_region calls
+        # it thousands of times per puzzle.
+        self.adjacency = grid_topology.face_adjacency(
+            [mesh.face_vertices(fkey) for fkey in mesh.faces()])
         # Whether each color's region still needs its connectedness checked.
         # Painting a face one color can disconnect the other color, so painting
         # sets the OTHER color's flag; see paint_face.
@@ -739,22 +745,16 @@ class RegionColoring:
         puzzle look dull -- scattered single 0s are fine and even welcome, while
         one big blank area is the defect. dbD's first generated puzzle had 55 such
         faces in a single patch, a whole visible hemisphere of 0s.
+
+        The grouping is grid_topology's, which is also what catalogue_report and
+        sweep_grids use to measure a puzzle already on disk. Two definitions of
+        this would drift apart silently, and it is now a quality gate;
+        test_same_patch_measure_as_grid_topology pins the two together.
         """
-        quiet = {fkey for fkey in self.mesh.faces()
+        quiet = [fkey for fkey in self.mesh.faces()
                  if all((nbr in region) == (fkey in region)
-                        for nbr in self.mesh.face_neighbors(fkey))}
-        biggest = 0
-        while quiet:
-            group = {quiet.pop()}
-            stack = list(group)
-            while stack:
-                for nbr in self.mesh.face_neighbors(stack.pop()):
-                    if nbr in quiet:
-                        quiet.discard(nbr)
-                        group.add(nbr)
-                        stack.append(nbr)
-            biggest = max(biggest, len(group))
-        return biggest
+                        for nbr in self.mesh.face_neighbors(fkey))]
+        return grid_topology.largest_group(quiet, self.adjacency)
 
     def quiet_patch_allowance(self):
         """How big an untouched patch is acceptable, so improve_region knows when

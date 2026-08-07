@@ -40,12 +40,10 @@ import statistics
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from grid_topology import edges_of, vertex_degrees  # noqa: E402
+
 DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
-
-
-def edges_of(faces):
-    return {tuple(sorted((face[i], face[(i + 1) % len(face)])))
-            for face in faces for i in range(len(face))}
 
 
 def subtract(p, q):
@@ -136,12 +134,8 @@ def report(path):
     print(f'  inradius  {min(inradii):.3f} to {max(inradii):.3f}  '
           f'(x{max(inradii) / min(inradii):.1f})')
     print(f'  bow       {max(face_bow(f) for f in faces):.1e}')
-    degrees = {}
-    for face in F:
-        for v in face:
-            degrees[v] = degrees.get(v, 0) + 1
     tally = {}
-    for degree in degrees.values():
+    for degree in vertex_degrees(F).values():
         tally[degree] = tally.get(degree, 0) + 1
     print(f'  degrees   '
           + ', '.join(f'{count}x{degree}' for (degree, count) in sorted(tally.items())))
