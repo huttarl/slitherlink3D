@@ -24,12 +24,26 @@ const MAX_CLUE = 12;
  * between the two sets instead. Hence two sets, built once, rather than one set
  * whose color is tweaked per face.
  *
- * @param {string} color - CSS color for both fill and outline
+ * LIT, not unlit. The digits have to stay darker than the face they are painted
+ * on, and that only holds if they are shaded by the same lights: the faces are
+ * Phong-shaded, so one turned away from the headlight renders its near-white as
+ * a middling gray -- and an UNLIT gray digit on it would come out LIGHTER than
+ * its own face, exactly inverting the intended "quieter than black". Lambert
+ * rather than Phong so the digit is diffuse only: a specular highlight would
+ * lighten it, and a glint on a black digit is the one thing that could make a
+ * clue harder to read than it already is. The digit plane sits parallel to its
+ * face and a thousandth of a unit off it, so it shares the face's normal and
+ * therefore its shading almost exactly.
+ *
+ * @param {THREE.Color} color - fill and outline color for the digits
  * @param {Intl.NumberFormat} numberFormat - localized digits
  * @returns {Object<number, THREE.Material>} keyed by clue value
  */
 function makeDigitMaterials(color, numberFormat) {
     const materials = {};
+    // The canvas takes a CSS color, so this is where a THREE.Color leaves the
+    // 3D world (see CLUE_COLORS).
+    const cssColor = color.getStyle();
     for (let i = 0; i <= MAX_CLUE; i++) {
         // A separate canvas per number, since each becomes its own texture.
         // TODO sometime: make canvas size, font size (and line width?) depend on minimum face size?
@@ -44,8 +58,8 @@ function makeDigitMaterials(color, numberFormat) {
         // Set text properties. Outline in the same color as the fill: outlining
         // a gray digit in black would put the black back and undo the graying.
         digitContext.font = 'bold 240px Arial';
-        digitContext.fillStyle = color; // was 'white'
-        digitContext.strokeStyle = color;
+        digitContext.fillStyle = cssColor; // was 'white'
+        digitContext.strokeStyle = cssColor;
         digitContext.lineWidth = 4;
         digitContext.textAlign = 'center';
         digitContext.textBaseline = 'middle';
@@ -57,10 +71,18 @@ function makeDigitMaterials(color, numberFormat) {
         digitContext.strokeText(s, x, y);
         digitContext.fillText(s, x, y);
 
-        // Create texture and material
+        // Create texture and material.
+        //
+        // colorSpace matters here and is easy to miss: a CanvasTexture defaults
+        // to no color space, which means its bytes are taken as LINEAR, and the
+        // renderer's sRGB output then brightens every midtone. 50% gray came out
+        // near 73% -- which is why the first gray digits looked almost white.
+        // Pure black and pure white are the two values the mistake doesn't
+        // touch, so it went unnoticed while the digits were only ever black.
         const texture = new THREE.CanvasTexture(digitCanvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
         texture.needsUpdate = true;
-        materials[i] = new THREE.MeshBasicMaterial({
+        materials[i] = new THREE.MeshLambertMaterial({
             map: texture,
             transparent: true,
             alphaTest: 0.1

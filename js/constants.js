@@ -112,9 +112,17 @@ export const TITLE_SCREEN_MIN_FACES = 11;
 // 62 faces of three kinds, intricate from any angle).
 export const TITLE_SCREEN_FALLBACK_GRID = 'eD';
 
+// The three palettes below are all THREE.Color objects keyed by state name, so
+// they read alike and a color can be moved between them. Note that these are the
+// colors as AUTHORED: what reaches the screen is lit, and the polyhedron's
+// material is Phong, so a face's default near-white renders anywhere from white
+// where the headlight strikes it square to a middling gray where it doesn't.
+
 // Face color states
-export const FACE_DEFAULT_COLOR = new THREE.Color(0xeeeeee);
-export const FACE_HIGHLIGHT_COLOR = new THREE.Color(0x44ff44); // Used for debugging
+export const FACE_COLORS = {
+    default: new THREE.Color(0xeeeeee), // almost white
+    highlight: new THREE.Color(0x44ff44), // green; used for debugging
+};
 
 // Edge state machine configuration
 export const EDGE_COLORS = {
@@ -126,17 +134,21 @@ export const EDGE_COLORS = {
 };
 export const EDGE_STATES = ['unknown', 'filledIn', 'ruledOut'];
 
-// Clue digit colors. Unlike EDGE_COLORS these are CSS color strings, not
-// THREE.Color: the digits are drawn into a 2D canvas by clueRenderer.js, which
-// then uses it as a texture, so they are set as fillStyle/strokeStyle.
+// Clue digit colors. A clue whose walls are all accounted for goes gray, leaving
+// the black digits as the list of what is still to do.
 //
-// A clue whose walls are all accounted for goes gray, leaving the black digits
-// as the list of what is still to do. The gray has to stay legible against
-// FACE_DEFAULT_COLOR (0xeeeeee) while reading as clearly quieter than black,
-// which is what the same 50% gray as an unmarked edge does.
+// These reach the screen by a longer route than the other two palettes: the
+// digits are drawn into a 2D canvas, which becomes a texture (see
+// clueRenderer.js), so each is converted to a CSS string with .getStyle(). Kept
+// as THREE.Color anyway, so that all three palettes hold the same kind of thing
+// and the conversion stays where the canvas is.
+//
+// The gray must read as quieter than black while staying DARKER than the face
+// under it, which is why the digits are lit by the same lights as the faces:
+// see makeDigitMaterials.
 export const CLUE_COLORS = {
-    unsatisfied: '#000000',
-    satisfied: '#808080',
+    unsatisfied: new THREE.Color(0x000000), // black
+    satisfied: new THREE.Color(0x808080), // 50% gray, as an unmarked edge
 };
 
 

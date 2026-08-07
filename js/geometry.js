@@ -12,7 +12,7 @@
  */
 import * as THREE from './three/three.module.min.js';
 import { Grid } from './Grid.js';
-import { EDGE_RADIUS, EDGE_COLORS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR,
+import { EDGE_RADIUS, EDGE_COLORS, FACE_COLORS,
          EDGE_STATES } from './constants.js';
 import { findCentroid, normalizeVertices } from './geometryUtils.js';
 
@@ -51,8 +51,8 @@ function createPolyhedron(vertices, faces) {
         }
 
         grid.addFace(face, {
-            originalColor: FACE_DEFAULT_COLOR,
-            highlightColor: FACE_HIGHLIGHT_COLOR,
+            originalColor: FACE_COLORS.default,
+            highlightColor: FACE_COLORS.highlight,
             isHighlighted: false,
             // Use index of face in loaded array of faces as that face's ID in the Grid.
             index: i,

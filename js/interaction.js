@@ -7,7 +7,7 @@
 import * as THREE from './three/three.module.min.js';
 import { findCentroid, findFaceNormal } from './geometryUtils.js';
 import { debug } from './debug.js';
-import { DRAG_THRESHOLD_PIXELS, FACE_DEFAULT_COLOR, FACE_HIGHLIGHT_COLOR, EDGE_STATES,
+import { DRAG_THRESHOLD_PIXELS, FACE_COLORS, EDGE_STATES,
          LONG_PRESS_MS, PICK_DEPTH_TOLERANCE, PICK_RADIUS } from './constants.js';
 
 /**
@@ -67,7 +67,7 @@ export function makeInteraction(gameState) {
         const face = puzzleGrid.faces.get(faceId);
         const colors = sceneManager.geometry.attributes.color;
         const range = puzzleGrid.faceVertexRanges.get(faceId);
-        const color = highlight ? FACE_HIGHLIGHT_COLOR : FACE_DEFAULT_COLOR;
+        const color = highlight ? FACE_COLORS.highlight : FACE_COLORS.default;
         for (let i = 0; i < range.count; i++) {
             colors.setXYZ(range.start + i, color.r, color.g, color.b);
         }
