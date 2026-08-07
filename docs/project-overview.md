@@ -80,6 +80,14 @@ A venv matters more than it looks: on a machine with several Pythons, the one
 first on `PATH` is easily not the one carrying these libraries, and the
 generators then fail with a bare `ModuleNotFoundError`.
 
+**Run these scripts directly** — `util/grid_quality.py dbD`, not `python3
+util/grid_quality.py dbD` — because each one's shebang already names the
+interpreter it needs: `python3` for the ones that are standard-library only, and
+`python3.11` for those wanting `numpy`, `scipy` or `compas`. A shebang also marks
+what is meant to be run: the shared libraries (`grid_topology.py`,
+`grid_checks.py`, `slisolver.py`) have none, and are not executable.
+`util/about-scripts.md` groups all of them by purpose.
+
 The usual sequence for adding a solid is: generate the grid
 (`docs/generating-grids.md`), generate puzzles for it
 (`docs/generating-puzzles.md`), then rebuild the catalogue with

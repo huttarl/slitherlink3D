@@ -69,7 +69,7 @@ Two ways:
 - **Directly** (opens the interactive matplotlib 3D view of the mesh):
 
   ```
-  python3.11 util/genSliPuzzles.py data/myGrid.json [numPuzzles]
+  util/genSliPuzzles.py data/myGrid.json [numPuzzles]
   ```
 
 Either way, the puzzle JSON goes to stdout and all diagnostic/progress

@@ -1,5 +1,6 @@
+#!/usr/bin/env python3.11
 """Generate Slitherlink3D puzzles (in JSON) for a given grid (input from JSON).
-Usage: python3 genSliPuzzles.py [--quiet|--verbose] [--display=N]
+Usage: util/genSliPuzzles.py [--quiet|--verbose] [--display=N]
            [--existing=FILE] myGrid.json [numPuzzles]
 Output is written to stdout; diagnostic/progress messages go to stderr.
 --quiet keeps only errors, warnings and the outcome; --verbose adds per-edge

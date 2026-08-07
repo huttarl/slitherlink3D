@@ -4,10 +4,13 @@ How the `data/<id>.json` grid files are produced. Once a grid exists, see
 `docs/generating-puzzles.md` for putting puzzles on it, and
 `docs/json-format.md` for the file format.
 
-The Python scripts in `util/` must be run with an interpreter that has the
-required packages installed (`compas`, `networkx`, `matplotlib`, and for several
-of these `numpy`/`scipy`) — the system default `python3` may not have them. See
-"Python utilities" in `docs/project-overview.md`.
+Run these scripts directly — `util/genPrism.py 6 ...`, not `python3
+util/genPrism.py 6 ...`. Each one's shebang names the interpreter it needs, which
+matters here: the ones using `numpy`/`scipy` ask for `python3.11`, because the
+system default `python3` may well not have those installed, and the failure is a
+bare `ModuleNotFoundError` that says nothing about why. In `util/`, a shebang also
+means the file is meant to be run: the shared libraries (`grid_topology.py`,
+`grid_checks.py`, `slisolver.py`) have none.
 
 There are several sources, in rough order of preference: exact coordinates where
 we know them, then a construction from an existing solid, then an interactive
@@ -29,10 +32,10 @@ For a solid whose exact vertex coordinates are known, this is the best source �
 it writes the grid JSON directly, with no OBJ step:
 
 ```
-python3 util/genUniformPolyh.py            # list the solids it knows
-python3 util/genUniformPolyh.py tO         # write data/tO.json
-python3 util/genUniformPolyh.py --all      # all of them
-python3 util/genUniformPolyh.py tO --check # verify without writing
+util/genUniformPolyh.py            # list the solids it knows
+util/genUniformPolyh.py tO         # write data/tO.json
+util/genUniformPolyh.py --all      # all of them
+util/genUniformPolyh.py tO --check # verify without writing
 ```
 
 It hulls a vertex list, merges the hull's coplanar triangles back into the
@@ -91,7 +94,7 @@ Generates a Goldberg polyhedron — 12 pentagons, the rest hexagons, three faces
 at every vertex — from its parameters (m,n):
 
 ```
-python3 util/genGoldberg.py 1 2 gp12 "Goldberg GP(1,2)" > data/gp12.json
+util/genGoldberg.py 1 2 gp12 "Goldberg GP(1,2)" > data/gp12.json
 ```
 
 GP(1,0) is the dodecahedron and GP(1,1) the truncated icosahedron, which we
@@ -112,8 +115,8 @@ regenerating a grid doesn't invalidate the puzzles built on it. Requires
 Generates a prism or antiprism, all of whose faces are regular polygons:
 
 ```
-python3 util/genPrism.py 6 P6 "Hexagonal prism" > data/P6.json
-python3 util/genPrism.py --anti 5 A5 "Pentagonal antiprism" > data/A5.json
+util/genPrism.py 6 P6 "Hexagonal prism" > data/P6.json
+util/genPrism.py --anti 5 A5 "Pentagonal antiprism" > data/A5.json
 ```
 
 Exact coordinates: two regular n-gons of circumradius 1/(2 sin(π/n)), a unit
@@ -137,7 +140,7 @@ construct the polyhedron interactively at
 http://levskaya.github.io/polyhedronisme/, export it as OBJ, then convert:
 
 ```
-python3 util/obj2json.py myPolyhedron.obj > data/myGrid.json
+util/obj2json.py myPolyhedron.obj > data/myGrid.json
 ```
 
 The grid's `gridId`/`gridName` are derived from the OBJ's group name — the
@@ -154,7 +157,7 @@ then goes through `obj2json.py` as above:
 
 ```
 util/genRandomPolyh.py 20 --quiet --name "Random sphere B" --out /tmp/b.obj
-python3 util/obj2json.py /tmp/b.obj > data/randB.json
+util/obj2json.py /tmp/b.obj > data/randB.json
 ```
 
 `--name` sets the OBJ group name, which is where `obj2json.py` gets the

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.11
 """Generate grid JSON for uniform polyhedra (Platonic and Archimedean solids)
 from exact vertex coordinates.
 

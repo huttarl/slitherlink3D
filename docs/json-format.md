@@ -43,7 +43,7 @@ A JSON object containing the following properties:
   invalidates any puzzle file built on the grid.
 - File formatting: one line per vertex, per face and per clue list, written that
   way by `util/json_format.py`. The generators all use it, and
-  `python3 util/json_format.py data/*.json` reformats existing files in place —
+  `util/json_format.py data/*.json` reformats existing files in place —
   idempotent, and it refuses to write if the parsed data would change. Neither
   extreme is readable: minified puts a grid on one 1000-character line, while
   `indent=3` gave every coordinate a line of its own (491 lines for three puzzles

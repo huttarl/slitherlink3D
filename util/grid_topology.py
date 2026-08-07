@@ -1,5 +1,7 @@
-#!/usr/bin/env python3
 """Topology of a grid, and of a puzzle on it, straight from the JSON.
+
+A library, not a command: no shebang and not executable, as with slisolver.py.
+In util/, a shebang means the file can be run.
 
 The shared helpers that several scripts had each grown their own copy of: a
 breadth-first search over face adjacency existed in four places, `edges_of` in

@@ -1,4 +1,6 @@
+#!/usr/bin/env python3
 # obj2json: Convert OBJ file (export from polyHedronisme) to Slitherlink3D JSON data
+# Standard library only, so plain python3 runs it.
 
 import sys, json, re
 

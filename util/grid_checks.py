@@ -1,5 +1,7 @@
-#!/usr/bin/env python3
 """Geometric checks a generated solid must pass before it is written.
+
+A library, not a command: no shebang and not executable, as with slisolver.py.
+In util/, a shebang means the file can be run.
 
 Every grid generator ends the same way: measure what it just built, and refuse to
 write it if the numbers are wrong. They had each grown their own version of that,

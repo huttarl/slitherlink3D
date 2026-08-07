@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Readable JSON for the data files.
 
 Both extremes are hard to read. Minified, a grid is one 1000-character line

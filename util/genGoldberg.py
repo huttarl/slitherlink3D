@@ -1,6 +1,7 @@
+#!/usr/bin/env python3.11
 """Generate a Goldberg polyhedron GP(m,n) as a grid JSON file.
 
-Usage: python3 genGoldberg.py m n [gridId] [gridName]
+Usage: util/genGoldberg.py m n [gridId] [gridName]
 Output is written to stdout; progress and the self-check go to stderr.
 For the JSON format, see docs/json-format.md.
 
