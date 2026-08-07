@@ -13,6 +13,16 @@ There are several sources, in rough order of preference: exact coordinates where
 we know them, then a construction from an existing solid, then an interactive
 modeller, then randomness.
 
+Every generator that computes coordinates ends by verifying what it built and
+refusing to write a solid that fails, and they share those checks through
+`util/grid_checks.py`: Euler's formula, the face census, vertex degrees, equal
+edge lengths and vertex radii, flat faces, a closed and consistently outward-wound
+surface, regular faces, congruent faces. Each generator composes the checks that
+apply to it — uniformity for the Platonic and Archimedean solids, congruence for
+the Catalan ones, regularity for the prisms — and sets its own tolerances, since
+what counts as flat differs between exact coordinates and coordinates that came
+back rounded from an OBJ file.
+
 ## genUniformPolyh.py — Platonic and Archimedean solids
 
 For a solid whose exact vertex coordinates are known, this is the best source —

@@ -35,6 +35,8 @@ import numpy as np
 
 # Our local modules. cycle_around orders a face's corners; json_format keeps the
 # output readable (one line per vertex and per face).
+import grid_checks
+import grid_topology
 import json_format
 from genGoldberg import cycle_around
 
@@ -122,27 +124,6 @@ def normalized(vertices):
     return vertices / np.abs(np.linalg.norm(vertices, axis=1)).max()
 
 
-def face_shape(vertices, face):
-    """A face's edge lengths and corner angles, both sorted.
-
-    Two congruent faces have the same pair of lists. (Sorted, so the comparison
-    doesn't depend on which corner each face starts from or which way round it
-    is wound. That makes this a necessary rather than sufficient test for
-    congruence -- but a face with the same edges and the same angles as another,
-    on a solid built by reciprocating a uniform one, is congruent to it.)
-    """
-    corners = np.array([vertices[v] for v in face], dtype=float)
-    edges = sorted(float(np.linalg.norm(corners[i] - corners[(i + 1) % len(face)]))
-                   for i in range(len(face)))
-    angles = []
-    for i in range(len(face)):
-        (u, v) = (corners[i - 1] - corners[i],
-                  corners[(i + 1) % len(face)] - corners[i])
-        cosine = np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))
-        angles.append(float(np.degrees(np.arccos(np.clip(cosine, -1.0, 1.0)))))
-    return (edges, sorted(angles))
-
-
 def check(vertices, faces, primal_points, primal_faces):
     """Verify the dual, and return a one-line description.
 
@@ -151,54 +132,32 @@ def check(vertices, faces, primal_points, primal_faces):
     off. Flatness is exact by construction (every corner of the face replacing
     vertex v satisfies x.v = 1), so it is checked as a guard on the arithmetic
     rather than as something that might be approximate.
+
+    Duality also fixes the counts: one dual vertex per primal face, one dual face
+    per primal vertex.
     """
-    edges = {frozenset((face[i], face[(i + 1) % len(face)]))
-             for face in faces for i in range(len(face))}
-    problems = []
-    if len(vertices) != len(primal_faces):
-        problems.append(f'{len(primal_faces)} vertices expected (one per primal '
-                        f'face), got {len(vertices)}')
-    if len(faces) != len(primal_points):
-        problems.append(f'{len(primal_points)} faces expected (one per primal '
-                        f'vertex), got {len(faces)}')
-    if len(vertices) - len(edges) + len(faces) != 2:
-        problems.append(f"Euler's formula fails: {len(vertices)} - {len(edges)} "
-                        f'+ {len(faces)} != 2')
-
-    shapes = [face_shape(vertices, face) for face in faces]
-    (first_edges, first_angles) = shapes[0]
-    (worst_length, worst_angle) = (0.0, 0.0)
-    for (i, (edges_i, angles_i)) in enumerate(shapes[1:], start=1):
-        if len(edges_i) != len(first_edges):
-            problems.append(f'face {i} has {len(edges_i)} sides, face 0 has '
-                            f'{len(first_edges)}')
-            continue
-        worst_length = max(worst_length,
-                           max(abs(a - b) for (a, b) in zip(edges_i, first_edges)))
-        worst_angle = max(worst_angle,
-                          max(abs(a - b) for (a, b) in zip(angles_i, first_angles)))
-    if worst_length > LENGTH_TOLERANCE:
-        problems.append(f'faces differ in shape: edges by up to {worst_length:.2e}')
-    if worst_angle > ANGLE_TOLERANCE_DEGREES:
-        problems.append(f'faces differ in shape: angles by up to '
-                        f'{worst_angle:.2f} degrees')
-
-    centre = np.mean(vertices, axis=0)
-    for (f, face) in enumerate(faces):
-        corners = np.array([vertices[v] for v in face])
-        normal = np.cross(corners[1] - corners[0], corners[2] - corners[1])
-        if np.dot(normal, corners.mean(axis=0) - centre) <= 0:
-            problems.append(f'face {f} is wound the wrong way')
-        plane = normal / np.linalg.norm(normal)
-        bow = max(abs(np.dot(plane, corner - corners[0])) for corner in corners)
-        if bow > FLATNESS_TOLERANCE:
-            problems.append(f'face {f} is not flat (bow {bow:.2e})')
-
+    problems = (
+        grid_checks.check_counts(vertices, faces,
+                                 {'vertices': len(primal_faces),
+                                  'faces': len(primal_points)})
+        + grid_checks.check_euler(vertices, faces)
+        + grid_checks.check_congruent_faces(vertices, faces, LENGTH_TOLERANCE,
+                                            ANGLE_TOLERANCE_DEGREES)
+        + grid_checks.check_flat_faces(vertices, faces, FLATNESS_TOLERANCE)
+        + grid_checks.check_closed_surface(faces)
+        + grid_checks.check_outward_winding(vertices, faces))
     if problems:
         for problem in problems[:5]:
             log(f'Error: {problem}.')
         sys.exit(1)
 
+    edges = grid_topology.edges_of(faces)
+    (first_edges, first_angles) = grid_checks.face_shape(vertices, faces[0])
+    shapes = [grid_checks.face_shape(vertices, face) for face in faces]
+    worst_length = max((max(abs(a - b) for (a, b) in zip(e, first_edges))
+                        for (e, _) in shapes), default=0.0)
+    worst_angle = max((max(abs(a - b) for (a, b) in zip(g, first_angles))
+                       for (_, g) in shapes), default=0.0)
     sides = len(first_edges)
     return (f'{len(vertices)} vertices, {len(edges)} edges, {len(faces)} faces, '
             f'all congruent {sides}-gons with edges '

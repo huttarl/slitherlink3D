@@ -35,79 +35,18 @@ Reporting only, and standard library only. Verification proper lives in the test
 suites and in each generator's own checks.
 """
 import json
-import math
 import statistics
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from grid_checks import (  # noqa: E402
+    centroid, distance, face_bow, inscribed_radius, sharpest_corner,
+    wound_outward,
+)
 from grid_topology import edges_of, vertex_degrees  # noqa: E402
 
 DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
-
-
-def subtract(p, q):
-    return [p[i] - q[i] for i in range(3)]
-
-
-def cross(u, v):
-    return [u[1] * v[2] - u[2] * v[1],
-            u[2] * v[0] - u[0] * v[2],
-            u[0] * v[1] - u[1] * v[0]]
-
-
-def norm(u):
-    return math.sqrt(sum(x * x for x in u))
-
-
-def centroid(points):
-    return [sum(p[i] for p in points) / len(points) for i in range(3)]
-
-
-def sharpest_corner(corners):
-    """The sharpest interior angle of a face, in degrees."""
-    sharpest = 180.0
-    for i in range(len(corners)):
-        previous = corners[i - 1]
-        here = corners[i]
-        following = corners[(i + 1) % len(corners)]
-        (u, v) = (subtract(previous, here), subtract(following, here))
-        scale = norm(u) * norm(v)
-        if scale == 0:
-            continue
-        cosine = max(-1.0, min(1.0, sum(u[k] * v[k] for k in range(3)) / scale))
-        sharpest = min(sharpest, math.degrees(math.acos(cosine)))
-    return sharpest
-
-
-def inscribed_radius(corners):
-    """Twice the area over the perimeter: the inscribed circle of a regular
-    polygon, and a fair stand-in for how much room a clue digit has."""
-    centre = centroid(corners)
-    area = sum(norm(cross(subtract(corners[i], centre),
-                          subtract(corners[(i + 1) % len(corners)], centre))) / 2
-               for i in range(len(corners)))
-    perimeter = sum(norm(subtract(corners[i], corners[(i + 1) % len(corners)]))
-                    for i in range(len(corners)))
-    return 2 * area / perimeter if perimeter else 0.0
-
-
-def face_bow(corners):
-    """How far the corners stray from the plane of the first three."""
-    normal = cross(subtract(corners[1], corners[0]),
-                   subtract(corners[2], corners[1]))
-    scale = norm(normal)
-    if scale == 0:
-        return math.inf
-    return max(abs(sum(normal[k] * (corner[k] - corners[0][k]) for k in range(3)))
-               / scale for corner in corners)
-
-
-def wound_outward(corners, solid_centre):
-    normal = cross(subtract(corners[1], corners[0]),
-                   subtract(corners[2], corners[1]))
-    middle = subtract(centroid(corners), solid_centre)
-    return sum(normal[k] * middle[k] for k in range(3)) > 0
 
 
 def report(path):
@@ -115,7 +54,7 @@ def report(path):
     V = grid['vertices']
     F = grid['faces']
     edges = edges_of(F)
-    lengths = sorted(norm(subtract(V[a], V[b])) for (a, b) in edges)
+    lengths = sorted(distance(V[a], V[b]) for (a, b) in edges)
     median = statistics.median(lengths)
     faces = [[V[i] for i in face] for face in F]
     centre = centroid(V)

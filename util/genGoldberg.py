@@ -47,7 +47,9 @@ import sys
 import numpy as np
 from scipy.spatial import ConvexHull
 
-# Our local module
+# Our local modules
+import grid_checks
+import grid_topology
 import json_format
 
 # Coordinates are compared after rounding to this many decimals, to weld the
@@ -231,52 +233,37 @@ def check(m, n, vertices, faces):
     @returns a one-line description, or exits if anything is off
     """
     T = m * m + m * n + n * n
-    expected = {'vertices': 20 * T, 'faces': 10 * T + 2, 'edges': 30 * T}
+    sizes = grid_checks.face_census(faces)
 
-    edges = {frozenset((face[i], face[(i + 1) % len(face)]))
-             for face in faces for i in range(len(face))}
-    sizes = {}
-    for face in faces:
-        sizes[len(face)] = sizes.get(len(face), 0) + 1
-    degree = {}
-    for face in faces:
-        for v in face:
-            degree[v] = degree.get(v, 0) + 1
-
-    problems = []
-    got = {'vertices': len(vertices), 'faces': len(faces), 'edges': len(edges)}
-    for (what, count) in expected.items():
-        if got[what] != count:
-            problems.append(f'{count} {what} expected, got {got[what]}')
-    if sizes.get(5) != 12:
-        problems.append(f'12 pentagons expected, got {sizes.get(5, 0)}')
-    if set(sizes) - {5, 6}:
-        problems.append(f'only pentagons and hexagons expected, got {sorted(sizes)}')
-    if set(degree.values()) != {3}:
-        problems.append(f'every vertex should meet 3 faces, got '
-                        f'{sorted(set(degree.values()))}')
-    # Flatness, which is the point of using the polar dual: the worst deviation
-    # of any face's corners from that face's own plane.
-    worst_bow = max(face_bow(vertices, face) for face in faces)
-    if worst_bow > 1e-9:
-        problems.append(f'faces are not flat (worst bow {worst_bow:.2e})')
+    problems = (
+        grid_checks.check_counts(vertices, faces,
+                                 {'vertices': 20 * T, 'faces': 10 * T + 2,
+                                  'edges': 30 * T})
+        # 12 pentagons and hexagons for the rest, at three faces per vertex, is
+        # what makes a solid Goldberg. Euler forces exactly 12 once no face is
+        # anything but a pentagon or hexagon.
+        + ([f'12 pentagons expected, got {sizes.get(5, 0)}']
+           if sizes.get(5) != 12 else [])
+        + ([f'only pentagons and hexagons expected, got {sorted(sizes)}']
+           if set(sizes) - {5, 6} else [])
+        + grid_checks.check_vertex_degrees(faces, {3})
+        # Flatness is the point of going via the polar dual, so it is checked
+        # tightly: these faces should be flat to floating-point noise.
+        + grid_checks.check_flat_faces(vertices, faces, 1e-9)
+        + grid_checks.check_closed_surface(faces)
+        + grid_checks.check_outward_winding(vertices, faces))
 
     if problems:
         for problem in problems:
             log(f'Error: {problem}.')
         sys.exit(1)
 
-    census = ', '.join(f'{count} {size}-gons' for (size, count) in sorted(sizes.items()))
-    return (f'GP({m},{n}): T={T}, {got["vertices"]} vertices, {got["edges"]} edges, '
-            f'{got["faces"]} faces ({census}); faces flat to {worst_bow:.1e}')
-
-
-def face_bow(vertices, face):
-    """How far a face's corners stray from the best plane through them."""
-    p = vertices[face]
-    centred = p - p.mean(axis=0)
-    # The smallest singular value is the spread across the fitted plane.
-    return float(np.linalg.svd(centred, compute_uv=False)[-1])
+    worst_bow = max(grid_checks.face_bow(grid_checks.corners_of(vertices, face))
+                    for face in faces)
+    return (f'GP({m},{n}): T={T}, {len(vertices)} vertices, '
+            f'{len(grid_topology.edges_of(faces))} edges, '
+            f'{len(faces)} faces ({grid_checks.census_text(faces)}); '
+            f'faces flat to {worst_bow:.1e}')
 
 
 def goldberg(m, n):

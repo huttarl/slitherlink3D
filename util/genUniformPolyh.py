@@ -35,6 +35,8 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial import ConvexHull
 
+import grid_checks
+import grid_topology
 import json_format
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -276,84 +278,43 @@ def build_solid(vertex_function):
 # Verification
 # --------------------------------------------------------------------------
 
-def verify(stem, points, faces, expected_census, tolerance=1e-9):
+def verify(stem, points, faces, expected_census, tolerance=1e-6):
     """Check that a generated solid really is the uniform polyhedron wanted.
+
+    Uniformity is the distinguishing property: every edge the same length and
+    every vertex the same distance from the centre, which holds for every Platonic
+    and Archimedean solid and for almost nothing else. The rest -- census, Euler,
+    flat faces, a closed and outward-wound surface -- any solid here must satisfy.
+
+    Radii are measured from the ORIGIN rather than from the centroid, since these
+    coordinates are built centred there; using the centroid would hide a solid
+    that came out lopsided.
 
     Returns (ok, list of message strings) -- messages are reported either way,
     since the measurements are informative even when everything passes.
+
+    (`tolerance` used to default to 1e-9 and then be ignored, the body having
+    three hardcoded 1e-6 tests. It now means what it says, at the value that was
+    really in force.)
     """
-    messages = []
-    ok = True
+    problems = (grid_checks.check_census(faces, expected_census)
+                + grid_checks.check_euler(points, faces)
+                + grid_checks.check_equal_edge_lengths(points, faces, tolerance)
+                + grid_checks.check_equal_vertex_radii(points, tolerance,
+                                                       centre=[0.0, 0.0, 0.0])
+                + grid_checks.check_flat_faces(points, faces, tolerance)
+                + grid_checks.check_closed_surface(faces)
+                + grid_checks.check_outward_winding(points, faces,
+                                                    centre=[0.0, 0.0, 0.0]))
 
-    census = {}
-    for face in faces:
-        census[len(face)] = census.get(len(face), 0) + 1
-    if census != expected_census:
-        ok = False
-        messages.append(f"face census {census} != expected {expected_census}")
-
-    # Edges, from face boundaries.
-    edges = set()
-    for face in faces:
-        for i in range(len(face)):
-            (a, b) = (face[i], face[(i + 1) % len(face)])
-            edges.add((min(a, b), max(a, b)))
-    (V, E, F) = (len(points), len(edges), len(faces))
-    if V - E + F != 2:
-        ok = False
-        messages.append(f"Euler's formula fails: V-E+F = {V}-{E}+{F} = {V - E + F}")
-
-    # Uniformity: all edges the same length; all vertices the same distance
-    # from the centre (both hold for every Platonic and Archimedean solid).
-    lengths = [np.linalg.norm(points[a] - points[b]) for (a, b) in edges]
-    spread = max(lengths) - min(lengths)
-    if spread > 1e-6:
-        ok = False
-        messages.append(f"edge lengths vary by {spread:.3g} "
-                        f"(min {min(lengths):.6f}, max {max(lengths):.6f})")
-
-    radii = np.linalg.norm(points, axis=1)
-    radius_spread = radii.max() - radii.min()
-    if radius_spread > 1e-6:
-        ok = False
-        messages.append(f"vertex radii vary by {radius_spread:.3g}")
-
-    # Planarity of each face.
-    worst = 0.0
-    for face in faces:
-        face_points = np.array([points[i] for i in face])
-        centre = face_points.mean(axis=0)
-        # Smallest singular value of the centred points measures thickness.
-        worst = max(worst, np.linalg.svd(face_points - centre,
-                                         compute_uv=False)[-1])
-    if worst > 1e-6:
-        ok = False
-        messages.append(f"faces not planar (worst deviation {worst:.3g})")
-
-    # Winding: every face's normal should point away from the centre, and
-    # every directed edge should appear exactly once (a closed, consistently
-    # wound surface).
-    directed = set()
-    for face in faces:
-        for i in range(len(face)):
-            directed.add((face[i], face[(i + 1) % len(face)]))
-    unpaired = sum(1 for (a, b) in directed if (b, a) not in directed)
-    if unpaired:
-        ok = False
-        messages.append(f"{unpaired} directed edges have no reverse "
-                        f"(inconsistent winding)")
-    for face in faces:
-        face_points = np.array([points[i] for i in face])
-        normal = np.cross(face_points[1] - face_points[0],
-                          face_points[2] - face_points[0])
-        if np.dot(normal, face_points.mean(axis=0)) <= 0:
-            ok = False
-            messages.append("a face is wound inward")
-            break
-
-    messages.append(f"V={V} E={E} F={F} faces={census} "
-                    f"edge={min(lengths):.6f} planarity={worst:.2g}")
-    return (ok, messages)
+    edges = grid_topology.edges_of(faces)
+    lengths = [grid_checks.distance(points[a], points[b]) for (a, b) in edges]
+    worst_bow = max(grid_checks.face_bow(grid_checks.corners_of(points, face))
+                    for face in faces)
+    summary = (f"V={len(points)} E={len(edges)} F={len(faces)} "
+               f"faces={grid_checks.face_census(faces)} "
+               f"edge={min(lengths):.6f} planarity={worst_bow:.2g}")
+    return (not problems, problems + [summary])
 
 
 # --------------------------------------------------------------------------

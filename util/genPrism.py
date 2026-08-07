@@ -33,7 +33,10 @@ genUniformPolyh.py, with the coordinates their own symmetry suggests.
 import math
 import sys
 
-# Our local module
+# Our local modules. All standard-library only, so this script still needs
+# nothing installed.
+import grid_checks
+import grid_topology
 import json_format
 
 # How much the checks below tolerate. The arithmetic here is exact to within
@@ -100,92 +103,33 @@ def antiprism(n):
     return (vertices, faces)
 
 
-def distance(p, q):
-    return math.dist(p, q)
-
-
 def check(n, anti, vertices, faces):
     """Verify the solid, and return a one-line description.
 
     Regular faces are the point of the exact coordinates, so that's what this
-    checks hardest: every edge the same length, and within each face every
-    corner the same distance from the face's centre. For a planar face, equal
-    edges plus equal radii is regularity.
+    checks hardest -- see grid_checks.check_regular_faces for why equal sides
+    alone isn't enough.
     """
-    expected_faces = (2 * n + 2) if anti else (n + 2)
-    edges = {frozenset((face[i], face[(i + 1) % len(face)]))
-             for face in faces for i in range(len(face))}
-
-    problems = []
-    if len(vertices) != 2 * n:
-        problems.append(f'{2 * n} vertices expected, got {len(vertices)}')
-    if len(faces) != expected_faces:
-        problems.append(f'{expected_faces} faces expected, got {len(faces)}')
-    if len(edges) != (4 * n if anti else 3 * n):
-        problems.append(f'{4 * n if anti else 3 * n} edges expected, '
-                        f'got {len(edges)}')
-
-    lengths = [distance(vertices[a], vertices[b]) for (a, b) in map(tuple, edges)]
-    if max(lengths) - min(lengths) > TOLERANCE:
-        problems.append(f'edges differ in length: {min(lengths)} to {max(lengths)}')
-
-    for (fkey, face) in enumerate(faces):
-        centre = tuple(sum(vertices[v][axis] for v in face) / len(face)
-                       for axis in range(3))
-        radii = [distance(vertices[v], centre) for v in face]
-        if max(radii) - min(radii) > TOLERANCE:
-            problems.append(f'face {fkey} is not regular: corners {min(radii)} '
-                            f'to {max(radii)} from its centre')
-        if face_bow(vertices, face) > TOLERANCE:
-            problems.append(f'face {fkey} is not flat')
-
-    # Wound counterclockwise seen from outside, which for a solid centred on the
-    # origin means the right-hand-rule normal agrees with the face's own centre.
-    for (fkey, face) in enumerate(faces):
-        if outward_component(vertices, face) <= 0:
-            problems.append(f'face {fkey} is wound the wrong way')
-
+    expected = {'vertices': 2 * n,
+                'faces': (2 * n + 2) if anti else (n + 2),
+                'edges': (4 * n) if anti else (3 * n)}
+    problems = (grid_checks.check_counts(vertices, faces, expected)
+                + grid_checks.check_euler(vertices, faces)
+                + grid_checks.check_equal_edge_lengths(vertices, faces, TOLERANCE)
+                + grid_checks.check_regular_faces(vertices, faces, TOLERANCE)
+                + grid_checks.check_flat_faces(vertices, faces, TOLERANCE)
+                + grid_checks.check_closed_surface(faces)
+                + grid_checks.check_outward_winding(vertices, faces))
     if problems:
         for problem in problems:
             log(f'Error: {problem}.')
         sys.exit(1)
 
-    sizes = {}
-    for face in faces:
-        sizes[len(face)] = sizes.get(len(face), 0) + 1
-    census = ', '.join(f'{count} {size}-gons' for (size, count) in sorted(sizes.items()))
+    edge = grid_checks.distance(vertices[faces[0][0]], vertices[faces[0][1]])
     return (f'{n}-{"antiprism" if anti else "prism"}: {len(vertices)} vertices, '
-            f'{len(edges)} edges, {len(faces)} faces ({census}); '
-            f'all edges {lengths[0]:.6f}, all faces regular and flat')
-
-
-def cross(u, v):
-    return (u[1] * v[2] - u[2] * v[1],
-            u[2] * v[0] - u[0] * v[2],
-            u[0] * v[1] - u[1] * v[0])
-
-
-def outward_component(vertices, face):
-    """How much the face's right-hand-rule normal agrees with its own position.
-
-    Positive means wound counterclockwise seen from outside.
-    """
-    (a, b, c) = (vertices[face[0]], vertices[face[1]], vertices[face[2]])
-    normal = cross(tuple(b[i] - a[i] for i in range(3)),
-                   tuple(c[i] - b[i] for i in range(3)))
-    centre = tuple(sum(vertices[v][axis] for v in face) / len(face)
-                   for axis in range(3))
-    return sum(normal[i] * centre[i] for i in range(3))
-
-
-def face_bow(vertices, face):
-    """How far a face's corners stray from the plane of its first three."""
-    (a, b, c) = (vertices[face[0]], vertices[face[1]], vertices[face[2]])
-    normal = cross(tuple(b[i] - a[i] for i in range(3)),
-                   tuple(c[i] - b[i] for i in range(3)))
-    scale = math.sqrt(sum(x * x for x in normal))
-    return max(abs(sum(normal[i] * (vertices[v][i] - a[i]) for i in range(3))) / scale
-               for v in face)
+            f'{len(grid_topology.edges_of(faces))} edges, {len(faces)} faces '
+            f'({grid_checks.census_text(faces)}); '
+            f'all edges {edge:.6f}, all faces regular and flat')
 
 
 def normalized(vertices):
