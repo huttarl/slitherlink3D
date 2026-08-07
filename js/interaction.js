@@ -350,6 +350,17 @@ export function makeInteraction(gameState) {
         // lands rather than when it lifts.
         if (event.target === sceneManager.renderer.domElement) {
             sceneManager.stopTumble();
+
+            // Touching the board also takes keyboard focus out of the panel.
+            // A canvas isn't focusable, so without this, focus STAYS on whatever
+            // button was clicked last -- and then Enter presses that button
+            // again instead of running the check the highlight is offering (see
+            // the Enter binding in wireKeyboardShortcuts), while a stray Space
+            // would re-trigger it too. Playing on the board is a clear signal
+            // that the player has finished with the panel.
+            if (document.activeElement && document.activeElement !== document.body) {
+                document.activeElement.blur();
+            }
         }
 
         // Long press is the touch stand-in for shift+click, so it's offered to

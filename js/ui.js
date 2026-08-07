@@ -64,6 +64,7 @@ function observePuzzleGrid(gameState, puzzleGrid) {
         updateUndoRedoButtons(puzzleGrid);
         // A change may have satisfied a clue, or unsatisfied one that was.
         updateClueColors(gameState);
+        markCheckReady(puzzleGrid);
         // Any board change makes the last check's feedback stale.
         hideCheckFeedback();
     };
@@ -79,6 +80,35 @@ function observePuzzleGrid(gameState, puzzleGrid) {
     // drawn on it, so every clue there is satisfied and every digit would go
     // gray -- and there is nothing to scan for on a board nobody is playing.
     if (!wantsTitleScreen()) updateClueColors(gameState);
+    markCheckReady(puzzleGrid);
+}
+
+/**
+ * Highlights "Check solution" once the board is worth checking -- the filled
+ * edges forming one complete loop. See PuzzleGrid.isReadyToCheck for why that,
+ * and not "every clue satisfied".
+ *
+ * The same element carries the highlight in the drawer and in the collapsed
+ * strip, since panelLayout moves the button rather than duplicating it.
+ *
+ * aria-keyshortcuts goes on and off with the highlight, because the two say the
+ * same thing to different audiences: this button answers Enter from wherever
+ * focus happens to be (see the Enter binding in wireKeyboardShortcuts). That is
+ * the "default button" relationship, which a native form gets for free from
+ * implicit submission and this has to state for itself. Set only while it's
+ * true, so the attribute never advertises a shortcut that would do nothing.
+ *
+ * @param {PuzzleGrid} puzzleGrid
+ */
+function markCheckReady(puzzleGrid) {
+    const ready = puzzleGrid.isReadyToCheck();
+    const checkButton = document.getElementById('checkSolution');
+    checkButton.classList.toggle('primary-action', ready);
+    if (ready) {
+        checkButton.setAttribute('aria-keyshortcuts', 'Enter');
+    } else {
+        checkButton.removeAttribute('aria-keyshortcuts');
+    }
 }
 
 /** The checkboxes in the drawer: what to show, and how much help to give. */
@@ -163,6 +193,26 @@ function wireKeyboardShortcuts(puzzleGrid) {
 
         if (e.key === 'Escape') hideOverlay();
 
+        // Enter runs the check once there is a loop to check, so the highlighted
+        // button and the key agree -- a button that looks like the default action
+        // and then ignores Enter is worse than no highlight at all.
+        //
+        // Bound globally rather than by focusing the button, which would be the
+        // obvious way to make Enter work and has two costs this doesn't. Focus
+        // would have to be TAKEN from wherever the player had put it, on the
+        // click that closed the loop -- and taken again on every later click, or
+        // it would snap back the moment they tabbed away. And a focused button
+        // answers Space as well as Enter, so a stray Space would check the
+        // puzzle. Here the highlight means "Enter does this", which is true from
+        // wherever the player's focus happens to be.
+        if (e.key === 'Enter' && !isOverlayVisible() && !focusOwnsEnter()) {
+            const checkButton = document.getElementById('checkSolution');
+            if (!checkButton.disabled && puzzleGrid.isReadyToCheck()) {
+                e.preventDefault();
+                checkButton.click();
+            }
+        }
+
         // Undo/redo keyboard shortcuts: Ctrl+Z (Cmd+Z on Mac) to undo;
         // add Shift, or use Ctrl+Y, to redo.
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -205,6 +255,27 @@ function celebrateSolved(gameState) {
     // TODO: add HTML markup to body, and name of grid, time taken, etc.
     displayOverlay("Congratulations!", `You solved this ${name} puzzle in ${min}m ${sec}s!`);
     // TODO: give appropriate feedback to the user. special effects.
+}
+
+/** Is the celebration overlay up? While it is, it owns Enter: its own default
+ *  button is focused, and checking the puzzle again behind it is exactly the
+ *  loop this replaced (see displayOverlay). */
+function isOverlayVisible() {
+    return !document.getElementById('overlayMessage').classList.contains('hidden');
+}
+
+/**
+ * Is focus on something that acts on Enter itself?
+ *
+ * If it is, leave the key alone: otherwise Enter would both work that control
+ * and check the puzzle. The common case is the player having just clicked a
+ * panel button, which keeps focus afterwards -- so without this, Enter would
+ * press that button AND run a check.
+ */
+function focusOwnsEnter() {
+    const focused = document.activeElement;
+    if (!focused || focused === document.body) return false;
+    return focused.matches('button, a[href], select, input, textarea, summary');
 }
 
 /**

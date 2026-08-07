@@ -430,6 +430,39 @@ export class PuzzleGrid extends Grid {
     }
 
     /**
+     * Has the player drawn something worth checking: do the filled edges form
+     * one complete, non-crossing loop?
+     *
+     * This deliberately says nothing about the CLUES. A puzzle's clues have a
+     * unique solution, so "single loop AND every clue satisfied" is the same
+     * statement as "solved" -- a highlight meaning that would only ever appear
+     * once the player had already won, telling them the answer and leaving
+     * "Check solution" with nothing to report. Closing a loop is instead the
+     * player's own sense of being finished, and is worth checking precisely
+     * because it may turn out to be wrong.
+     *
+     * Cheapest test first, so the later ones are usually skipped:
+     *   1. any filled edge at all -- an untouched board is not ready;
+     *   2. the vertex rule, O(vertices), which also rules out a crossing;
+     *   3. only then the loop walk, which is O(edges).
+     * None of it is costly enough to need the ordering, mind: a passive
+     * checkUserSolution already runs on every click and already scans every edge
+     * (hasAnyFilledEdges), so this is the same order of work as the click does
+     * anyway -- a few hundred operations on the largest grid here. The ordering
+     * is for clarity rather than for speed.
+     *
+     * @returns {boolean}
+     */
+    isReadyToCheck() {
+        if (!this.hasAnyFilledEdges()) return false;
+        // A dangling end or a crossing means the drawing isn't finished. Checking
+        // this before the walk also keeps the walk well defined: at a vertex with
+        // three filled edges it would have to guess which way to go.
+        if (findVertexViolations(this, this.vertices.keys()).length > 0) return false;
+        return checkSingleLoop(this).ok;
+    }
+
+    /**
      * Rule check: does the loop cross itself -- that is, has any vertex more
      * than two edges filled in? Records what it finds in `result` (setting
      * status to failed) and highlights the offending edges in red.

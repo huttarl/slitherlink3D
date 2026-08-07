@@ -574,12 +574,17 @@
             padding: 0.3em 0.9em;
         }
 
-        /* The default action, filled where the others are the usual pale #cce.
-           This carries the "press Enter and you get this" message on its own,
-           because focus can't: :focus-visible deliberately withholds its ring
-           when focus arrives by mouse, so a player who clicked "Check solution"
-           would otherwise see no hint at all -- even though Enter would work. */
-        #overlayNextPuzzle {
+        /* The "this is the action to take" look: filled, where every other button
+           is the usual pale #cce. One class rather than a rule per button, so the
+           celebration's default action and a Check button that has something to
+           check can't drift into two different accents.
+           On the celebration it also carries the "press Enter and you get this"
+           message on its own, because focus can't: :focus-visible deliberately
+           withholds its ring when focus arrives by mouse, so a player who clicked
+           "Check solution" would see no hint at all -- even though Enter works.
+           button:disabled outscores this on specificity, so a disabled button
+           still looks disabled. */
+        .primary-action {
             background: #3355aa;
             color: #fff;
             border: 1px solid #223a6e;
@@ -658,7 +663,7 @@
                         <li>The loop must be a single continuous path, but cannot touch itself.</li>
                         <li>Numbers show exactly how many segments of the loop must touch that face.</li>
                         <li>Click edges to mark them as part of the loop (dark blue), not part of the loop
-                        (white), or unknown (gray).</li>
+                        (white), or unknown (gray). Shift+Click to reverse.</li>
                         <li>Drag to rotate. Scroll to zoom.</li>
                         <li><a target="_blank" rel="noopener noreferrer" href="https://jonathanolson.net/slitherlink/">More info and strategy tips</a></li>
                     </ul>
@@ -798,7 +803,8 @@
                     Slitherlink puzzle in <b>1m 42s</b>!</p>
                 <!-- Shown only when the celebration has somewhere to go next;
                      see setupSelectors() and celebrateSolved() in ui.js. -->
-                <button id="overlayNextPuzzle" class="hidden">Next puzzle &#x25B8;</button>
+                <button id="overlayNextPuzzle" class="hidden primary-action"
+                        >Next puzzle &#x25B8;</button>
                 <p id="overlayEndNote" class="hidden">You've solved your way to the
                     end of the available puzzles!</p>
                 <!-- The way to decline, for a player who wants to look at what

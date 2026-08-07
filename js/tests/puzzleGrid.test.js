@@ -175,6 +175,73 @@ describe('checkUserSolution (active mode, headless)', () => {
     });
 });
 
+describe('isReadyToCheck', () => {
+    test('an untouched board is not ready', () => {
+        assert.strictEqual(makePuzzle().isReadyToCheck(), false);
+    });
+
+    test('a partial loop is not ready', () => {
+        const pg = makePuzzle();
+        // Three of the bottom loop's four edges: two dangling ends.
+        pg.setEdgeState(pg.findEdgeByVertices(0, 3), 1);
+        pg.setEdgeState(pg.findEdgeByVertices(3, 2), 1);
+        pg.setEdgeState(pg.findEdgeByVertices(2, 1), 1);
+        assert.strictEqual(pg.isReadyToCheck(), false);
+    });
+
+    test('a closed loop is ready', () => {
+        const pg = makePuzzle();
+        fillSolution(pg);
+        assert.strictEqual(pg.isReadyToCheck(), true);
+    });
+
+    test('ready even when the clues are WRONG, which is the point', () => {
+        // The top face's loop closes just as well as the bottom's, but the clues
+        // (bottom 4, top 0) make it wrong. Readiness has to be about the drawing,
+        // not the answer -- otherwise the highlight would only ever appear once
+        // the puzzle was already solved.
+        const pg = makePuzzle();
+        for (const [v1, v2] of loopVertexPairs([4, 5, 6, 7])) {
+            pg.setEdgeState(pg.findEdgeByVertices(v1, v2), 1);
+        }
+        assert.strictEqual(pg.isReadyToCheck(), true);
+        assert.strictEqual(pg.checkUserSolution(true).status, 1); // and it fails
+    });
+
+    test('a crossing is not ready', () => {
+        const pg = makePuzzle();
+        for (const edgeId of pg.vertices.get(0).edgeIDs) {
+            pg.setEdgeState(edgeId, 1); // 3 filled edges at vertex 0
+        }
+        assert.strictEqual(pg.isReadyToCheck(), false);
+    });
+
+    test('two separate loops are not ready', () => {
+        const pg = makePuzzle();
+        fillSolution(pg);                                   // bottom loop
+        for (const [v1, v2] of loopVertexPairs([4, 5, 6, 7])) {
+            pg.setEdgeState(pg.findEdgeByVertices(v1, v2), 1);   // and the top
+        }
+        assert.strictEqual(pg.isReadyToCheck(), false);
+    });
+
+    test('ruled-out edges do not make a board ready', () => {
+        const pg = makePuzzle();
+        for (const [v1, v2] of loopVertexPairs(SOLUTION)) {
+            pg.setEdgeState(pg.findEdgeByVertices(v1, v2), 2);   // 2 = ruled out
+        }
+        assert.strictEqual(pg.isReadyToCheck(), false);
+    });
+
+    test('undoing back to empty stops being ready', () => {
+        const pg = makePuzzle();
+        fillSolution(pg);
+        assert.strictEqual(pg.isReadyToCheck(), true);
+        pg.undo();
+        assert.strictEqual(pg.isReadyToCheck(), false);
+    });
+});
+
 describe('checkUserSolution (passive mode)', () => {
     test('reports only local findings and never computes spoiler data', () => {
         const pg = makePuzzle();
