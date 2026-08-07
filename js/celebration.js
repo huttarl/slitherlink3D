@@ -11,10 +11,11 @@
  * Three beats, all of them just colors and scales on edge meshes that already
  * exist, advanced once per frame from the render loop:
  *
- *   1. the edges NOT in the loop fade down, so the answer emerges;
- *   2. one bright head travels the loop, trailing a falloff, the edges bulging
- *      slightly as it passes -- a cord pulled taut;
- *   3. it eases into a slow, low shimmer and the other edges come most of the
+ *   1. the edges NOT in the loop fade toward the ruled-out near-white, so the
+ *      loop is briefly the only dark thing on the solid;
+ *   2. bright heads a few edges apart chase round the loop, trailing a falloff,
+ *      the edges bulging as each passes -- a cord pulled taut;
+ *   3. they ease into a slow, low shimmer and the other edges come most of the
  *      way back, which marks the board as solved without demanding attention.
  *
  * Beats 2 and 3 are the SAME travelling wave, differing only in amplitude and
@@ -24,6 +25,7 @@
  */
 import * as THREE from './three/three.module.min.js';
 import {CELEBRATION_COLORS, CELEBRATION_TIMING, EDGE_COLORS} from './constants.js';
+import {playCelebrationTune} from './celebrationSound.js';
 import {debug} from './debug.js';
 
 /**
@@ -32,7 +34,8 @@ import {debug} from './debug.js';
  * clueRenderer keeps its material sets on the group.
  *
  * @type {?{loop: THREE.Mesh[], quieted: {mesh: THREE.Mesh, was: THREE.Color}[],
- *          elapsed: number, phase: number, amplitude: number, dim: number}}
+ *          heads: number, elapsed: number, phase: number, amplitude: number,
+ *          dim: number}}
  */
 let running = null;
 
@@ -115,8 +118,18 @@ export function startCelebration(gameState) {
     }
     for (const mesh of loop) takePrivateColor(mesh);
 
-    running = {loop, quieted, elapsed: 0, phase: 0, amplitude: 1, dim: 0};
-    debug(`celebration: ${loop.length} loop edges, ${quieted.length} quieted`);
+    // Heads evenly spaced round the loop, about one every headSpacingEdges. It
+    // has to divide the loop EXACTLY or the pattern would have a seam where it
+    // met itself, so the count is rounded and the spacing follows from it rather
+    // than the other way round -- which is why a 10-edge loop gets 3 heads
+    // 3 1/3 edges apart rather than 3 heads and a gap.
+    const heads = Math.max(1, Math.round(loop.length
+                                         / CELEBRATION_TIMING.headSpacingEdges));
+
+    running = {loop, quieted, heads, elapsed: 0, phase: 0, amplitude: 1, dim: 0};
+    debug(`celebration: ${loop.length} loop edges, ${heads} heads, `
+          + `${quieted.length} quieted`);
+    playCelebrationTune();
     return true;
 }
 
@@ -132,14 +145,15 @@ export function stopCelebration(gameState) {
 }
 
 /**
- * How bright the light is at a point on the loop, given how far that point sits
- * BEHIND the travelling head.
+ * How bright the light is at a point, given how far it sits BEHIND the head in
+ * front of it -- measured in that head's own span, not in the whole loop, so one
+ * function serves however many heads are chasing.
  *
  * A raised cosine over the trail's length: 1 at the head, 0 at the tail, with
  * zero slope at both ends so the light has no visible edge. Anything further
  * behind than the trail is dark.
  *
- * @param {number} behind - distance behind the head, in loop fractions [0, 1)
+ * @param {number} behind - distance behind the head, in head spans [0, 1)
  * @returns {number} 0..1
  */
 function trailBrightness(behind) {
@@ -172,12 +186,13 @@ export function updateCelebration(gameState, delta) {
         mesh.material.color.copy(was).lerp(CELEBRATION_COLORS.quiet, running.dim);
     }
 
-    // The light waits for beat 1 to finish, runs the loop exactly once during
-    // beat 2, then carries on at the shimmer's slower rate. Accumulating the
-    // phase rather than deriving it from t is what makes the transition seamless.
+    // The lights wait for beat 1 to finish, go round pulseCircuits times during
+    // beat 2, then carry on at the shimmer's slower rate. Phase counts CIRCUITS
+    // of the loop, and accumulating it rather than deriving it from t is what
+    // makes the transition between the two rates seamless.
     if (t >= timing.clearSeconds) {
         running.phase += (t <= pulseEnd)
-            ? delta / timing.pulseSeconds
+            ? delta * timing.pulseCircuits / timing.pulseSeconds
             : delta * timing.shimmerCyclesPerSecond;
         running.phase %= 1;
     }
@@ -187,8 +202,12 @@ export function updateCelebration(gameState, delta) {
     const count = running.loop.length;
     for (let i = 0; i < count; i++) {
         const mesh = running.loop[i];
-        // How far this edge is behind the head, wrapped into [0, 1).
-        const behind = (running.phase - i / count + 1) % 1;
+        // Where this edge sits behind the nearest head. Scaling the way round the
+        // loop by the number of heads collapses the several evenly-spaced heads
+        // into the one-head problem, since the pattern repeats every 1/heads of a
+        // circuit -- so trailFraction is a fraction of ONE head's span.
+        const roundTheLoop = (running.phase - i / count + 1) % 1;
+        const behind = (roundTheLoop * running.heads) % 1;
         const light = running.amplitude * trailBrightness(behind);
         mesh.material.color.copy(base).lerp(CELEBRATION_COLORS.pulse, light);
         // The bulge travels with the light. Cylinders are built along their own

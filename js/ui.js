@@ -252,22 +252,23 @@ let dialogTimer = null;
  * pulse of light round the solution loop, and shows a congratulation overlay.
  * Called via PuzzleGrid's onSolved observer.
  *
- * The dialog WAITS for the animation, because the box is centered over the solid
- * and would otherwise hide the very thing being celebrated. It opens once the
- * sequence has reached its quiet state -- or at once if the animation declined to
- * run, since then there is nothing to wait for (see startCelebration).
+ * The dialog and the tumble both WAIT for the animation. The box is centered over
+ * the solid and would hide the very thing being celebrated, and a turning solid
+ * makes the running lights harder to follow -- so the board is left still and
+ * unobstructed until the sequence has settled. Both happen at once if the
+ * animation declined to run, since then there is nothing to wait for (see
+ * startCelebration).
  *
  * @param {GameState} gameState
  */
 function celebrateSolved(gameState) {
-    gameState.sceneManager.startTumble();
-
     const name = gameState.getPuzzleGrid().gridName;
     const elapsedTimeSec = Math.round(gameState.sceneManager.timer.getElapsed());
     const min = Math.floor(elapsedTimeSec / 60), sec = elapsedTimeSec % 60;
     // TODO: add HTML markup to body, and name of grid, time taken, etc.
     const show = () => {
         dialogTimer = null;
+        gameState.sceneManager.startTumble();
         displayOverlay("Congratulations!",
                        `You solved this ${name} puzzle in ${min}m ${sec}s!`);
     };

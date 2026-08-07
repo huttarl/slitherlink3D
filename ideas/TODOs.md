@@ -1,7 +1,15 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
-- [ ] Once the user has done "Check solution" and it's correct, stop the clock.
+- [ ] Settings: sound on / off. (Opens the door to other sounds, music.)
+- [ ] Celebration tweaking:
+  - [x] have end of music coincide with end of animation (3 "beats"). Probably by shortening notes.
+  - [ ] cycling of loop needs to be slower than it is when loop is longer. (too flashy now
+    -- is it proportional to loop length? effectively yes: shimmerCyclesPerSecond: 0.3
+    seems to be for the whole loop.)
+  - [ ] It's harder to test with a longer loop, because it takes longer to solve the puzzle by hand. Maybe I need an "insta-solve" key.
+    The existing debug "show solution" shows this, but then you still have to copy the solution by clicking.
+- [ ] Once the user has done "Check solution" and it's correct, stop the "solved in" clock.
   Otherwise they might fire the button again, and now their solution time is longer.
 - [ ] We could have a setting for automatically marking edges as ruledOut. E.g.
   when there's a 0 clue, its edges are ruled out; or when a vertex has 0 filled and

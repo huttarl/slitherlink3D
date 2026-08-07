@@ -175,22 +175,31 @@ export const CELEBRATION_COLORS = {
     // The travelling head. Near-white with a cyan cast, so it reads as light on
     // the loop rather than as another edge state.
     pulse: new THREE.Color(0xeaffff),
-    // What the edges NOT in the loop fade to, so the loop is briefly the only
-    // thing drawn. Dark rather than transparent: they still describe the solid's
-    // shape, and losing them entirely makes it read as a different polyhedron.
-    quiet: new THREE.Color(0x2a2a33),
+    // What the edges NOT in the loop fade to. EDGE_COLORS.ruledOut, which is
+    // where they were heading anyway: a solved board's non-loop edges ARE ruled
+    // out. Being near-white they also blend into the faces, so the loop stands
+    // alone. A DARK fade was tried first and was worse -- it made every other
+    // edge look like the dark blue of the loop itself.
+    quiet: EDGE_COLORS.ruledOut,
 };
 
 export const CELEBRATION_TIMING = {
     // Beat 1: fading the non-loop edges down.
     clearSeconds: 0.3,
-    // Beat 2: one circuit of the loop, head returning to where it started --
-    // which is what shows the loop is closed. Slow enough for the eye to follow
-    // round the back of the solid, which it cannot see.
+    // Beat 2: how long the running lights have the stage, and how many times
+    // round the loop they get in that time. More than one circuit is what shows
+    // the loop is closed -- a head arriving back where it began.
     pulseSeconds: 1.2,
-    // How much of the loop the pulse's trail covers, as a fraction of its length.
-    // Long enough to read as motion, short enough that the head is distinct.
-    trailFraction: 0.22,
+    pulseCircuits: 2,
+    // Every nth edge carries a head, so the loop reads as a chase rather than
+    // one lonely spark. Best if n > 2: alternating bright
+    // and dark is symmetric, so 2 gives no clue which way the lights are
+    // travelling, while bright/medium/dark does.
+    headSpacingEdges: 4,
+    // How much of ONE head's span its trail covers (not of the whole loop). Two
+    // thirds puts a bright edge, a half-lit one and a dark one in each group of
+    // three, which is the bright/medium/dark that shows direction.
+    trailFraction: 0.75,
     // Beat 3: the shimmer it settles into, and keeps up while the player looks
     // around. Low amplitude and slow, so it marks the board as solved without
     // asking for attention.
@@ -206,11 +215,30 @@ export const CELEBRATION_TIMING = {
     settleDimFraction: 0.35,
     // How much thicker the loop's edges get at the height of the pulse, easing
     // back to 1 as it settles. The cord pulled taut.
-    thickenFactor: 2.0,
-    // When the celebration dialog appears. The box is centered over the solid, so
-    // anything played underneath it is half hidden; this lets the loop have the
-    // stage first, and by the time it opens the sequence is in its quiet state.
+    thickenFactor: 1.5,
+    // When the celebration dialog appears, and when the tumble starts. Both wait
+    // for the same reason: the box is centered over the solid and would hide what
+    // it is congratulating, and a turning solid makes the running lights harder
+    // to follow. By this point beats 1 and 2 are done and beat 3 has settled, so
+    // there is nothing left that needs a still, unobstructed board.
     dialogSeconds: 2.0,
+};
+
+// The little tune that plays over the celebration: up the scale and back, twice,
+// then a held note. Letters are scale degrees around middle C -- A and B are the
+// two BELOW it, so "C B A B C" dips under the tonic and returns, which is what
+// makes the phrase settle rather than just stop. See js/celebrationSound.js.
+export const CELEBRATION_TUNE = {
+    notes: ('C D E F G F E D C B A B ' +
+            'C D E F G F E D C B A B C').split(' '),
+    // Rapid: at this length the 24 short notes run just under two seconds, so the
+    // phrase tracks beats 1 and 2 and the held note lands as the dialog opens.
+    noteSeconds: 0.075,
+    holdSeconds: 1.0,
+    // Quiet enough to be a flourish rather than an event. A triangle wave for a
+    // soft electronic tone -- a square wave at this speed is a machine alarm.
+    peakGain: 0.14,
+    waveform: 'sine',
 };
 
 

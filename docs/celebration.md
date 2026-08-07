@@ -32,10 +32,15 @@ ease-in ramp, and it reads as "ta-da". But it is generic, and a fast spin makes
 the loop *harder* to study, so it works against option 1. Not built; if it ever
 is, keep it mild.
 
-**4. Sound.** A real payoff but a different kind of work: assets, a mute setting
-that persists, and taste. Short and tonal if so — a rising two-note figure, not
-trumpets. It can never be the primary celebration, since plenty of players have
-the tab muted.
+**4. Sound — built.** A rapid run up and down the scale, twice, then a held
+tonic: `C D E F G F E D C B A B` twice over, ending on `C`. Synthesized with the
+Web Audio API rather than loaded (see `js/celebrationSound.js`), so there is
+nothing to fetch and the tune is editable as letters in `js/constants.js`. It
+starts with beat 1 and its held note lands as the dialog opens.
+
+It can never be the primary celebration, since plenty of players have the tab
+muted — and note **there is no mute setting yet**, which is the obvious next thing
+this wants.
 
 **Rejected.** *Rays emanating* say nothing about the loop and fight the skybox.
 *Birds swirling* need models and flocking, and read as whimsy bolted onto a
@@ -58,22 +63,28 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
 `js/main.js`, with timings and colors in `js/constants.js` (`CELEBRATION_TIMING`,
 `CELEBRATION_COLORS`).
 
-1. **Clear the clutter** (0 → 0.3s). Ruled-out and unknown edges fade toward a
-   dark quiet color, so the loop is briefly the only thing drawn on the solid.
-   The answer *emerges*. The clue digits go gray over the same moment for free:
-   solving satisfies every clue, and satisfied clues were already gray (see
-   `docs`-worthy note in `clueRenderer.js`).
-2. **One pulse round the loop** (0.3 → 1.5s). A bright head travels the loop
-   exactly once and returns to its start, trailing a falloff behind it, while the
-   loop's edges thicken slightly — like a cord pulled taut.
-3. **Settle** (1.5s on). The pulse becomes a slow travelling shimmer at low
-   amplitude and the thickening eases back off. This continues while the player
-   looks around, and marks the board as solved without demanding attention.
+1. **Clear the clutter** (0 → 0.3s). The non-loop edges fade toward
+   `EDGE_COLORS.ruledOut`, the near-white they were heading for anyway — on a
+   solved board they *are* ruled out. Being near-white they blend into the faces,
+   so the loop is briefly the only dark thing on the solid and the answer
+   *emerges*. Fading them DARK was tried first and was worse: it made every other
+   edge look like the dark blue of the loop itself. The clue digits go gray over
+   the same moment for free, since solving satisfies every clue.
+2. **Running lights** (0.3 → 1.5s). Bright heads about three edges apart chase
+   round the loop, twice over, each trailing a falloff and bulging the edges it
+   passes — a cord pulled taut. Three edges apart rather than two on purpose:
+   alternating bright and dark is symmetric and so says nothing about which way
+   the lights are moving, while bright/medium/dark does. Going round more than
+   once is what shows the loop is closed.
+3. **Settle** (1.5s on). The chase eases to a slow shimmer at low amplitude, the
+   thickening relaxes, and the other edges come most of the way back so the solid
+   reads normally again. This continues while the player looks around.
 
-**The dialog waits 2 seconds.** This is the part that made the whole thing
-possible: the celebration box is centered over the solid, so anything played
-underneath it is half-hidden. Delaying it lets the loop have the stage, and by the
-time the box appears the sequence has reached its quiet state.
+**The dialog and the tumble both wait 2 seconds.** This is the part that made the
+whole thing possible. The celebration box is centered over the solid, so anything
+played underneath it is half-hidden; and a turning solid makes the running lights
+much harder to follow. So the board stays still and unobstructed until the
+sequence has settled, and then both arrive at once.
 
 ## Constraints worth remembering
 

@@ -214,7 +214,13 @@ All ES6 modules; Three.js vendored under `js/three/`.
 - Configuration: `constants.js`; `debug.js` (gated tracing)
 - Data loading: `puzzleLoader.js` (puzzle JSON), plus
   `loadPolyhedronFromJSON()` in `geometry.js`
-- Tests: `tests/` — headless unit tests for the game logic (run with `npm test`)
+- Celebration: `celebration.js` (lights running round the solved loop) and
+  `celebrationSound.js` (the tune, synthesized) — see `docs/celebration.md`
+- Tests: `tests/` — headless unit tests for the game logic (run with `npm test`).
+  Includes `modules-load.test.js`, which imports every module in `js/` and so
+  catches a syntax error, a bad import path or a misspelled named import in the
+  many modules no other test reaches (ES modules link before they run, so the
+  import alone proves all three). It replaces checking those by hand.
 
 ## Conventions worth knowing
 
