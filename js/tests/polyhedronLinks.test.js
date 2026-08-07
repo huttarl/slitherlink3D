@@ -20,8 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-    categoryLink, EULER_FORMULA_LINK, solidLink, SOLID_PAGE_EXCEPTION_IDS,
-    UNLINKED_CATEGORIES, UNLINKED_SOLID_IDS,
+    categoryLink, ENDURING_ERROR_LINK, EULER_FORMULA_LINK, solidLink,
+    SOLID_PAGE_EXCEPTION_IDS, UNLINKED_CATEGORIES, UNLINKED_SOLID_IDS,
 } from '../polyhedronLinks.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -32,6 +32,7 @@ const catalogue = JSON.parse(
 function allLinks() {
     return [
         EULER_FORMULA_LINK,
+        ENDURING_ERROR_LINK,
         ...catalogue.grids.map(grid => solidLink(grid.gridId, grid.gridName)),
         ...catalogue.grids.flatMap(
             grid => (grid.categories || []).map(categoryLink)),

@@ -174,3 +174,17 @@ export function categoryLink(category) {
 
 /** Euler's formula, explained for a general reader. */
 export const EULER_FORMULA_LINK = 'https://plus.maths.org/eulers-polyhedron-formula';
+
+/**
+ * "An Enduring Error": the paper on how the elongated square gyrobicupola (J37)
+ * spent centuries being miscounted as an Archimedean solid, because it has the
+ * rhombicuboctahedron's 3.4.4.4 at every vertex without the symmetry that would
+ * carry any vertex to any other. Linked from the card's note on exactly that
+ * catch (see buildAboutCard in aboutSolid.js).
+ *
+ * Named here rather than inlined at the point of use so the link tests cover it:
+ * allLinks() in the test is what gets checked for HTTPS and, under
+ * SLI_CHECK_LINKS=1, actually fetched.
+ */
+export const ENDURING_ERROR_LINK =
+    'https://ems.press/content/serial-article-files/45375';

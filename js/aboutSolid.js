@@ -17,7 +17,8 @@
 import {loadCatalogue} from "./catalogue.js";
 import {describeFaceCensus, describeVertexConfiguration, faceCensus, faceNamer,
         vertexConfiguration, vertexConfigurationNotation} from "./solidFacts.js";
-import {categoryLink, EULER_FORMULA_LINK, solidLink} from "./polyhedronLinks.js";
+import {categoryLink, ENDURING_ERROR_LINK, EULER_FORMULA_LINK,
+        solidLink} from "./polyhedronLinks.js";
 
 // Categories whose definition requires every vertex to be alike up to a symmetry
 // of the whole solid -- vertex-transitive, in a word. A solid outside them that
@@ -212,10 +213,15 @@ function buildAboutCard(facts) {
             // line -- it has the rhombicuboctahedron's 3.4.4.4 at all 24
             // vertices, and even the same V, E and F -- but the test is computed
             // rather than a name, so any other such solid gets it too.
-            line('Matching vertices aren\'t enough to make a solid Archimedean, '
-                 + 'though: that also needs a symmetry of the whole solid '
-                 + 'carrying any vertex to any other, and this one hasn\'t got '
-                 + 'it.', 'about-note');
+            // Former message (too verbose):
+            // line('Matching vertices aren\'t enough to make a solid Archimedean, '
+            //      + 'though: that also needs a symmetry of the whole solid '
+            //      + 'carrying any vertex to any other, and this one hasn\'t got '
+            //      + 'it.', 'about-note');
+
+            line(['\u2014 but not Archimedean. This shape has ',
+                linkOrText('tripped mathematicians up', ENDURING_ERROR_LINK),
+                ' for hundreds of years! '], 'about-note');
         }
     }
 
