@@ -128,6 +128,104 @@ export function isClueSatisfied(grid, face) {
 }
 
 /**
+ * Split the surface into the two regions the solution loop separates, and
+ * measure how far each face is from that loop.
+ *
+ * This is what the loop MEANS: a closed curve on a sphere cuts it in two, and
+ * the two regions are exactly the faces you can walk between without crossing
+ * the loop. The celebration colours them to show it (see js/celebration.js).
+ *
+ * A flood fill that refuses to cross a loop edge, then a second, multi-source
+ * fill outward from the faces that touch the loop -- so `distance` is the number
+ * of faces you must step through to reach the boundary. That ordering is what
+ * lets the colours be animated as a front converging on the loop.
+ *
+ * Takes the loop as a VERTEX cycle, the form the puzzle stores it in.
+ *
+ * @param {Grid} grid
+ * @param {number[]} loop - solution as a cycle of vertex IDs
+ * @returns {{regions: number[][], distance: Map<number, number>}} regions is
+ *     one array of face IDs per region -- two for a valid loop, but however many
+ *     the marks actually produce, so a caller is never surprised
+ */
+export function partitionFacesByLoop(grid, loop) {
+    // The loop as edge IDs, which is what "don't cross" has to test.
+    const loopEdges = new Set();
+    for (let i = 0; i < loop.length; i++) {
+        const edgeId = grid.findEdgeByVertices(loop[i], loop[(i + 1) % loop.length]);
+        if (edgeId !== undefined && edgeId !== null) loopEdges.add(edgeId);
+    }
+
+    /** Faces reachable from `faceId` without crossing the loop. */
+    const neighborsWithin = faceId => {
+        const found = [];
+        for (const edgeId of grid.faces.get(faceId).edgeIDs) {
+            if (loopEdges.has(edgeId)) continue;
+            for (const other of grid.edges.get(edgeId).faceIDs) {
+                if (other !== faceId) found.push(other);
+            }
+        }
+        return found;
+    };
+
+    const regionOf = new Map();
+    const regions = [];
+    for (const faceId of grid.faces.keys()) {
+        if (regionOf.has(faceId)) continue;
+        const index = regions.length;
+        const members = [];
+        const queue = [faceId];
+        regionOf.set(faceId, index);
+        while (queue.length > 0) {
+            const current = queue.pop();
+            members.push(current);
+            for (const next of neighborsWithin(current)) {
+                if (!regionOf.has(next)) {
+                    regionOf.set(next, index);
+                    queue.push(next);
+                }
+            }
+        }
+        regions.push(members);
+    }
+
+    // Distance to the loop, breadth-first from every face that touches it at
+    // once. Multi-source rather than one fill per face: the answer wanted is the
+    // distance to the NEAREST boundary face, which one sweep gives.
+    const distance = new Map();
+    let frontier = [];
+    for (const faceId of grid.faces.keys()) {
+        const touchesLoop = grid.faces.get(faceId).edgeIDs
+            .some(edgeId => loopEdges.has(edgeId));
+        if (touchesLoop) {
+            distance.set(faceId, 0);
+            frontier.push(faceId);
+        }
+    }
+    let depth = 0;
+    while (frontier.length > 0) {
+        depth++;
+        const next = [];
+        for (const faceId of frontier) {
+            for (const neighbor of neighborsWithin(faceId)) {
+                if (!distance.has(neighbor)) {
+                    distance.set(neighbor, depth);
+                    next.push(neighbor);
+                }
+            }
+        }
+        frontier = next;
+    }
+    // A face in no region touching the loop at all (no loop, or a stray region)
+    // still needs a number, or the caller's arithmetic goes to NaN.
+    for (const faceId of grid.faces.keys()) {
+        if (!distance.has(faceId)) distance.set(faceId, 0);
+    }
+
+    return {regions, distance};
+}
+
+/**
  * Find the user's marks that contradict the puzzle's known solution:
  * edges filled in that aren't part of the solution loop, or ruled out
  * although they are part of it. Unknown edges are never mismatches.

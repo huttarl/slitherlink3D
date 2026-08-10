@@ -172,64 +172,73 @@ export const CLUE_COLORS = {
 // docs/celebration.md for why this and not confetti, and js/celebration.js for
 // the sequence these drive.
 export const CELEBRATION_COLORS = {
-    // The travelling head. Near-white with a cyan cast, so it reads as light on
-    // the loop rather than as another edge state.
-    pulse: new THREE.Color(0xeaffff),
+    // What the loop GLOWS, as emissive light added to its own dark blue rather
+    // than a colour mixed into it. That distinction is the whole reason it works:
+    // the first version brightened the loop by mixing toward a near-white cyan,
+    // which desaturated it until it faded into the pale board around it. Emissive
+    // blue gets brighter while staying blue.
+    glow: new THREE.Color(0x2244ff),
     // What the edges NOT in the loop fade to. EDGE_COLORS.ruledOut, which is
     // where they were heading anyway: a solved board's non-loop edges ARE ruled
     // out. Being near-white they also blend into the faces, so the loop stands
     // alone. A DARK fade was tried first and was worse -- it made every other
     // edge look like the dark blue of the loop itself.
     quiet: EDGE_COLORS.ruledOut,
+    // The two sides of the loop, for the partition fade -- the beat that shows
+    // what the loop actually DID: a closed curve on a closed surface cuts it in
+    // two, and these are the two pieces.
+    //
+    // Chosen against three constraints, which rule out most obvious pairs. Not
+    // red or green, which this app already spends on "error" and "solution" -- red
+    // faces at the moment of winning would read as a mistake. Not blue, which is
+    // the loop's own colour and would camouflage it. And both must stay LIGHT,
+    // because the black clue digits sit on these faces and have to stay readable.
+    //
+    // Amber against teal is the warm/cool pair that survives colour blindness:
+    // it lies along the orange-blue axis, which both red-green dichromacies leave
+    // intact. The slight lightness difference between them is insurance for the
+    // rare blue-yellow case, and means they separate in greyscale too.
+    partitionWarm: new THREE.Color(0xf0d3a0), // pale amber, the deeper of the two
+    partitionCool: new THREE.Color(0xa9d8e0), // pale teal, clear of the loop's navy
 };
 
 export const CELEBRATION_TIMING = {
-    // Beat 1: fading the non-loop edges down.
-    clearSeconds: 0.3,
-    // Beat 2: how long the running lights have the stage.
-    pulseSeconds: 1.2,
-    // Every nth edge carries a head, so the loop reads as a chase rather than
-    // one lonely spark. Best if n > 2: alternating bright
-    // and dark is symmetric, so 2 gives no clue which way the lights are
-    // travelling, while bright/medium/dark does.
-    headSpacingEdges: 4,
-    // How much of ONE head's span its trail covers (not of the whole loop). Two
-    // thirds puts a bright edge, a half-lit one and a dark one in each group of
-    // three, which is the bright/medium/dark that shows direction.
-    trailFraction: 0.75,
-    // Both speeds are EDGES per second, not circuits per second. That was the
-    // first attempt and it was wrong: a circuit means 3 edges on the tetrahedron
-    // and 131 on gp12, so one rate in circuits made the lights crawl on small
-    // solids and blur into a streak on big ones -- 0.3 circuits/s came out as 39
-    // edges/s on gp12. Per-edge speeds look the same on every grid.
-    //
-    // No head need go all the way round for this to work. All the heads move
-    // together, so the pattern repeats every headSpacingEdges: once the heads
-    // have advanced that far, every edge has been lit and the arrangement is back
-    // where it started. Travelling further only repeats it.
-    pulseEdgesPerSecond: 9,
-    // Beat 3: the shimmer it settles into, and keeps up while the player looks
-    // around. Low amplitude and slow, so it marks the board as solved without
-    // asking for attention.
-    shimmerAmplitude: 0.22,
-    shimmerEdgesPerSecond: 2,
-    // How long beat 2 takes to become beat 3 -- the pulse easing down to the
-    // shimmer and the other edges coming back up. Long enough not to look like a
-    // cut, short enough that it is over before the dialog opens.
-    settleSeconds: 0.6,
-    // How dimmed the non-loop edges stay once settled. Not 0: the loop should
-    // still stand out afterwards. Not 1 either, or the solid would read as
-    // permanently half-drawn.
+    // Beat 1: the loop takes up its glow and thickens, and the other edges fade
+    // toward the ruled-out near-white, leaving the loop alone on the solid.
+    clearSeconds: 0.4,
+    // How dimmed the non-loop edges stay. Not 0: the loop should keep standing
+    // out. Not 1 either, or the solid would read as permanently half-drawn.
     settleDimFraction: 0.35,
-    // How much thicker an edge gets as a head passes over it, easing back to 1 as
-    // the chase settles. The swelling travels WITH the light, so what it looks
-    // like is a bulge running along a hose, not a cord under tension.
+    // How much thicker the loop's edges are for the whole celebration. Uniform,
+    // and it stays: an earlier version travelled a bulge along the loop with a
+    // moving head, which is gone (see docs/celebration.md).
     thickenFactor: 1.5,
-    // When the celebration dialog appears, and when the tumble starts. Both wait
-    // for the same reason: the box is centered over the solid and would hide what
-    // it is congratulating, and a turning solid makes the running lights harder
-    // to follow. By this point beats 1 and 2 are done and beat 3 has settled, so
-    // there is nothing left that needs a still, unobstructed board.
+
+    // The glow, as emissive intensity: a floor it rests at, plus a breath on top.
+    // The breath is IN PLACE -- every loop edge brightening and dimming together
+    // -- so unlike the travelling lights this replaced, its speed means the same
+    // thing on every grid and cycles per second is an honest unit for it.
+    glowBase: 0.45,
+    shimmerAmplitude: 0.35,
+    shimmerCyclesPerSecond: 0.45,
+
+    // Beat 2: the two sides of the loop take their colours, spreading as a front
+    // that starts at each region's deepest interior and arrives at the loop LAST
+    // -- so the thing you see last is the two colours meeting along it, which is
+    // the point being made. The order comes from the flood fill that finds the
+    // regions in the first place (partitionFacesByLoop).
+    partitionStartSeconds: 0.5,
+    partitionSeconds: 1.5,
+    // How long one face takes to reach full colour, so the front is a soft edge
+    // rather than a row of faces popping.
+    faceFadeSeconds: 0.3,
+
+    // Beat 3: the tumble, which now has a job rather than being a flourish -- you
+    // cannot see a partition of a closed surface from one side, so this is what
+    // shows the two regions carrying on round the back.
+    tumbleSeconds: 2.1,
+    // Beat 4: the dialog last of all, since the box is centered over the solid and
+    // hides the very thing it congratulates.
     dialogSeconds: 3.0,
 };
 

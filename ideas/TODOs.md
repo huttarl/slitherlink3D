@@ -1,6 +1,12 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
+- [ ] If I accidentally press "back", it goes to the previous puzzle, without any
+  confirmation about leaving. If I then go "forward", it returns to the puzzle
+  I was on, apparently preserving my marks, but then the puzzle is frozen and I can't
+  mark it.
+- [ ] Check solution: says "You haven't filled in any edges yet" even if you've
+  ruled out some edges. What if I just wanted to check whether my ruling-out was correct?
 - [ ] Settings: sound on / off. (Opens the door to other sounds, music.)
 - [ ] Celebration tweaking:
   - [x] have end of music coincide with end of animation (3 "beats"). Probably by shortening notes.

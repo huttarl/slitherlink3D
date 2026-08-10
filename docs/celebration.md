@@ -13,26 +13,45 @@ That test is what ranks the options below, ahead of how impressive each looks.
 
 ## The options, ranked
 
-**1. Running lights along the loop.** The strongest, and what the current
-implementation is built around. It draws the eye along precisely the thing the
-player made: a chase with no gap and no beginning says "one loop, closed" better
-than any wording could. (The first version claimed something stronger — a single
-head *returning* to its start, proving closure. Per-edge speeds gave that up; see
-the note under the sequence below.) Nearly free, too — every edge already owns its
-own material,
-and the stored solution is an ordered vertex list, so each edge's position along
-the loop is already known. No particles, no new geometry. It also survives
-repetition, since it can settle into a slow shimmer rather than a one-shot bang.
+**1. Colouring the two regions — built, and the best of them.** The meaning is
+exact and it is the only idea here that says something the player might not
+already know: a closed curve on a closed surface *cuts it in two*, and those two
+pieces are what their loop produced. Cheap, too — the regions are a flood fill
+that refuses to cross a loop edge (`partitionFacesByLoop`), and per-face tinting
+already existed for the debug highlight.
 
-**2. Split slightly along the seam, glowing from inside.** The meaning is exact:
-the loop *is* the boundary between the two face regions, so parting it says "your
-loop cut the ball in two." Moderate cost — translate each region's faces along a
-separation axis, show an emissive interior. Not built.
+**2. Making the loop glow — built.** As `emissive` on the edges' existing
+`MeshPhongMaterial`, which costs one property. The distinction that matters:
+emissive **adds light of the loop's own colour**, where the first attempt mixed
+the colour toward a near-white cyan and so *desaturated* it — the loop got paler
+rather than brighter and faded into the pale board around it.
 
-**3. Tumble surge.** Cheap, since the tumble already has a speed factor with an
-ease-in ramp, and it reads as "ta-da". But it is generic, and a fast spin makes
-the loop *harder* to study, so it works against option 1. Not built; if it ever
-is, keep it mild.
+**3. Running lights chasing along the loop — built, then REMOVED.** Worth
+recording, because it is an attractive idea that this geometry defeats. A
+Slitherlink loop on a polyhedron turns 60–120° at nearly every vertex, so its
+curvature is enormous relative to its segment length, and a light travelling such
+a path never reads as linear motion. Two separate problems compounded it: each
+edge was lit as one whole unit, making the "motion" a sequence of discrete
+flashes; and pacing it by *circuits* per second rather than *edges* per second
+made the speed differ 40-fold between the tetrahedron and `gp12`. The pacing was
+fixable and was fixed. The curvature was not.
+
+Sub-segmenting would have addressed the flashes — `CylinderGeometry(r, r, len, 8,
+6)` gives seven rings on the *same* mesh, so per-vertex colours could carry a
+smooth bright spot along each edge at no extra draw calls, and a shader with a
+per-edge arc-length attribute would be smoother still. But that fixes
+steppiness, not jaggedness: a smoothly moving bead on a zigzag wire is still a
+bead changing direction constantly. Abandoned in favour of a shimmer that varies
+in TIME and not along the loop, which has no direction to read.
+
+**4. Split slightly along the seam, glowing from inside.** The meaning is as exact
+as the partition colouring, and it would compose with it. Moderate cost —
+translate each region's faces along a separation axis, show an emissive interior.
+Not built.
+
+**5. Tumble surge.** Cheap, since the tumble already has a speed factor with an
+ease-in ramp. Not built as a *surge*, but the plain tumble earned a place in the
+sequence once it had a job to do — see beat 3 below.
 
 **4. Sound — built.** A rapid run up and down the scale, twice, then a held
 tonic: `C D E F G F E D C B A B` twice over, ending on `C`. Synthesized with the
@@ -65,54 +84,65 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
 `js/main.js`, with timings and colors in `js/constants.js` (`CELEBRATION_TIMING`,
 `CELEBRATION_COLORS`).
 
-1. **Clear the clutter** (0 → 0.3s). The non-loop edges fade toward
+1. **The loop lights up** (0 → 0.4s). It takes up an emissive glow, breathing
+   gently, and thickens. At the same time the non-loop edges fade toward
    `EDGE_COLORS.ruledOut`, the near-white they were heading for anyway — on a
-   solved board they *are* ruled out. Being near-white they blend into the faces,
-   so the loop is briefly the only dark thing on the solid and the answer
-   *emerges*. Fading them DARK was tried first and was worse: it made every other
-   edge look like the dark blue of the loop itself. The clue digits go gray over
-   the same moment for free, since solving satisfies every clue.
-2. **Running lights** (0.3 → 1.5s). Bright heads a few edges apart chase round the
-   loop, each trailing a falloff and swelling the edges it passes, the way a bulge
-   runs along a hose when the pressure surges. More than two edges apart on
-   purpose: alternating bright and dark is symmetric and so says nothing about
-   which way the lights are moving, while bright/medium/dark does.
-3. **Settle** (1.5s on). The chase eases to a slow shimmer at low amplitude, the
-   thickening relaxes, and the other edges come most of the way back so the solid
-   reads normally again. This continues while the player looks around.
+   solved board they *are* ruled out — so they blend into the faces and leave the
+   loop alone on the solid. Fading them DARK was tried first and was worse: it
+   made every other edge look like the dark blue of the loop itself. The clue
+   digits go gray over the same moment for free, since solving satisfies every
+   clue.
 
-**Both speeds are in edges per second, not circuits per second** — and getting
-that wrong was the one real mistake in the first version. A circuit is 3 edges on
-the tetrahedron and 131 on `gp12`, so a single rate in circuits made the lights
-crawl on small solids and blur into an unreadable streak on big ones: the
-shimmer's 0.3 circuits/s worked out at 39 edges/s on `gp12`.
+   The breath varies in **time, not along the loop** — every edge brightens
+   together. Brightness that varies along the loop is motion, and motion along a
+   path this jagged reads as twinkling (see option 3 above). A shimmer with no
+   direction has nothing to read wrongly, and its speed in cycles per second means
+   the same thing on a 3-edge loop and a 131-edge one.
+2. **The two sides colour in** (0.5 → 2.0s). Pale amber on one region, pale teal
+   on the other, spreading as a front. The order is not decorative: it comes from
+   the flood fill that finds the regions, running in *descending* distance from
+   the loop, so each region colours from its deepest interior outward and the
+   fronts reach the boundary LAST. The final thing the player sees is the two
+   colours meeting along the curve they drew, which is the whole point being made.
+   Both fronts share one clock, so a lopsided pair of regions still arrives
+   together.
+3. **The tumble** (2.1s). Not decoration here, which is why it moved: a partition
+   of a closed surface cannot be seen from one side, so turning the solid is what
+   shows the two colours carrying on round the back. It had no such job in an
+   earlier version and merely made the running lights harder to follow.
+4. **The dialog** (3.0s). Last, because the box sits over the middle of the board
+   and hides the very thing it is congratulating.
 
-That change costs the effect one thing worth being honest about. The original
-argument was that a head returning to where it began *proves* the loop is closed
-— but at a fixed per-edge speed no head necessarily completes a circuit, and it
-needn't: all the heads move together, so the pattern repeats every
-`headSpacingEdges`, and once they have advanced that far every edge has been lit
-and the arrangement is back where it started. What remains is a chase with no gap
-and no beginning, which still reads as a cycle, but it is an implication rather
-than a demonstration.
-
-**The dialog and the tumble both wait 2 seconds.** This is the part that made the
-whole thing possible. The celebration box is centered over the solid, so anything
-played underneath it is half-hidden; and a turning solid makes the running lights
-much harder to follow. So the board stays still and unobstructed until the
-sequence has settled, and then both arrive at once.
+Beats 1 and 2 belong to `js/celebration.js`; 3 and 4 are scheduled by
+`celebrateSolved` in `js/ui.js`. The tune covers beats 1 and 2 and its held note
+resolves over the tumble.
 
 ## Constraints worth remembering
 
 - **`prefers-reduced-motion` skips the whole sequence** and shows the dialog at
-  once. A surging, shimmering board is exactly what that setting exists for.
-- **Any board change cancels it**, restoring the ordinary edge colors and
-  dropping the pending dialog. A "Congratulations" arriving two seconds after the
-  player has already broken their loop would be nonsense.
+  once. A shimmering, turning board is exactly what that setting exists for.
+- **Any board change cancels it**, restoring the ordinary edge and face colors and
+  dropping the pending tumble and dialog. A "Congratulations" arriving three
+  seconds after the player has already broken their loop would be nonsense.
 - **Never mutate a color from `EDGE_COLORS` in place.** `applyEdgeState` *assigns*
   those shared constants to `material.color`, so after any state change many
   edges' materials point at the same `THREE.Color` object — and the constant
   itself. The celebration gives each edge it animates a private `Color` first;
   `clearEdgeHighlights` puts the sharing back.
-- The color-based options all ride the existing render loop and cost almost
-  nothing. The expensive-sounding ideas above are the ones that need new geometry.
+- **The partition colors have three constraints**, which rule out most obvious
+  pairs including the tempting red-vs-blue. Not red or green: this app already
+  spends those on `error` and `solution`, and red faces at the moment of winning
+  would read as a mistake. Not blue: that is the loop's own color, and a blue
+  region would camouflage it. And both must stay **light**, because the black clue
+  digits sit on these faces. Amber against teal is the warm/cool pair that
+  survives color blindness, lying along the orange–blue axis that both red-green
+  dichromacies leave intact; the slight lightness difference between the two is
+  insurance for the rare blue-yellow case, and separates them in greyscale.
+- **Stop painting once the partition is final.** The face tints go through the
+  solid's single vertex-color attribute, so touching one face marks the whole
+  attribute for re-upload. Beat 2 sets a flag when the last face finishes its
+  fade, and after that the per-frame shimmer leaves the faces alone.
+- The color-based effects all ride the existing render loop and cost almost
+  nothing. The expensive-sounding ideas above are the ones that need new geometry,
+  and a true bloom halo would need a render-pipeline change (an `EffectComposer`
+  and half a dozen more vendored three addons) rather than a material property.

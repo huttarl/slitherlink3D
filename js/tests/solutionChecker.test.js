@@ -10,6 +10,7 @@ import {
     findVertexViolations,
     findClueViolations,
     isClueSatisfied,
+    partitionFacesByLoop,
     findSolutionMismatches,
     checkSingleLoop,
 } from '../solutionChecker.js';
@@ -151,6 +152,48 @@ describe('isClueSatisfied', () => {
         // An edge of the top face, which face 0 (the bottom) does not touch.
         setEdge(grid, 4, 7, 1);
         assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), true);
+    });
+});
+
+describe('partitionFacesByLoop', () => {
+    // The cube's bottom-face loop separates that one face from the other five.
+    test('splits the surface in two, the loop being the only barrier', () => {
+        const grid = makeCubeGrid();
+        const {regions} = partitionFacesByLoop(grid, BOTTOM_LOOP);
+        assert.strictEqual(regions.length, 2);
+        const sizes = regions.map(r => r.length).sort((a, b) => a - b);
+        assert.deepStrictEqual(sizes, [1, 5]);
+        // The single-face region is the bottom, the face the loop encloses.
+        assert.deepStrictEqual(regions.find(r => r.length === 1), [0]);
+    });
+
+    test('distance counts faces to the nearest boundary face', () => {
+        const grid = makeCubeGrid();
+        const {distance} = partitionFacesByLoop(grid, BOTTOM_LOOP);
+        // The bottom face and all four sides touch the loop.
+        assert.strictEqual(distance.get(0), 0);
+        for (const side of [2, 3, 4, 5]) {
+            assert.strictEqual(distance.get(side), 0, `face ${side}`);
+        }
+        // Only the top face is a step away from it.
+        assert.strictEqual(distance.get(1), 1);
+    });
+
+    test('every face gets a region and a distance', () => {
+        const grid = makeCubeGrid();
+        const {regions, distance} = partitionFacesByLoop(grid, BOTTOM_LOOP);
+        assert.strictEqual(regions.flat().length, grid.faces.size);
+        assert.strictEqual(distance.size, grid.faces.size);
+    });
+
+    test('with no loop at all, one region and no NaN distances', () => {
+        // Not a valid puzzle state, but the celebration must not divide by a
+        // missing maximum if it ever sees one.
+        const grid = makeCubeGrid();
+        const {regions, distance} = partitionFacesByLoop(grid, []);
+        assert.strictEqual(regions.length, 1);
+        assert.strictEqual(regions[0].length, grid.faces.size);
+        for (const d of distance.values()) assert.strictEqual(Number.isFinite(d), true);
     });
 });
 

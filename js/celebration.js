@@ -1,30 +1,31 @@
 /**
- * Celebrating a solve: lights chasing round the solution loop, settling into a
- * shimmer.
+ * Celebrating a solve: the solution loop glows, then the two sides of it take
+ * different colours.
  *
- * The point is that it celebrates WHAT THE PLAYER DID. They found the single
- * closed loop, so the loop is what goes on stage -- and a chase with no gap and
- * no beginning reads as the cycle they made, which no burst of confetti could.
- * See docs/celebration.md for the ideas this was chosen over.
+ * The point is that it celebrates WHAT THE PLAYER DID, which confetti could
+ * never do. They drew a closed curve on a closed surface, and the thing about a
+ * closed curve on a closed surface is that it cuts it in two -- so the loop
+ * lights up, and then the two pieces it made colour themselves in. See
+ * docs/celebration.md for the ideas this was chosen over, including a travelling
+ * chase of lights that was built and then removed.
  *
- * Three beats, all of them just colors and scales on edge meshes that already
- * exist, advanced once per frame from the render loop:
+ * Four beats, advanced once per frame from the render loop:
  *
- *   1. the edges NOT in the loop fade toward the ruled-out near-white, so the
- *      loop is briefly the only dark thing on the solid;
- *   2. bright heads a few edges apart chase round the loop, trailing a falloff,
- *      the edges swelling as each passes, the way a bulge runs along a hose when
- *      the pressure surges;
- *   3. they ease into a slow, low shimmer and the other edges come most of the
- *      way back, which marks the board as solved without demanding attention.
+ *   1. the loop takes up an emissive glow and thickens, while the other edges
+ *      fade toward the ruled-out near-white and leave it alone on the solid;
+ *   2. the two regions colour in, spreading from each one's deepest interior so
+ *      the colours arrive at the loop last and meet along it;
+ *   3. the tumble starts, which is what shows the regions carry on round the
+ *      back -- a partition of a closed surface can't be seen from one side;
+ *   4. the dialog, last, since it covers the middle of the board.
  *
- * Beats 2 and 3 are the SAME travelling wave, differing only in amplitude and
- * speed, so there is no seam between them: the phase is accumulated frame by
- * frame rather than recomputed from the elapsed time, and the amplitude eases
- * from one to the other.
+ * Beats 3 and 4 are the caller's (see celebrateSolved in ui.js); this module
+ * owns 1 and 2 and the resting state they settle into.
  */
 import * as THREE from './three/three.module.min.js';
-import {CELEBRATION_COLORS, CELEBRATION_TIMING, EDGE_COLORS} from './constants.js';
+import {CELEBRATION_COLORS, CELEBRATION_TIMING, EDGE_COLORS,
+        FACE_COLORS} from './constants.js';
+import {partitionFacesByLoop} from './solutionChecker.js';
 import {playCelebrationTune} from './celebrationSound.js';
 import {debug} from './debug.js';
 
@@ -34,8 +35,8 @@ import {debug} from './debug.js';
  * clueRenderer keeps its material sets on the group.
  *
  * @type {?{loop: THREE.Mesh[], quieted: {mesh: THREE.Mesh, was: THREE.Color}[],
- *          heads: number, elapsed: number, phase: number, amplitude: number,
- *          dim: number}}
+ *          faces: {faceId: number, color: THREE.Color, at: number}[],
+ *          elapsed: number}}
  */
 let running = null;
 
@@ -46,16 +47,12 @@ function prefersReducedMotion() {
 }
 
 /**
- * The solution loop's edge meshes, in the order the loop visits them.
- *
- * Order is the whole game here: an edge's position along the loop is what
- * decides when the light reaches it. The stored solution is a vertex cycle, so
- * consecutive pairs give the edges.
+ * The solution loop's edge meshes.
  *
  * @param {PuzzleGrid} puzzleGrid
  * @returns {THREE.Mesh[]} may be shorter than the loop if any mesh is missing
  */
-function loopMeshesInOrder(puzzleGrid) {
+function loopMeshes(puzzleGrid) {
     const loop = puzzleGrid.getCurrentPuzzle().solution;
     const meshes = [];
     for (let i = 0; i < loop.length; i++) {
@@ -87,11 +84,57 @@ function takePrivateColor(mesh) {
 }
 
 /**
+ * Works out when each face takes its colour, and which colour.
+ *
+ * The schedule falls straight out of the flood fill that finds the regions: a
+ * face's `distance` is how many faces it sits from the loop, so colouring in
+ * DESCENDING distance sends a front inward-out -- starting at each region's
+ * deepest interior and reaching the boundary last. Both regions' fronts arrive
+ * at the loop together, and the last thing the player sees is the two colours
+ * meeting along the curve they drew.
+ *
+ * The smaller region gets the warm colour, since warm advances and cool recedes:
+ * the minority side pops instead of hiding.
+ *
+ * @param {PuzzleGrid} puzzleGrid
+ * @returns {{faceId: number, color: THREE.Color, at: number}[]} `at` is a
+ *     fraction of beat 2, 0..1
+ */
+function faceSchedule(puzzleGrid) {
+    const {regions, distance} = partitionFacesByLoop(
+        puzzleGrid, puzzleGrid.getCurrentPuzzle().solution);
+
+    // Warm to the smaller region. Sorting by size also makes the assignment
+    // deterministic, so the same puzzle always celebrates the same way.
+    const ordered = [...regions].sort((a, b) => a.length - b.length);
+    const colorFor = new Map();
+    ordered.forEach((members, index) => {
+        const color = (index === 0) ? CELEBRATION_COLORS.partitionWarm
+                                    : CELEBRATION_COLORS.partitionCool;
+        for (const faceId of members) colorFor.set(faceId, color);
+    });
+
+    // Deepest face first. Max over ALL faces, not per region, so the two fronts
+    // share one clock and reach the loop at the same moment -- a lopsided pair of
+    // regions would otherwise finish at different times.
+    const deepest = Math.max(...distance.values(), 0);
+    const schedule = [];
+    for (const [faceId, howFar] of distance) {
+        schedule.push({
+            faceId,
+            color: colorFor.get(faceId) || CELEBRATION_COLORS.partitionCool,
+            at: deepest === 0 ? 0 : (deepest - howFar) / deepest,
+        });
+    }
+    return schedule;
+}
+
+/**
  * Starts the celebration, if motion is welcome.
  *
  * @param {GameState} gameState
  * @returns {boolean} true if it is animating, false if it declined -- in which
- *     case the caller should not wait before showing its dialog, since there is
+ *     case the caller should not wait before its own beats, since there is
  *     nothing to wait for
  */
 export function startCelebration(gameState) {
@@ -102,7 +145,7 @@ export function startCelebration(gameState) {
     }
 
     const puzzleGrid = gameState.getPuzzleGrid();
-    const loop = loopMeshesInOrder(puzzleGrid);
+    const loop = loopMeshes(puzzleGrid);
     if (loop.length === 0) return false;
 
     const inLoop = new Set(loop);
@@ -116,51 +159,63 @@ export function startCelebration(gameState) {
             quieted.push({mesh, was: takePrivateColor(mesh)});
         }
     }
-    for (const mesh of loop) takePrivateColor(mesh);
+    for (const mesh of loop) {
+        takePrivateColor(mesh);
+        // Emissive is per-material and starts black, so this needs no saving --
+        // stopCelebration just puts it back to black.
+        mesh.material.emissive = new THREE.Color().copy(CELEBRATION_COLORS.glow);
+        mesh.material.emissiveIntensity = 0;
+    }
 
-    // Heads evenly spaced round the loop, about one every headSpacingEdges. It
-    // has to divide the loop EXACTLY or the pattern would have a seam where it
-    // met itself, so the count is rounded and the spacing follows from it rather
-    // than the other way round -- which is why a 10-edge loop gets 3 heads
-    // 3 1/3 edges apart rather than 3 heads and a gap.
-    const heads = Math.max(1, Math.round(loop.length
-                                         / CELEBRATION_TIMING.headSpacingEdges));
-
-    running = {loop, quieted, heads, elapsed: 0, phase: 0, amplitude: 1, dim: 0};
-    debug(`celebration: ${loop.length} loop edges, ${heads} heads, `
-          + `${quieted.length} quieted`);
+    running = {loop, quieted, faces: faceSchedule(puzzleGrid), elapsed: 0,
+               painted: false};
+    debug(`celebration: ${loop.length} loop edges, ${quieted.length} quieted, `
+          + `${running.faces.length} faces to colour`);
     playCelebrationTune();
     return true;
 }
 
-/** Restores the ordinary edge colours and thicknesses. Safe to call when
- *  nothing is running. */
+/** Restores the ordinary edge and face colours. Safe to call when nothing is
+ *  running. */
 export function stopCelebration(gameState) {
     if (!running) return;
-    for (const mesh of running.loop) mesh.scale.set(1, 1, 1);
+    for (const mesh of running.loop) {
+        mesh.scale.set(1, 1, 1);
+        mesh.material.emissiveIntensity = 0;
+        mesh.material.emissive = new THREE.Color(0x000000);
+    }
+    const puzzleGrid = gameState.getPuzzleGrid();
+    for (const {faceId} of running.faces) {
+        paintFace(gameState, faceId, FACE_COLORS.default);
+    }
     // clearEdgeHighlights reassigns the shared EDGE_COLORS constants, which also
     // puts back the sharing that takePrivateColor broke.
-    gameState.getPuzzleGrid().clearEdgeHighlights();
+    puzzleGrid.clearEdgeHighlights();
     running = null;
 }
 
 /**
- * How bright the light is at a point, given how far it sits BEHIND the head in
- * front of it -- measured in that head's own span, not in the whole loop, so one
- * function serves however many heads are chasing.
+ * Tints one face, through the polyhedron's vertex colours -- the same route
+ * interaction.js uses for its debug highlight, since the whole solid is one
+ * BufferGeometry and a face is a known run of vertices within it.
  *
- * A raised cosine over the trail's length: 1 at the head, 0 at the tail, with
- * zero slope at both ends so the light has no visible edge. Anything further
- * behind than the trail is dark.
- *
- * @param {number} behind - distance behind the head, in head spans [0, 1)
- * @returns {number} 0..1
+ * @param {GameState} gameState
+ * @param {number} faceId
+ * @param {THREE.Color} color
  */
-function trailBrightness(behind) {
-    const trail = CELEBRATION_TIMING.trailFraction;
-    if (behind >= trail) return 0;
-    return 0.5 * (1 + Math.cos(Math.PI * behind / trail));
+function paintFace(gameState, faceId, color) {
+    const colors = gameState.sceneManager.geometry.attributes.color;
+    const range = gameState.getPuzzleGrid().faceVertexRanges.get(faceId);
+    if (!range) return;
+    for (let i = 0; i < range.count; i++) {
+        colors.setXYZ(range.start + i, color.r, color.g, color.b);
+    }
+    colors.needsUpdate = true;
 }
+
+/** Scratch colour for the per-face fade, reused rather than allocated per face
+ *  per frame. */
+const _faceTint = new THREE.Color();
 
 /**
  * Advances the celebration by one frame. A no-op when none is running, so the
@@ -175,49 +230,44 @@ export function updateCelebration(gameState, delta) {
     running.elapsed += delta;
     const t = running.elapsed;
 
-    // Beat 1 fades the other edges down; from beat 3 they come most of the way
-    // back, so the solid reads normally again while the loop keeps shimmering.
+    // Beat 1: the other edges fade back, once and for good.
     const clearing = Math.min(1, t / timing.clearSeconds);
-    const pulseEnd = timing.clearSeconds + timing.pulseSeconds;
-    const settling = t <= pulseEnd ? 0
-        : Math.min(1, (t - pulseEnd) / timing.settleSeconds);
-    running.dim = clearing * (1 - settling * (1 - timing.settleDimFraction));
+    const dim = clearing * timing.settleDimFraction;
     for (const {mesh, was} of running.quieted) {
-        mesh.material.color.copy(was).lerp(CELEBRATION_COLORS.quiet, running.dim);
+        mesh.material.color.copy(was).lerp(CELEBRATION_COLORS.quiet, dim);
     }
 
-    const base = EDGE_COLORS.filledIn;
-    const count = running.loop.length;
-
-    // The lights wait for beat 1 to finish, chase at the pulse's rate through
-    // beat 2, then carry on at the shimmer's slower one.
-    //
-    // Phase counts CIRCUITS of the loop, but both rates are given in EDGES per
-    // second, so dividing by the edge count is what keeps the apparent speed the
-    // same on a 3-edge loop and a 131-edge one. Accumulating the phase rather than
-    // deriving it from t is what makes the change of rate seamless.
-    if (t >= timing.clearSeconds) {
-        const edgesPerSecond = (t <= pulseEnd)
-            ? timing.pulseEdgesPerSecond
-            : timing.shimmerEdgesPerSecond;
-        running.phase = (running.phase + delta * edgesPerSecond / count) % 1;
-    }
-    running.amplitude = 1 - settling * (1 - timing.shimmerAmplitude);
-
-    for (let i = 0; i < count; i++) {
-        const mesh = running.loop[i];
-        // Where this edge sits behind the nearest head. Scaling the way round the
-        // loop by the number of heads collapses the several evenly-spaced heads
-        // into the one-head problem, since the pattern repeats every 1/heads of a
-        // circuit -- so trailFraction is a fraction of ONE head's span.
-        const roundTheLoop = (running.phase - i / count + 1) % 1;
-        const behind = (roundTheLoop * running.heads) % 1;
-        const light = running.amplitude * trailBrightness(behind);
-        mesh.material.color.copy(base).lerp(CELEBRATION_COLORS.pulse, light);
-        // The bulge travels with the light. Cylinders are built along their own
-        // Y, which lookAt then aims down the edge, so X and Z are the thickness
-        // and Y must stay 1 or the edge would grow past its vertices.
-        const thickness = 1 + (timing.thickenFactor - 1) * light;
+    // The loop's glow: a floor it rises to over beat 1, plus a breath that every
+    // edge shares. Sharing it is the point -- brightness that varies ALONG the
+    // loop reads as motion, and motion along a path this jagged reads as
+    // twinkling rather than travel.
+    const breath = 0.5 + 0.5 * Math.sin(
+        2 * Math.PI * timing.shimmerCyclesPerSecond * t);
+    const intensity = clearing * (timing.glowBase
+                                  + timing.shimmerAmplitude * breath);
+    const thickness = 1 + (timing.thickenFactor - 1) * clearing;
+    for (const mesh of running.loop) {
+        mesh.material.emissiveIntensity = intensity;
+        // Cylinders are built along their own Y, which lookAt then aims down the
+        // edge, so X and Z are the thickness and Y must stay 1 or the edge would
+        // grow past its vertices.
         mesh.scale.set(thickness, 1, thickness);
     }
+
+    // Beat 2: the partition spreads. Each face has its own moment in the beat and
+    // its own short fade, so the front is a soft edge rather than a row of faces
+    // popping on together.
+    const spread = (t - timing.partitionStartSeconds) / timing.partitionSeconds;
+    if (spread < 0 || running.painted) return;
+    const fadeFraction = timing.faceFadeSeconds / timing.partitionSeconds;
+    for (const {faceId, color, at} of running.faces) {
+        const how = Math.max(0, Math.min(1, (spread - at) / fadeFraction));
+        if (how <= 0) continue;
+        paintFace(gameState, faceId,
+                  _faceTint.copy(FACE_COLORS.default).lerp(color, how));
+    }
+    // The last face finishes a fade after the last one starts. Once it has, the
+    // colours are final: stop touching them, or every remaining frame of the
+    // shimmer would re-upload the whole solid's colour attribute for nothing.
+    if (spread >= 1 + fadeFraction) running.painted = true;
 }
