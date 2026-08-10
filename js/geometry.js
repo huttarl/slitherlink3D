@@ -14,7 +14,7 @@ import * as THREE from './three/three.module.min.js';
 import { Grid } from './Grid.js';
 import { EDGE_RADIUS, EDGE_COLORS, FACE_COLORS,
          EDGE_STATES } from './constants.js';
-import { findCentroid, normalizeVertices } from './geometryUtils.js';
+import { findCentroid, normalizeVertices, radiusScale } from './geometryUtils.js';
 
 /**
  * Creates a 3D polyhedron geometry with associated grid topology.
@@ -181,13 +181,18 @@ export function createEdgeGeometry(grid) {
     const edgeMeshes = [];
     const pickPositions = [];
     const pickEdgeIds = [];
+    // One radius for the whole grid, scaled to how long its edges are: the same
+    // absolute thickness that looks right on a tetrahedron is a fat tube on a
+    // 182-face solid. See radiusScale. NOT applied to the pick tolerance below,
+    // which stays absolute -- a thinner edge should be no harder to hit.
+    const edgeRadius = EDGE_RADIUS * radiusScale(grid);
     for (const [edgeId, edge] of grid.edges) {
         const v1 = grid.vertices.get(edge.vertexIDs[0]);
         const v2 = grid.vertices.get(edge.vertexIDs[1]);
         const direction = new THREE.Vector3().subVectors(v2.position, v1.position);
         const length = direction.length();
         const center = new THREE.Vector3().addVectors(v1.position, v2.position).multiplyScalar(0.5);
-        const geometry = new THREE.CylinderGeometry(EDGE_RADIUS, EDGE_RADIUS, length, 8);
+        const geometry = new THREE.CylinderGeometry(edgeRadius, edgeRadius, length, 8);
         // if (edgeId === 0) {
         //     console.log(`Edge 0 details: vertices [${edge.vertices[0]}, ${edge.vertices[1]}], v1=`, v1.position, `v2=`, v2.position, `length=${length}`);
         // }

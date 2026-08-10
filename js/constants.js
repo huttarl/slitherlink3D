@@ -2,9 +2,30 @@ import * as THREE from './three/three.module.min.js';
 
 // Shared constants for Slitherlink 3D
 
-// Visual parameters for edge and vertex rendering
+// Visual parameters for edge and vertex rendering. These are MAXIMA, used as-is
+// on the solid with the longest edges and scaled down on the rest; see
+// radiusScale in geometryUtils.js.
 export const EDGE_RADIUS = 0.03;
 export const VERTEX_RADIUS = 0.04;
+
+// How the edge and vertex radii follow the length of a grid's edges.
+//
+// Every solid is drawn to the same size, so its edges get shorter as it gains
+// faces -- across data/ the median rendered edge runs from 1.633 on the
+// tetrahedron down to 0.227 on etI, a factor of seven -- and a single radius for
+// all of them looks fat on the crowded solids and spindly on the sparse ones.
+//
+// The exponent is a dial between the two things that don't work: 0 is one
+// constant radius for every grid (what this used to do), and 1 is a radius
+// proportional to edge length, which draws etI as hairlines. A third of the way
+// along shrinks etI's radius to 54% of the maximum while leaving the cube's at
+// 89%, which is the "a little thinner, and only a little" that was wanted.
+//
+// The reference is the longest edge anywhere in data/, the tetrahedron's, so that
+// grid keeps the full radius and no grid can exceed it. A grid with longer edges
+// than that would simply be clamped (see radiusScale).
+export const RADIUS_LENGTH_EXPONENT = 1 / 3;
+export const RADIUS_REFERENCE_EDGE = 1.633;
 
 // Camera movement constraints
 export const CAMERA_MIN_ZOOM = 2;

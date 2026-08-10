@@ -8,7 +8,77 @@
  * (Split out of geometry.js, which keeps the polyhedron/scene construction.)
  */
 import * as THREE from './three/three.module.min.js';
+import {RADIUS_LENGTH_EXPONENT, RADIUS_REFERENCE_EDGE} from './constants.js';
 import {debug} from './debug.js';
+
+/**
+ * The median rendered edge length of a grid.
+ *
+ * RENDERED, so call this only after normalizeVertices: the stored files are not
+ * all at circumradius 1 (the cube's are at +/-1, giving an edge of 2 on disk and
+ * 1.155 on screen), and the number wanted here is the one the player sees.
+ *
+ * Median rather than mean or extremes: several solids have a few edges far off
+ * the rest -- randD's run 0.136 to 0.877 -- and the median is what represents how
+ * big the solid's edges GENERALLY are without one outlier dragging it.
+ *
+ * Reads x/y/z rather than calling Vector3 methods, so any position-like object
+ * works. The distance between two points needs no class, and not requiring one
+ * keeps this usable from the tests' lightweight vertex stubs.
+ *
+ * @param {Grid} grid - with normalized vertex positions
+ * @returns {number} 0 for a grid with no edges
+ */
+export function medianEdgeLength(grid) {
+    const lengths = [];
+    for (const edge of grid.edges.values()) {
+        const a = grid.vertices.get(edge.vertexIDs[0]);
+        const b = grid.vertices.get(edge.vertexIDs[1]);
+        if (a && b) {
+            lengths.push(Math.hypot(a.position.x - b.position.x,
+                                    a.position.y - b.position.y,
+                                    a.position.z - b.position.z));
+        }
+    }
+    if (lengths.length === 0) return 0;
+    lengths.sort((x, y) => x - y);
+    const middle = lengths.length >> 1;
+    return (lengths.length % 2 === 1) ? lengths[middle]
+        : (lengths[middle - 1] + lengths[middle]) / 2;
+}
+
+/**
+ * How much to shrink the edge and vertex radii on this grid, 0..1.
+ *
+ * The problem: every solid is drawn to the same size, so a 182-face grid has
+ * edges a seventh the length of a tetrahedron's (0.23 against 1.63 across
+ * data/) while both were drawn with the same radius -- which reads as
+ * grotesquely fat tubes on the big solids.
+ *
+ * A power law rather than proportionality, because proportionality would draw
+ * those edges as hairlines. RADIUS_LENGTH_EXPONENT is a dial between the two: 0
+ * is a constant radius, 1 is fully proportional, and a third of the way along
+ * takes etI's radius to 54% while leaving the cube's at 89%. Note the radius
+ * shrinks SUB-proportionally, so short edges keep relatively more thickness --
+ * but its rate does not slow near zero, which the exponent being under 1 makes
+ * tempting to assume. No floor is needed: over data/ the smallest result is
+ * 0.016, which is already a reasonable minimum.
+ *
+ * ONE SCALE PER GRID, from the median, deliberately -- not per edge. Within one
+ * solid the edges can differ by a factor of six (randD again), and drawing those
+ * at visibly different thicknesses looks like a mistake rather than a response
+ * to scale.
+ *
+ * @param {Grid} grid - with normalized vertex positions
+ * @returns {number} a multiplier for EDGE_RADIUS and VERTEX_RADIUS, never above
+ *     1, so the constants stay the maximum they have always been
+ */
+export function radiusScale(grid) {
+    const median = medianEdgeLength(grid);
+    if (median <= 0) return 1;
+    return Math.min(1, Math.pow(median / RADIUS_REFERENCE_EDGE,
+                                RADIUS_LENGTH_EXPONENT));
+}
 
 /**
  * Find the center-ish of a polygon, by averaging its vertices.

@@ -3,6 +3,7 @@ import { addSkybox } from "./skybox.js";
 import { createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
 import {DEFAULT_GRID, EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
+import { radiusScale } from "./geometryUtils.js";
 import {createClueTexts} from "./clueRenderer.js";
 import {createEdgeLabels, createFaceLabels, createVertexLabels} from "./idLabels.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
@@ -153,9 +154,14 @@ export async function createGameState() {
  */
 function createVertexGroup(grid, material) {
     const vertexGroup = new THREE.Group();
-    
+    // On the same curve as the edges, and for a sharper reason: a vertex sphere is
+    // WIDER than an edge is thick, so leaving these at full size while the edges
+    // thinned would just move the problem -- the junctions would become the blobs
+    // that dominate a crowded solid.
+    const vertexRadius = VERTEX_RADIUS * radiusScale(grid);
+
     for (const [_vertexId, vertex] of grid.vertices) {
-        const vGeom = new THREE.SphereGeometry(VERTEX_RADIUS, 16, 16);
+        const vGeom = new THREE.SphereGeometry(vertexRadius, 16, 16);
         const vMesh = new THREE.Mesh(vGeom, material);
         vMesh.position.copy(vertex.position);
         vertexGroup.add(vMesh);

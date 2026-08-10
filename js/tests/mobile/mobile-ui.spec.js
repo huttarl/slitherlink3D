@@ -16,8 +16,9 @@ import {
 // The app's own value, rather than a copy that would drift out of step with it.
 // (constants.js pulls in THREE, which imports fine under Node -- the headless
 // unit tests do the same.)
-import { CAMERA_DISTANCE, CAMERA_HEIGHT, DEFAULT_GRID, LONG_PRESS_MS,
-         TITLE_SCREEN_FALLBACK_GRID, TITLE_SCREEN_MIN_FACES } from '../../constants.js';
+import { CAMERA_DISTANCE, CAMERA_HEIGHT, CELEBRATION_TIMING, DEFAULT_GRID,
+         LONG_PRESS_MS, TITLE_SCREEN_FALLBACK_GRID,
+         TITLE_SCREEN_MIN_FACES } from '../../constants.js';
 import { titleScreenCameraDistance } from '../../titleScreen.js';
 
 /**
@@ -590,6 +591,19 @@ test.describe('the celebration overlay', () => {
     test.beforeEach(({page}) => openDefaultPuzzle(page));
 
     /**
+     * How long to allow for the congratulation dialog, derived from the app's own
+     * delay rather than guessed.
+     *
+     * Playwright's default expect timeout is 5s, which the delay grew past: at
+     * dialogSeconds 3.5 these tests passed alone and failed in the parallel run,
+     * where the machine is loaded and the click-to-dialog gap plus overhead
+     * exceeded 5s. Reading the constant means raising the delay again can't
+     * quietly reintroduce that -- and a flake that only appears under contention
+     * is the worst kind to debug.
+     */
+    const DIALOG_TIMEOUT = CELEBRATION_TIMING.dialogSeconds * 1000 + 5000;
+
+    /**
      * Solve, check, and wait for the congratulation box to actually arrive.
      *
      * The wait is the point: the dialog is deliberately held back while the
@@ -605,7 +619,8 @@ test.describe('the celebration overlay', () => {
     async function solveAndAwaitCelebration(page) {
         await solvePuzzle(page);
         await page.getByRole('button', {name: /check/i}).click();
-        await expect(page.locator('#overlayMessage')).toBeVisible();
+        await expect(page.locator('#overlayMessage'))
+            .toBeVisible({timeout: DIALOG_TIMEOUT});
     }
 
     test('the dialog waits for the loop animation, then arrives',
@@ -622,7 +637,8 @@ test.describe('the celebration overlay', () => {
             // Not immediately: the loop gets the stage first.
             await expect(page.locator('#overlayMessage')).toBeHidden();
             // But it does come -- toBeVisible retries until it does.
-            await expect(page.locator('#overlayMessage')).toBeVisible();
+            await expect(page.locator('#overlayMessage'))
+                .toBeVisible({timeout: DIALOG_TIMEOUT});
             expect(errors, 'the celebration logged errors while animating')
                 .toEqual([]);
         });

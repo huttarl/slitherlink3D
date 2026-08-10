@@ -11,8 +11,12 @@ import {
     findDistancePointToLine,
     findFaceMinRadius,
     findFaceNormal,
+    medianEdgeLength,
     normalizeVertices,
+    radiusScale,
 } from '../geometryUtils.js';
+import { RADIUS_REFERENCE_EDGE } from '../constants.js';
+import { makeCubeGrid } from './helpers.js';
 
 /** Wrap raw [x,y,z] triples as vertex-like objects with .position. */
 function asVertices(coords) {
@@ -94,5 +98,76 @@ describe('normalizeVertices', () => {
         // ...and the farthest vertex should be at distance exactly 1.
         const maxDist = Math.max(...vertices.map(v => v.length()));
         assert.ok(Math.abs(maxDist - 1) < EPSILON);
+    });
+});
+
+/** The test cube has corners at 0..1, so every edge is 1 long; scaling its
+ *  vertices scales its edges by the same factor. (helpers.js gives vertices a
+ *  minimal {x, y, z} position rather than a THREE.Vector3, so this scales the
+ *  components by hand.) */
+function cubeWithEdgeLength(length) {
+    const grid = makeCubeGrid();
+    for (const vertex of grid.vertices.values()) {
+        vertex.position.x *= length;
+        vertex.position.y *= length;
+        vertex.position.z *= length;
+    }
+    return grid;
+}
+
+describe('medianEdgeLength', () => {
+    test('measures the edges of a grid', () => {
+        assert.ok(Math.abs(medianEdgeLength(cubeWithEdgeLength(1)) - 1) < 1e-9);
+        assert.ok(Math.abs(medianEdgeLength(cubeWithEdgeLength(0.4)) - 0.4) < 1e-9);
+    });
+
+    test('an outlier does not move it, which is why it is the median', () => {
+        // randD's edges run 0.136 to 0.877; a mean would be dragged by the ends,
+        // and the radius should follow how long the edges GENERALLY are.
+        const grid = cubeWithEdgeLength(1);
+        const stretched = grid.vertices.get(6).position;   // wrecks 3 edges
+        stretched.x *= 20; stretched.y *= 20; stretched.z *= 20;
+        assert.ok(Math.abs(medianEdgeLength(grid) - 1) < 1e-9);
+    });
+
+    test('0 for a grid with no edges, so radiusScale can spot it', () => {
+        const grid = makeCubeGrid();
+        grid.edges.clear();
+        assert.strictEqual(medianEdgeLength(grid), 0);
+    });
+});
+
+describe('radiusScale', () => {
+    test('full radius at the reference edge length, and never more', () => {
+        const at = cubeWithEdgeLength(RADIUS_REFERENCE_EDGE);
+        assert.ok(Math.abs(radiusScale(at) - 1) < 1e-9);
+        // Clamped, so a grid with longer edges than anything in data/ can't
+        // exceed the radius the constants call a maximum.
+        assert.strictEqual(radiusScale(cubeWithEdgeLength(5)), 1);
+    });
+
+    test('shrinks with edge length, but SUB-proportionally', () => {
+        // The whole point: halving the edges must thin them by much less than
+        // half, or small-faced solids get hairlines.
+        const big = radiusScale(cubeWithEdgeLength(1.0));
+        const small = radiusScale(cubeWithEdgeLength(0.5));
+        assert.ok(small < big, 'shorter edges should be thinner');
+        assert.ok(small > big * 0.5,
+            `halving the length must not halve the radius: ${small} vs ${big}`);
+        // At the exponent in use it is the cube root, so 2^(1/3) apart.
+        assert.ok(Math.abs(big / small - Math.cbrt(2)) < 1e-9);
+    });
+
+    test('etI is thinned to about half, the cube barely at all', () => {
+        // The two ends of data/, as measured on rendered edge lengths. This is
+        // the behaviour the exponent was chosen for; it guards the choice.
+        assert.ok(Math.abs(radiusScale(cubeWithEdgeLength(0.256)) - 0.54) < 0.01);
+        assert.ok(Math.abs(radiusScale(cubeWithEdgeLength(1.155)) - 0.89) < 0.01);
+    });
+
+    test('a grid with no edges keeps the full radius rather than vanishing', () => {
+        const grid = makeCubeGrid();
+        grid.edges.clear();
+        assert.strictEqual(radiusScale(grid), 1);
     });
 });
