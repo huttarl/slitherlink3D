@@ -13,9 +13,11 @@ import {
     findFaceNormal,
     medianEdgeLength,
     normalizeVertices,
+    pickTolerances,
     radiusScale,
 } from '../geometryUtils.js';
-import { RADIUS_REFERENCE_EDGE } from '../constants.js';
+import { PICK_RADIUS, RADIUS_LENGTH_EXPONENT,
+         RADIUS_REFERENCE_EDGE } from '../constants.js';
 import { makeCubeGrid } from './helpers.js';
 
 /** Wrap raw [x,y,z] triples as vertex-like objects with .position. */
@@ -154,15 +156,32 @@ describe('radiusScale', () => {
         assert.ok(small < big, 'shorter edges should be thinner');
         assert.ok(small > big * 0.5,
             `halving the length must not halve the radius: ${small} vs ${big}`);
-        // At the exponent in use it is the cube root, so 2^(1/3) apart.
-        assert.ok(Math.abs(big / small - Math.cbrt(2)) < 1e-9);
+        // Derived from the exponent rather than hard-coded, so tuning it doesn't
+        // put a false failure here -- the PROPERTY above is what matters.
+        assert.ok(Math.abs(big / small - Math.pow(2, RADIUS_LENGTH_EXPONENT))
+                  < 1e-9);
     });
 
-    test('etI is thinned to about half, the cube barely at all', () => {
+    test('etI is thinned to about two thirds, the cube barely at all', () => {
         // The two ends of data/, as measured on rendered edge lengths. This is
-        // the behaviour the exponent was chosen for; it guards the choice.
-        assert.ok(Math.abs(radiusScale(cubeWithEdgeLength(0.256)) - 0.54) < 0.01);
-        assert.ok(Math.abs(radiusScale(cubeWithEdgeLength(1.155)) - 0.89) < 0.01);
+        // the behaviour the exponent was chosen for; it guards the choice, so
+        // expect it to fail if the exponent is retuned -- and read the numbers
+        // before updating it.
+        assert.ok(Math.abs(radiusScale(cubeWithEdgeLength(0.256)) - 0.63) < 0.01);
+        assert.ok(Math.abs(radiusScale(cubeWithEdgeLength(1.155)) - 0.92) < 0.01);
+    });
+
+    test('the pick tolerance follows the radius, not its own scale', () => {
+        // The relationship the constants document: the click target is twice the
+        // drawn tube, whatever size that tube ends up. A fixed tolerance made
+        // dense grids pick unpredictably.
+        const grid = cubeWithEdgeLength(0.256);
+        const {pickRadius, pickDepthTolerance} = pickTolerances(grid);
+        assert.ok(Math.abs(pickRadius
+                           - PICK_RADIUS * radiusScale(grid)) < 1e-12);
+        assert.strictEqual(pickDepthTolerance, pickRadius * 2);
+        // And it really is smaller than the old fixed value on such a grid.
+        assert.ok(pickRadius < PICK_RADIUS);
     });
 
     test('a grid with no edges keeps the full radius rather than vanishing', () => {

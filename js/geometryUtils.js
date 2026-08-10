@@ -8,7 +8,8 @@
  * (Split out of geometry.js, which keeps the polyhedron/scene construction.)
  */
 import * as THREE from './three/three.module.min.js';
-import {RADIUS_LENGTH_EXPONENT, RADIUS_REFERENCE_EDGE} from './constants.js';
+import {PICK_RADIUS, RADIUS_LENGTH_EXPONENT,
+        RADIUS_REFERENCE_EDGE} from './constants.js';
 import {debug} from './debug.js';
 
 /**
@@ -78,6 +79,34 @@ export function radiusScale(grid) {
     if (median <= 0) return 1;
     return Math.min(1, Math.pow(median / RADIUS_REFERENCE_EDGE,
                                 RADIUS_LENGTH_EXPONENT));
+}
+
+/**
+ * How much slack picking gets on this grid, in world units.
+ *
+ * On the SAME scale as the drawn radius, so the click target stays the documented
+ * multiple of the tube the player can see. A fixed tolerance was tried first, on
+ * the reasoning that a thinner edge should be no harder to hit, and it went wrong
+ * on the dense solids: 0.06 of slack is a fifth of the way along one of etI's
+ * 0.256 edges, so it was wider than the gaps it had to tell apart and picks near a
+ * vertex resolved unpredictably.
+ *
+ * Note this does not make the tolerance a constant FRACTION of an edge -- the
+ * radius shrinks sub-proportionally, so relative slack still grows on denser
+ * grids. It only ties the slack to what the edges look like, which is what makes
+ * it predictable. Capping it as a share of the median edge length is the stronger
+ * move, if the dense grids still misbehave.
+ *
+ * @param {Grid} grid - with normalized vertex positions
+ * @returns {{pickRadius: number, pickDepthTolerance: number}}
+ */
+export function pickTolerances(grid) {
+    const pickRadius = PICK_RADIUS * radiusScale(grid);
+    // Depth slack follows the radius because it exists to absorb it: a tolerant
+    // pick reports the depth where the ray passes closest to the edge's centre
+    // line, which can fall a little beyond the face beside it, and how far beyond
+    // is proportional to how much slack was allowed.
+    return {pickRadius, pickDepthTolerance: pickRadius * 2};
 }
 
 /**

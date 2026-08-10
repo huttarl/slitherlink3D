@@ -24,7 +24,7 @@ export const VERTEX_RADIUS = 0.04;
 // The reference is the longest edge anywhere in data/, the tetrahedron's, so that
 // grid keeps the full radius and no grid can exceed it. A grid with longer edges
 // than that would simply be clamped (see radiusScale).
-export const RADIUS_LENGTH_EXPONENT = 1 / 3;
+export const RADIUS_LENGTH_EXPONENT = 1 / 4;
 export const RADIUS_REFERENCE_EDGE = 1.633;
 
 // Camera movement constraints
@@ -60,6 +60,15 @@ export const DRAG_THRESHOLD_PIXELS = 5;
 // centre line: the drawn cylinders are thin enough that hitting one exactly is
 // fiddly, especially on a phone. Twice the drawn radius, so the target is
 // effectively twice as wide.
+//
+// TWICE THE DRAWN RADIUS IS THE POINT, so this follows radiusScale along with the
+// radius itself -- see pickTolerances in geometryUtils.js, and PICK_RADIUS here is
+// the maximum, reached where the edges are longest. Left absolute at first, on the
+// reasoning that a thinner edge should be no harder to hit; that was wrong in
+// practice. On etI the edges are a quarter the length of a tetrahedron's, so a
+// fixed 0.06 of slack reached a fifth of the way along one, and picks near a
+// vertex or between two edges resolved unpredictably -- the tolerance was wider
+// than the gaps it had to distinguish.
 //
 // Applied as raycaster.params.Line.threshold against a LineSegments standing in
 // for the edges -- threshold only exists for Line and Points, never for Mesh,

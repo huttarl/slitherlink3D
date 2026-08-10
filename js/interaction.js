@@ -8,7 +8,8 @@ import * as THREE from './three/three.module.min.js';
 import { findCentroid, findFaceNormal } from './geometryUtils.js';
 import { debug } from './debug.js';
 import { DRAG_THRESHOLD_PIXELS, FACE_COLORS, EDGE_STATES,
-         LONG_PRESS_MS, PICK_DEPTH_TOLERANCE, PICK_RADIUS } from './constants.js';
+         LONG_PRESS_MS } from './constants.js';
+import { pickTolerances } from './geometryUtils.js';
 
 /**
  * Creates and configures interaction handlers for the 3D Slitherlink puzzle.
@@ -22,9 +23,14 @@ export function makeInteraction(gameState) {
     const puzzleGrid = gameState.getPuzzleGrid();
 
     // Picking aims at invisible lines along the edges rather than at the drawn
-    // cylinders: params.Line.threshold then gives a click PICK_RADIUS of slack,
+    // cylinders: params.Line.threshold then gives a click pickRadius of slack,
     // so just missing a thin edge still counts. Falls back to the drawn meshes
     // if a caller set the scene up without the lines (no tolerance then).
+    //
+    // Per grid, on the same scale as the drawn edge radius, so the target stays
+    // the same multiple of what the player can see; a solid whose edges are a
+    // quarter the length gets proportionately less slack. See pickTolerances.
+    const {pickRadius, pickDepthTolerance} = pickTolerances(puzzleGrid);
     const pickLines = sceneManager.pickLines;
     const pickEdgeIds = sceneManager.pickEdgeIds;
     const fallbackEdgeMeshes = pickLines ? null : puzzleGrid.getAllEdgeMeshes();
@@ -249,9 +255,9 @@ export function makeInteraction(gameState) {
         // would silently clip every later pick.
         let edgeId;
         try {
-            raycaster.far = surfaceDistance + PICK_DEPTH_TOLERANCE;
+            raycaster.far = surfaceDistance + pickDepthTolerance;
             if (pickLines) {
-                raycaster.params.Line.threshold = PICK_RADIUS;
+                raycaster.params.Line.threshold = pickRadius;
                 // Nearest hit that's on the camera's side of the solid. Hits
                 // come back sorted, so this is the nearest pickable edge.
                 // Segments were emitted two endpoints at a time, in the order
