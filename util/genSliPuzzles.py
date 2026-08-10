@@ -5,11 +5,12 @@ Usage: util/genSliPuzzles.py [--quiet|--verbose] [--display=N]
 Output is written to stdout; diagnostic/progress messages go to stderr.
 --quiet keeps only errors, warnings and the outcome; --verbose adds per-edge
 detail. See VERBOSITY.
---display=N asks for N extra puzzles under "displayPuzzles" -- shown off on the
-title screen, never handed to a player. See generate_puzzles.
---existing=FILE keeps the puzzles already in FILE and generates around them,
-which is how display puzzles are added to a grid without churning the puzzles
-people may have bookmarked. See load_existing_puzzles.
+--display=N asks for N puzzles under "displayPuzzles" -- shown off on the title
+screen, never handed to a player. See generate_puzzles.
+--existing=FILE keeps everything already in FILE and generates around it, which
+is how puzzles are added to a grid without churning the ones people may have
+bookmarked. Both counts then mean "this many MORE", and --display defaults to 0.
+See load_existing_puzzles.
 For JSON format specifications, see docs/json-format.md."""
 import itertools, json, random, sys, math
 from collections import Counter
@@ -36,10 +37,15 @@ grid_id: str|None = None
 grid_path: str|None = None
 num_puzzles_wanted: int = 1
 # How many display-only puzzles to generate as well (--display=N). One is
-# enough: the title screen shows a single loop per grid.
+# enough for a new file: the title screen shows a single loop per grid. None
+# under --existing, where the file being topped up already has whatever it has
+# -- see process_args.
 num_display_wanted: int = 1
 # Path given by --existing=FILE, whose puzzles are kept as-is; None otherwise.
 existing_puzzles_path: str|None = None
+# Was --display given explicitly? Only so that --existing can lower the DEFAULT
+# without overriding a number the caller actually asked for.
+display_count_given: bool = False
 puzzles_output: dict = {}
 # Display-only puzzles, generated exactly like the playable ones (authentic,
 # uniquely solvable) but kept in a separate list so that they can never reach a
@@ -324,14 +330,14 @@ def load_grid_file():
 
 def usage():
     """Print usage message and exit."""
-    log("Usage: python3 genSliPuzzles.py [--quiet|--verbose] [--display=N] "
+    log("Usage: genSliPuzzles.py [--quiet|--verbose] [--display=N] "
         "[--existing=FILE] myGrid.json [numPuzzles]", level=0)
     log("  -q, --quiet      only errors, warnings and the outcome of the run", level=0)
     log("  -v, --verbose    add per-edge/per-face detail (very wordy)", level=0)
-    log("  --display=N      also generate N display-only puzzles (default "
-        f"{num_display_wanted})", level=0)
-    log("  --existing=FILE  keep the puzzles already in FILE, and generate "
-        "puzzles distinct from them", level=0)
+    log("  --display=N      also generate N display-only puzzles (default 1, "
+        "or 0 with --existing)", level=0)
+    log("  --existing=FILE  keep everything already in FILE; both counts then "
+        "mean how many MORE to generate", level=0)
     sys.exit(1)
 
 
@@ -342,9 +348,19 @@ def option_value(arg, name):
 
 
 def process_args():
-    """Process command-line arguments."""
+    """Process command-line arguments.
+
+    Both counts mean the same thing: how many puzzles to GENERATE. With
+    --existing they are therefore additions to what the file already holds, for
+    playable and display puzzles alike -- see load_existing_puzzles.
+
+    Which is why --display's default drops to 0 under --existing. It is 1 for a
+    fresh file, since a new grid wants a title-screen loop; but a file being
+    topped up already has whatever it has, and a default of 1 there would quietly
+    add another display puzzle on every run.
+    """
     global num_puzzles_wanted, num_display_wanted, existing_puzzles_path
-    global grid_path, VERBOSITY
+    global display_count_given, grid_path, VERBOSITY
     positional = []
     for arg in sys.argv[1:]:
         if arg in ("-q", "--quiet"):
@@ -360,6 +376,7 @@ def process_args():
             if num_display_wanted < 0:
                 log(f"Error: --display can't be negative.", level=0)
                 usage()  # exits
+            display_count_given = True
         elif (value := option_value(arg, "existing")) is not None:
             existing_puzzles_path = value
         elif arg.startswith("-"):
@@ -373,21 +390,29 @@ def process_args():
     grid_path = positional[0]
     if (len(positional) == 2):
         num_puzzles_wanted = int(positional[1])
+    if existing_puzzles_path is not None and not display_count_given:
+        num_display_wanted = 0
 
 
 def load_existing_puzzles():
     """Adopt the puzzles from --existing=FILE, if one was given.
 
-    Its puzzles go into the output as they stand, and count as already generated,
-    so anything produced this run is distinct from them (up to rotation and
-    reflection -- see already_generated). That makes it safe to add a display
-    puzzle to a grid that already ships puzzles: the playable ones come out
-    byte-identical, so nobody's bookmarked ?puzzle= number moves, and the new
-    loop can't be the answer to one of them.
+    --existing means one thing: KEEP EVERYTHING in this file. Both lists come
+    through as they stand -- playable and display alike -- and both count as
+    already generated, so anything produced this run is distinct from them (up to
+    rotation and reflection; see already_generated). The kept puzzles come out
+    byte-identical, so nobody's bookmarked ?puzzle= number moves, and a new
+    display loop can't be the answer to a playable puzzle.
 
-    Any displayPuzzles already in the file are DISCARDED, on the grounds that
-    asking for display puzzles is a request to make new ones. Pass --display=0
-    to keep the file's playable puzzles and drop its loop.
+    Display puzzles were once DISCARDED here, on the grounds that asking for
+    display puzzles is a request to make new ones. That made the two lists behave
+    differently -- the playable count added, the display count replaced -- and
+    there was no way to top up a file's puzzles while keeping its title-screen
+    loop, so doing the one silently cost you the other. Both counts now mean
+    "generate this many more", and --display defaults to 0 under --existing (see
+    process_args). To REPLACE a display puzzle, drop displayPuzzles from the file
+    first, or generate without --existing -- which is what replacing a playable
+    puzzle has always taken.
     """
     global existing_puzzles_path
     if existing_puzzles_path is None:
@@ -413,7 +438,10 @@ def load_existing_puzzles():
 
     kept = existing.get("puzzles", [])
     puzzles_output["puzzles"].extend(kept)
-    log(f"Keeping {len(kept)} existing puzzle(s) from {existing_puzzles_path}.")
+    kept_display = existing.get("displayPuzzles", [])
+    display_puzzles.extend(kept_display)
+    log(f"Keeping {len(kept)} existing puzzle(s) and {len(kept_display)} display "
+        f"puzzle(s) from {existing_puzzles_path}.")
 
 
 # How many colorings to grow and discard before giving up on a grid.

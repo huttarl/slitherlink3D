@@ -100,21 +100,37 @@ Two more options, both passed through by `run_gen.py`:
 
 - `--display=N` also generates N puzzles under `displayPuzzles` — the loops the
   title screen shows off, kept out of `puzzles` so they can never be handed to a
-  player (see `docs/json-format.md`). Default 1; `--display=0` turns it off.
+  player (see `docs/json-format.md`). Default 1, or **0 with `--existing`**.
   They are ordinary puzzles by every other measure, generated last and checked
   against both lists so a display puzzle isn't a copy of a playable one. Two
   puzzles may still share a *loop* under different clues: nothing on screen tells
   the player the loops match, so the title screen gives nothing away.
-- `--existing=FILE` keeps the puzzles already in `FILE` and generates around
-  them. That's how a display puzzle is added to a grid that already ships
-  puzzles: they come out byte-identical, so nobody's bookmarked `?puzzle=`
-  number moves. Use a temporary file, since the shell truncates the input
-  otherwise:
+- `--existing=FILE` keeps **everything** already in `FILE` and generates around
+  it. Both counts then mean "this many *more*", for playable and display puzzles
+  alike, and what is kept comes out byte-identical, so nobody's bookmarked
+  `?puzzle=` number moves. Use a temporary file, since the shell truncates the
+  input otherwise.
+
+  Adding a display puzzle to a grid that already ships puzzles:
 
   ```
   util/run_gen.py -q --display=1 --existing=data/aC-puzzles.json \
       data/aC.json 0 600 > /tmp/aC.json && mv /tmp/aC.json data/aC-puzzles.json
   ```
+
+  Adding two playable puzzles while keeping the display puzzle — the same shape
+  without `--display`, whose default is 0 here:
+
+  ```
+  util/run_gen.py -q --existing=data/aC-puzzles.json \
+      data/aC.json 2 600 > /tmp/aC.json && mv /tmp/aC.json data/aC-puzzles.json
+  ```
+
+  To *replace* a display puzzle, drop `displayPuzzles` from the file first, or
+  generate without `--existing` — which is what replacing a playable puzzle has
+  always taken. Earlier, `--existing` discarded `displayPuzzles` outright, so the
+  two lists behaved differently (the playable count added, the display count
+  replaced) and topping up a grid's puzzles silently cost it its title loop.
 
   A grid too small to have a spare puzzle simply gets no `displayPuzzles`, and
   its title screen shows clues with no loop. (Only grids with fewer than

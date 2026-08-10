@@ -21,12 +21,20 @@ way to keep a batch run's output manageable than redirecting stderr to
 /dev/null, which hides real failures too.
 
 --display=N and --existing=FILE are passed through as well; see the
-generator's own docstring for what they do. Adding a display puzzle to a
-grid that already has puzzles looks like this (via a temporary file,
-since the shell would truncate the input before the generator reads it):
+generator's own docstring for what they do. In short, --existing keeps
+everything in that file and both counts become "how many MORE", so adding
+a display puzzle to a grid that already has puzzles is this (via a
+temporary file, since the shell would truncate the input before the
+generator reads it):
 
     util/run_gen.py -q --display=1 --existing=data/aC-puzzles.json \\
         data/aC.json 0 600 > /tmp/aC.json && mv /tmp/aC.json data/aC-puzzles.json
+
+and adding two playable puzzles while keeping the display puzzle is the
+same shape without --display, which defaults to 0 under --existing:
+
+    util/run_gen.py -q --existing=data/aC-puzzles.json \\
+        data/aC.json 2 600 > /tmp/aC.json && mv /tmp/aC.json data/aC-puzzles.json
 
 On timeout, the generator is first sent SIGINT so it can output any
 puzzles that were already completed (it catches KeyboardInterrupt and

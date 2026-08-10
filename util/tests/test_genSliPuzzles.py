@@ -6,6 +6,7 @@ Strategy:
     argument, so the integration tests just hand it a small cube and let
     the real solver run -- no module globals involved.
 """
+import json
 import os
 
 # Select a non-interactive matplotlib backend BEFORE importing genSliPuzzles
@@ -479,6 +480,60 @@ class TestDisplayPuzzleOutput:
         assert len(written['puzzles']) == 1
 
 
+class TestLoadExistingPuzzles:
+    """--existing=FILE keeps everything the file holds, both lists alike."""
+
+    @pytest.fixture(autouse=True)
+    def empty_output(self, monkeypatch):
+        monkeypatch.setattr(genSliPuzzles, 'grid_id', 'C')
+        monkeypatch.setattr(genSliPuzzles, 'puzzles_output', {'gridId': 'C',
+                                                             'puzzles': []})
+        monkeypatch.setattr(genSliPuzzles, 'display_puzzles', [])
+
+    def write(self, tmp_path, monkeypatch, contents):
+        path = tmp_path / 'C-puzzles.json'
+        path.write_text(json.dumps(contents))
+        monkeypatch.setattr(genSliPuzzles, 'existing_puzzles_path', str(path))
+        return path
+
+    def test_keeps_the_display_puzzles_as_well_as_the_playable_ones(
+            self, tmp_path, monkeypatch):
+        """The whole point of the flag. These used to be DISCARDED, so topping up
+        a grid's puzzles silently cost it its title-screen loop."""
+        playable = {'clues': [4, -1, -1, -1, -1, -1], 'solution': BOTTOM_LOOP}
+        display = {'clues': [-1, 0, -1, -1, -1, -1], 'solution': BOTTOM_LOOP}
+        self.write(tmp_path, monkeypatch,
+                   {'gridId': 'C', 'puzzles': [playable],
+                    'displayPuzzles': [display]})
+        genSliPuzzles.load_existing_puzzles()
+        assert genSliPuzzles.puzzles_output['puzzles'] == [playable]
+        assert genSliPuzzles.display_puzzles == [display]
+
+    def test_kept_display_puzzles_count_as_already_generated(
+            self, cube, tmp_path, monkeypatch):
+        """Or a new one could repeat the one being kept. already_generated reads
+        both lists, so adopting into display_puzzles is what makes this work."""
+        monkeypatch.setattr(genSliPuzzles, 'mesh', cube)
+        monkeypatch.setattr(genSliPuzzles, 'symmetries_cache', None)
+        display = {'clues': [4, -1, -1, -1, -1, -1], 'solution': BOTTOM_LOOP}
+        self.write(tmp_path, monkeypatch,
+                   {'gridId': 'C', 'puzzles': [], 'displayPuzzles': [display]})
+        genSliPuzzles.load_existing_puzzles()
+        assert genSliPuzzles.already_generated([4, -1, -1, -1, -1, -1]) is True
+
+    def test_a_file_with_no_display_puzzles_is_fine(self, tmp_path, monkeypatch):
+        self.write(tmp_path, monkeypatch, {'gridId': 'C', 'puzzles': []})
+        genSliPuzzles.load_existing_puzzles()
+        assert genSliPuzzles.display_puzzles == []
+
+    def test_a_mismatched_gridId_is_refused(self, tmp_path, monkeypatch):
+        """Its clues are indexed by another solid's faces, so keeping them would
+        silently corrupt this grid's file."""
+        self.write(tmp_path, monkeypatch, {'gridId': 'T', 'puzzles': []})
+        with pytest.raises(SystemExit):
+            genSliPuzzles.load_existing_puzzles()
+
+
 class TestDisplayOptions:
     """The command line: --display=N and --existing=FILE."""
 
@@ -487,6 +542,7 @@ class TestDisplayOptions:
         monkeypatch.setattr(genSliPuzzles, 'num_display_wanted', 1)
         monkeypatch.setattr(genSliPuzzles, 'existing_puzzles_path', None)
         monkeypatch.setattr(genSliPuzzles, 'num_puzzles_wanted', 1)
+        monkeypatch.setattr(genSliPuzzles, 'display_count_given', False)
 
     def run_args(self, monkeypatch, *args):
         monkeypatch.setattr('sys.argv', ['genSliPuzzles.py', *args])
@@ -502,6 +558,28 @@ class TestDisplayOptions:
 
     def test_display_zero_is_allowed(self, monkeypatch):
         """How to regenerate a grid's puzzles without giving it a title loop."""
+        self.run_args(monkeypatch, '--display=0', 'data/cube.json')
+        assert genSliPuzzles.num_display_wanted == 0
+
+    def test_existing_lowers_the_display_default_to_none(self, monkeypatch):
+        """--existing means "keep everything and add this many more", so leaving
+        --display off must not quietly add another title-screen loop to a file
+        that already has one -- which is how one got lost."""
+        self.run_args(monkeypatch, '--existing=data/C-puzzles.json',
+                      'data/cube.json', '2')
+        assert genSliPuzzles.num_display_wanted == 0
+        assert genSliPuzzles.num_puzzles_wanted == 2
+
+    def test_an_explicit_display_count_beats_the_existing_default(self, monkeypatch):
+        """...but asking for one still gets one, which is how a lost display
+        puzzle is replaced."""
+        self.run_args(monkeypatch, '--display=1',
+                      '--existing=data/C-puzzles.json', 'data/cube.json', '0')
+        assert genSliPuzzles.num_display_wanted == 1
+
+    def test_an_explicit_zero_is_not_mistaken_for_unset(self, monkeypatch):
+        """--display=0 without --existing has to stay 0: the default is 1, so a
+        flag that only recorded the NUMBER couldn't tell the two apart."""
         self.run_args(monkeypatch, '--display=0', 'data/cube.json')
         assert genSliPuzzles.num_display_wanted == 0
 
