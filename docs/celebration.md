@@ -84,20 +84,27 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
 `js/main.js`, with timings and colors in `js/constants.js` (`CELEBRATION_TIMING`,
 `CELEBRATION_COLORS`).
 
-1. **The loop lights up** (0 → 0.4s). It takes up an emissive glow, breathing
-   gently, and thickens. At the same time the non-loop edges fade toward
-   `EDGE_COLORS.ruledOut`, the near-white they were heading for anyway — on a
-   solved board they *are* ruled out — so they blend into the faces and leave the
-   loop alone on the solid. Fading them DARK was tried first and was worse: it
-   made every other edge look like the dark blue of the loop itself. The clue
-   digits go gray over the same moment for free, since solving satisfies every
-   clue.
+1. **The loop flares** (0 → 0.9s). It swells and takes up an emissive glow, then
+   subsides — thin again, and **black**, not the blue it is played in. Glow, swell
+   and darkening ride one envelope (a half cycle of sine, so zero slope at both
+   ends and no visible start or stop), with the colour draining over the second
+   half so the whole thing reads as a single gesture.
 
-   The breath varies in **time, not along the loop** — every edge brightens
-   together. Brightness that varies along the loop is motion, and motion along a
-   path this jagged reads as twinkling (see option 3 above). A shimmer with no
-   direction has nothing to read wrongly, and its speed in cycles per second means
-   the same thing on a 3-edge loop and a 131-edge one.
+   It ends black on purpose. Two earlier versions got this wrong in opposite
+   directions: one left the loop *breathing indefinitely*, which fought the
+   partition colours for attention once they arrived, and the blue it rested at
+   sat badly against the amber and teal. Black reads as a line drawn over them.
+
+   Any brightness that varies **along** the loop rather than in time reads as
+   motion, and motion along a path this jagged reads as twinkling (see option 3
+   above) — so this varies in time only, every edge together.
+
+   Meanwhile the non-loop edges fade toward `EDGE_COLORS.ruledOut`, the near-white
+   they were heading for anyway — on a solved board they *are* ruled out — so they
+   blend into the faces and leave the loop alone on the solid. Fading them DARK was
+   tried first and was worse: it made every other edge look like the loop itself.
+   The clue digits go gray over the same moment for free, since solving satisfies
+   every clue.
 2. **The two sides colour in** (0.5 → 2.0s). Pale amber on one region, pale teal
    on the other, the whole surface fading together from its near-white. The
    smaller region takes the warm colour, since warm advances and cool recedes, so
@@ -117,8 +124,13 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
    of a closed surface cannot be seen from one side, so turning the solid is what
    shows the two colours carrying on round the back. It had no such job in an
    earlier version and merely made the running lights harder to follow.
-4. **The dialog** (3.0s). Last, because the box sits over the middle of the board
-   and hides the very thing it is congratulating.
+4. **The dialog** (3.5s). Last, and **low on the screen** rather than centered,
+   because a centered box covered exactly the two things worth looking at. It sits
+   as low as there is room for: bottom-anchored, with a `max-height` cap so that
+   on a short screen it grows upward and then scrolls inside itself instead of
+   overflowing off the top, where a bottom-anchored flex item's overflow can't be
+   reached. Only this overlay moves — the confirmation dialog is a question, and
+   stays where the eye already is.
 
 Beats 1 and 2 belong to `js/celebration.js`; 3 and 4 are scheduled by
 `celebrateSolved` in `js/ui.js`. The tune covers beats 1 and 2 and its held note

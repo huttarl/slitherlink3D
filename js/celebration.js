@@ -226,21 +226,23 @@ export function updateCelebration(gameState, delta) {
         mesh.material.color.copy(was).lerp(CELEBRATION_COLORS.quiet, dim);
     }
 
-    // The loop's glow: a floor it rises to over beat 1, plus a breath that every
-    // edge shares. Sharing it is the point -- brightness that varies ALONG the
-    // loop reads as motion, and motion along a path this jagged reads as
-    // twinkling rather than travel.
-    const breath = 0.5 + 0.5 * Math.sin(
-        2 * Math.PI * timing.shimmerCyclesPerSecond * t);
-    const intensity = clearing * (timing.glowBase
-                                  + timing.shimmerAmplitude * breath);
-    // The swell is a there-and-back: sin over half a cycle is 0 at each end and
-    // 1 in the middle, with zero slope at both, so the edges grow and settle
-    // without a visible start or stop. After swellSeconds it stays at 1.
-    const swell = Math.sin(Math.PI * Math.min(1, t / timing.swellSeconds));
+    // The loop swells and glows, then settles thin and BLACK -- deliberately not
+    // back to its playing blue, which clashed with the amber and teal the faces
+    // are taking at the same time. Black reads as a drawn line over them.
+    //
+    // Glow and swell share one envelope: sin over half a cycle is 0 at each end
+    // and 1 in the middle, with zero slope at both, so the loop brightens and
+    // fattens and then subsides with no visible start or stop. The darkening runs
+    // over the envelope's SECOND half, so the colour drains as the glow does --
+    // one gesture, not two.
+    const swellPhase = Math.min(1, t / timing.swellSeconds);
+    const swell = Math.sin(Math.PI * swellPhase);
+    const darkening = Math.max(0, Math.min(1, (swellPhase - 0.5) * 2));
     const thickness = 1 + (timing.thickenFactor - 1) * swell;
     for (const mesh of running.loop) {
-        mesh.material.emissiveIntensity = intensity;
+        mesh.material.emissiveIntensity = timing.glowPeak * swell;
+        mesh.material.color.copy(EDGE_COLORS.filledIn)
+            .lerp(CELEBRATION_COLORS.loopSettled, darkening);
         // Cylinders are built along their own Y, which lookAt then aims down the
         // edge, so X and Z are the thickness and Y must stay 1 or the edge would
         // grow past its vertices.

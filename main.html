@@ -568,6 +568,30 @@
             cursor: auto;
         }
 
+        /* The CELEBRATION's box sits low, not centered, so the solid keeps the
+           middle of the screen: the loop and the two partition colours are the
+           point, and a centered box covered exactly them. Only this overlay --
+           the confirmation dialog is a question and stays where the eye is.
+
+           "As low as there is room for" is what the max-height does. Bottom-
+           anchoring a flex item overflows off the TOP when the item is taller than
+           the line, and that overflow can't be scrolled to; capping the box means
+           it can never be taller, so it grows upward until the cap and then
+           scrolls inside itself. dvh with a vh fallback for the same reason
+           #canvas-container has it: on a phone vh includes the space behind the
+           browser's toolbars, so a vh-sized box hangs below the visible area. */
+        #overlayMessage {
+            align-items: flex-end;
+            /* Clear of the iOS home indicator, where there is one. */
+            padding-bottom: max(1em, env(safe-area-inset-bottom, 0px));
+        }
+
+        #overlayMessage .message-box {
+            max-height: 88vh;
+            max-height: 88dvh;
+            overflow-y: auto;
+        }
+
         /* Buttons inside an overlay message box (celebration, confirmation). */
         .message-box button {
             margin: 2ex 0.4em 0;

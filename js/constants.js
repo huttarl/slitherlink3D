@@ -178,6 +178,10 @@ export const CELEBRATION_COLORS = {
     // which desaturated it until it faded into the pale board around it. Emissive
     // blue gets brighter while staying blue.
     glow: new THREE.Color(0x2244ff),
+    // Where the loop's own colour ends up once the glow has subsided: black, not
+    // the blue it is played in. That blue sat badly against the amber and teal the
+    // faces take during the same beat; black reads as a line drawn over them.
+    loopSettled: new THREE.Color(0x000000),
     // What the edges NOT in the loop fade to. EDGE_COLORS.ruledOut, which is
     // where they were heading anyway: a solved board's non-loop edges ARE ruled
     // out. Being near-white they also blend into the faces, so the loop stands
@@ -216,13 +220,12 @@ export const CELEBRATION_TIMING = {
     thickenFactor: 1.5,
     swellSeconds: 0.9,
 
-    // The glow, as emissive intensity: a floor it rests at, plus a breath on top.
-    // The breath is IN PLACE -- every loop edge brightening and dimming together
-    // -- so unlike the travelling lights this replaced, its speed means the same
-    // thing on every grid and cycles per second is an honest unit for it.
-    glowBase: 0.45,
-    shimmerAmplitude: 0.35,
-    shimmerCyclesPerSecond: 0.45,
+    // The glow at its peak, as emissive intensity. It rides the same envelope as
+    // the swell -- up together, down together -- and ends at nothing, the loop
+    // going black as it subsides. So this is a flash, not a resting state: an
+    // earlier version left the loop breathing indefinitely, which fought the
+    // partition colours for attention once they arrived.
+    glowPeak: 0.8,
 
     // Beat 2: the two sides of the loop take their colours -- the whole surface
     // at once, fading from its near-white. Animating this as a spreading front
@@ -235,9 +238,9 @@ export const CELEBRATION_TIMING = {
     // cannot see a partition of a closed surface from one side, so this is what
     // shows the two regions carrying on round the back.
     tumbleSeconds: 2.1,
-    // Beat 4: the dialog last of all, since the box is centered over the solid and
+    // Beat 4: the dialog last of all, since the box (at least partially)
     // hides the very thing it congratulates.
-    dialogSeconds: 3.0,
+    dialogSeconds: 5,
 };
 
 // The little tune that plays over the celebration: up the scale and back, twice,
