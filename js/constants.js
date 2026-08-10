@@ -209,10 +209,12 @@ export const CELEBRATION_TIMING = {
     // How dimmed the non-loop edges stay. Not 0: the loop should keep standing
     // out. Not 1 either, or the solid would read as permanently half-drawn.
     settleDimFraction: 0.35,
-    // How much thicker the loop's edges are for the whole celebration. Uniform,
-    // and it stays: an earlier version travelled a bulge along the loop with a
-    // moving head, which is gone (see docs/celebration.md).
+    // The loop's edges swell and then return to their normal size, all together.
+    // A swell that STAYED read as the loop having been permanently redrawn
+    // thicker, rather than as something happening to it. thickenFactor is the
+    // size at the peak, swellSeconds the whole there-and-back.
     thickenFactor: 1.5,
+    swellSeconds: 0.9,
 
     // The glow, as emissive intensity: a floor it rests at, plus a breath on top.
     // The breath is IN PLACE -- every loop edge brightening and dimming together
@@ -222,16 +224,12 @@ export const CELEBRATION_TIMING = {
     shimmerAmplitude: 0.35,
     shimmerCyclesPerSecond: 0.45,
 
-    // Beat 2: the two sides of the loop take their colours, spreading as a front
-    // that starts at each region's deepest interior and arrives at the loop LAST
-    // -- so the thing you see last is the two colours meeting along it, which is
-    // the point being made. The order comes from the flood fill that finds the
-    // regions in the first place (partitionFacesByLoop).
+    // Beat 2: the two sides of the loop take their colours -- the whole surface
+    // at once, fading from its near-white. Animating this as a spreading front
+    // was tried twice and dropped both times; see faceColors in celebration.js
+    // for why neither ordering meant anything.
     partitionStartSeconds: 0.5,
     partitionSeconds: 1.5,
-    // How long one face takes to reach full colour, so the front is a soft edge
-    // rather than a row of faces popping.
-    faceFadeSeconds: 0.3,
 
     // Beat 3: the tumble, which now has a job rather than being a flourish -- you
     // cannot see a partition of a closed surface from one side, so this is what

@@ -167,33 +167,20 @@ describe('partitionFacesByLoop', () => {
         assert.deepStrictEqual(regions.find(r => r.length === 1), [0]);
     });
 
-    test('distance counts faces to the nearest boundary face', () => {
+    test('every face lands in exactly one region', () => {
         const grid = makeCubeGrid();
-        const {distance} = partitionFacesByLoop(grid, BOTTOM_LOOP);
-        // The bottom face and all four sides touch the loop.
-        assert.strictEqual(distance.get(0), 0);
-        for (const side of [2, 3, 4, 5]) {
-            assert.strictEqual(distance.get(side), 0, `face ${side}`);
-        }
-        // Only the top face is a step away from it.
-        assert.strictEqual(distance.get(1), 1);
-    });
-
-    test('every face gets a region and a distance', () => {
-        const grid = makeCubeGrid();
-        const {regions, distance} = partitionFacesByLoop(grid, BOTTOM_LOOP);
+        const {regions} = partitionFacesByLoop(grid, BOTTOM_LOOP);
         assert.strictEqual(regions.flat().length, grid.faces.size);
-        assert.strictEqual(distance.size, grid.faces.size);
+        assert.strictEqual(new Set(regions.flat()).size, grid.faces.size);
     });
 
-    test('with no loop at all, one region and no NaN distances', () => {
-        // Not a valid puzzle state, but the celebration must not divide by a
-        // missing maximum if it ever sees one.
+    test('with no loop at all, one region holding everything', () => {
+        // Not a valid puzzle state, but the celebration must not be handed an
+        // empty or ragged answer if it ever sees one.
         const grid = makeCubeGrid();
-        const {regions, distance} = partitionFacesByLoop(grid, []);
+        const {regions} = partitionFacesByLoop(grid, []);
         assert.strictEqual(regions.length, 1);
         assert.strictEqual(regions[0].length, grid.faces.size);
-        for (const d of distance.values()) assert.strictEqual(Number.isFinite(d), true);
     });
 });
 

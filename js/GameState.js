@@ -102,6 +102,16 @@ export class GameState {
 
         const { geometry, grid, faceMap, faceVertexRanges, gridId } = polyhedronData;
 
+        // Held for setupEdges, which is where the cross-references are wired but
+        // which isn't given the polyhedron data. These two were destructured here
+        // and then dropped on the floor: setupEdges looked for them on the scene
+        // manager, which has never had them, so it passed two EMPTY maps and
+        // every face-coloring path silently did nothing. That took out
+        // interaction.js's face highlight and the celebration's partition tint,
+        // neither of which errors when the range is missing -- they just skip.
+        this.faceMap = faceMap;
+        this.faceVertexRanges = faceVertexRanges;
+
         // TODO why are we copying data from the grid, instead of inheriting it?
         // Copy grid data to our puzzle grid
         this.puzzleGrid.gridName = grid.gridName;
@@ -140,8 +150,8 @@ export class GameState {
         this.sceneManager.addEdgeMeshes(edgeMeshes);
         this.sceneManager.addEdgePickLines(pickLines, pickEdgeIds);
         this.puzzleGrid.setupCrossReferences(
-            this.sceneManager.faceMap || new Map(),
-            this.sceneManager.faceVertexRanges || new Map(),
+            this.faceMap || new Map(),
+            this.faceVertexRanges || new Map(),
             edgeMeshes
         );
     }

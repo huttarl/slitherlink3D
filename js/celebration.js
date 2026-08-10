@@ -84,49 +84,38 @@ function takePrivateColor(mesh) {
 }
 
 /**
- * Works out when each face takes its colour, and which colour.
+ * Which colour each face fades to: the two sides of the loop, warm and cool.
  *
- * The schedule falls straight out of the flood fill that finds the regions: a
- * face's `distance` is how many faces it sits from the loop, so colouring in
- * DESCENDING distance sends a front inward-out -- starting at each region's
- * deepest interior and reaching the boundary last. Both regions' fronts arrive
- * at the loop together, and the last thing the player sees is the two colours
- * meeting along the curve they drew.
+ * All faces fade TOGETHER. Animating the fill as a spreading front was tried
+ * twice and dropped both times, and the reason is worth keeping. Ordering by
+ * distance from the loop collapses: on these solids nearly every face touches the
+ * loop, so almost the whole surface lands in one step. Ordering by distance from a
+ * seed face spreads properly, but it implies the seed is a meaningful place on the
+ * puzzle, and it isn't -- it is wherever the fill happened to start. A spreading
+ * fill would only mean something if it started from the last edge the player
+ * filled in, which needs the solve to be detected the instant it happens rather
+ * than when Check is pressed.
  *
  * The smaller region gets the warm colour, since warm advances and cool recedes:
  * the minority side pops instead of hiding.
  *
  * @param {PuzzleGrid} puzzleGrid
- * @returns {{faceId: number, color: THREE.Color, at: number}[]} `at` is a
- *     fraction of beat 2, 0..1
+ * @returns {{faceId: number, color: THREE.Color}[]}
  */
-function faceSchedule(puzzleGrid) {
-    const {regions, distance} = partitionFacesByLoop(
+function faceColors(puzzleGrid) {
+    const {regions} = partitionFacesByLoop(
         puzzleGrid, puzzleGrid.getCurrentPuzzle().solution);
 
     // Warm to the smaller region. Sorting by size also makes the assignment
     // deterministic, so the same puzzle always celebrates the same way.
     const ordered = [...regions].sort((a, b) => a.length - b.length);
-    const colorFor = new Map();
+    const painting = [];
     ordered.forEach((members, index) => {
         const color = (index === 0) ? CELEBRATION_COLORS.partitionWarm
                                     : CELEBRATION_COLORS.partitionCool;
-        for (const faceId of members) colorFor.set(faceId, color);
+        for (const faceId of members) painting.push({faceId, color});
     });
-
-    // Deepest face first. Max over ALL faces, not per region, so the two fronts
-    // share one clock and reach the loop at the same moment -- a lopsided pair of
-    // regions would otherwise finish at different times.
-    const deepest = Math.max(...distance.values(), 0);
-    const schedule = [];
-    for (const [faceId, howFar] of distance) {
-        schedule.push({
-            faceId,
-            color: colorFor.get(faceId) || CELEBRATION_COLORS.partitionCool,
-            at: deepest === 0 ? 0 : (deepest - howFar) / deepest,
-        });
-    }
-    return schedule;
+    return painting;
 }
 
 /**
@@ -167,7 +156,7 @@ export function startCelebration(gameState) {
         mesh.material.emissiveIntensity = 0;
     }
 
-    running = {loop, quieted, faces: faceSchedule(puzzleGrid), elapsed: 0,
+    running = {loop, quieted, faces: faceColors(puzzleGrid), elapsed: 0,
                painted: false};
     debug(`celebration: ${loop.length} loop edges, ${quieted.length} quieted, `
           + `${running.faces.length} faces to colour`);
@@ -245,7 +234,11 @@ export function updateCelebration(gameState, delta) {
         2 * Math.PI * timing.shimmerCyclesPerSecond * t);
     const intensity = clearing * (timing.glowBase
                                   + timing.shimmerAmplitude * breath);
-    const thickness = 1 + (timing.thickenFactor - 1) * clearing;
+    // The swell is a there-and-back: sin over half a cycle is 0 at each end and
+    // 1 in the middle, with zero slope at both, so the edges grow and settle
+    // without a visible start or stop. After swellSeconds it stays at 1.
+    const swell = Math.sin(Math.PI * Math.min(1, t / timing.swellSeconds));
+    const thickness = 1 + (timing.thickenFactor - 1) * swell;
     for (const mesh of running.loop) {
         mesh.material.emissiveIntensity = intensity;
         // Cylinders are built along their own Y, which lookAt then aims down the
@@ -254,20 +247,17 @@ export function updateCelebration(gameState, delta) {
         mesh.scale.set(thickness, 1, thickness);
     }
 
-    // Beat 2: the partition spreads. Each face has its own moment in the beat and
-    // its own short fade, so the front is a soft edge rather than a row of faces
-    // popping on together.
-    const spread = (t - timing.partitionStartSeconds) / timing.partitionSeconds;
-    if (spread < 0 || running.painted) return;
-    const fadeFraction = timing.faceFadeSeconds / timing.partitionSeconds;
-    for (const {faceId, color, at} of running.faces) {
-        const how = Math.max(0, Math.min(1, (spread - at) / fadeFraction));
-        if (how <= 0) continue;
+    // Beat 2: the whole surface fades from its near-white to the two partition
+    // colours at once.
+    const fade = (t - timing.partitionStartSeconds) / timing.partitionSeconds;
+    if (fade <= 0 || running.painted) return;
+    const how = Math.min(1, fade);
+    for (const {faceId, color} of running.faces) {
         paintFace(gameState, faceId,
                   _faceTint.copy(FACE_COLORS.default).lerp(color, how));
     }
-    // The last face finishes a fade after the last one starts. Once it has, the
-    // colours are final: stop touching them, or every remaining frame of the
-    // shimmer would re-upload the whole solid's colour attribute for nothing.
-    if (spread >= 1 + fadeFraction) running.painted = true;
+    // Once the fade is done the colours are final: stop touching them, or every
+    // remaining frame of the shimmer would re-upload the whole solid's colour
+    // attribute for nothing.
+    if (how >= 1) running.painted = true;
 }

@@ -99,13 +99,20 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
    direction has nothing to read wrongly, and its speed in cycles per second means
    the same thing on a 3-edge loop and a 131-edge one.
 2. **The two sides colour in** (0.5 → 2.0s). Pale amber on one region, pale teal
-   on the other, spreading as a front. The order is not decorative: it comes from
-   the flood fill that finds the regions, running in *descending* distance from
-   the loop, so each region colours from its deepest interior outward and the
-   fronts reach the boundary LAST. The final thing the player sees is the two
-   colours meeting along the curve they drew, which is the whole point being made.
-   Both fronts share one clock, so a lopsided pair of regions still arrives
-   together.
+   on the other, the whole surface fading together from its near-white. The
+   smaller region takes the warm colour, since warm advances and cool recedes, so
+   the minority side pops instead of hiding.
+
+   **Animating this as a spreading front was built twice and dropped twice.**
+   Ordering by distance from the loop collapses: on these solids nearly every face
+   *touches* the loop, so distance is 0 for the great majority and almost the whole
+   surface lands in one step — measured on a cube, one face coloured at the start
+   and the other five together at the very end, after the tumble had begun.
+   Ordering by distance from a seed face spreads properly, but it implies the seed
+   is a meaningful place on the puzzle, and it is only wherever the fill began. A
+   spreading fill would mean something if it started from the last edge the player
+   filled — but that needs the solve detected the instant it happens, rather than
+   when Check is pressed.
 3. **The tumble** (2.1s). Not decoration here, which is why it moved: a partition
    of a closed surface cannot be seen from one side, so turning the solid is what
    shows the two colours carrying on round the back. It had no such job in an
@@ -140,8 +147,16 @@ resolves over the tumble.
   insurance for the rare blue-yellow case, and separates them in greyscale.
 - **Stop painting once the partition is final.** The face tints go through the
   solid's single vertex-color attribute, so touching one face marks the whole
-  attribute for re-upload. Beat 2 sets a flag when the last face finishes its
-  fade, and after that the per-frame shimmer leaves the faces alone.
+  attribute for re-upload. Beat 2 sets a flag when the fade completes, and after
+  that the per-frame shimmer leaves the faces alone.
+- **Face coloring needs `faceVertexRanges`, which used to arrive empty.**
+  `GameState.setupScene` destructured `faceMap` and `faceVertexRanges` out of the
+  polyhedron data and then dropped them, while `setupEdges` looked for them on the
+  scene manager, which never had them — so `setupCrossReferences` got two empty
+  Maps. Every face-coloring path then did nothing, silently, because a missing
+  range is skipped rather than raised. That had also disabled `interaction.js`'s
+  debug face highlight, which is presumably why nobody noticed. Fixed by holding
+  them on the GameState between the two calls.
 - The color-based effects all ride the existing render loop and cost almost
   nothing. The expensive-sounding ideas above are the ones that need new geometry,
   and a true bloom halo would need a render-pipeline change (an `EffectComposer`

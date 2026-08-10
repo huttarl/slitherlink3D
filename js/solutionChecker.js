@@ -128,25 +128,29 @@ export function isClueSatisfied(grid, face) {
 }
 
 /**
- * Split the surface into the two regions the solution loop separates, and
- * measure how far each face is from that loop.
+ * Split the surface into the two regions the solution loop separates.
  *
- * This is what the loop MEANS: a closed curve on a sphere cuts it in two, and
- * the two regions are exactly the faces you can walk between without crossing
+ * This is what the loop MEANS: a closed curve on a closed surface cuts it in two,
+ * and the two regions are exactly the faces you can walk between without crossing
  * the loop. The celebration colours them to show it (see js/celebration.js).
  *
- * A flood fill that refuses to cross a loop edge, then a second, multi-source
- * fill outward from the faces that touch the loop -- so `distance` is the number
- * of faces you must step through to reach the boundary. That ordering is what
- * lets the colours be animated as a front converging on the loop.
+ * A flood fill that refuses to cross a loop edge, and nothing more. Two richer
+ * versions were built and removed, which is worth recording so they aren't
+ * rebuilt: a distance-to-the-loop map, and a fill order seeded at each region's
+ * middle. Both existed to animate the colouring as a spreading front, and both
+ * failed as ideas rather than as code. Distance from the loop collapses, because
+ * on these solids nearly every face TOUCHES the loop, so almost the whole surface
+ * lands in one step. Distance from a seed spreads properly but implies the seed is
+ * a meaningful place on the puzzle, and it is only wherever the fill began. The
+ * colouring now happens all at once.
  *
  * Takes the loop as a VERTEX cycle, the form the puzzle stores it in.
  *
  * @param {Grid} grid
  * @param {number[]} loop - solution as a cycle of vertex IDs
- * @returns {{regions: number[][], distance: Map<number, number>}} regions is
- *     one array of face IDs per region -- two for a valid loop, but however many
- *     the marks actually produce, so a caller is never surprised
+ * @returns {{regions: number[][]}} one array of face IDs per region -- two for a
+ *     valid loop, but however many the marks actually produce, so a caller is
+ *     never surprised
  */
 export function partitionFacesByLoop(grid, loop) {
     // The loop as edge IDs, which is what "don't cross" has to test.
@@ -189,40 +193,7 @@ export function partitionFacesByLoop(grid, loop) {
         regions.push(members);
     }
 
-    // Distance to the loop, breadth-first from every face that touches it at
-    // once. Multi-source rather than one fill per face: the answer wanted is the
-    // distance to the NEAREST boundary face, which one sweep gives.
-    const distance = new Map();
-    let frontier = [];
-    for (const faceId of grid.faces.keys()) {
-        const touchesLoop = grid.faces.get(faceId).edgeIDs
-            .some(edgeId => loopEdges.has(edgeId));
-        if (touchesLoop) {
-            distance.set(faceId, 0);
-            frontier.push(faceId);
-        }
-    }
-    let depth = 0;
-    while (frontier.length > 0) {
-        depth++;
-        const next = [];
-        for (const faceId of frontier) {
-            for (const neighbor of neighborsWithin(faceId)) {
-                if (!distance.has(neighbor)) {
-                    distance.set(neighbor, depth);
-                    next.push(neighbor);
-                }
-            }
-        }
-        frontier = next;
-    }
-    // A face in no region touching the loop at all (no loop, or a stray region)
-    // still needs a number, or the caller's arithmetic goes to NaN.
-    for (const faceId of grid.faces.keys()) {
-        if (!distance.has(faceId)) distance.set(faceId, 0);
-    }
-
-    return {regions, distance};
+    return {regions};
 }
 
 /**
