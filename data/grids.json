@@ -405,7 +405,7 @@
       "file": "cD",
       "gridId": "cD",
       "gridName": "Chamfered dodecahedron",
-      "categories": ["Miscellaneous", "Goldberg"],
+      "categories": ["Miscellaneous", "Goldberg", "Near-miss Johnson solid"],
       "faces": 42,
       "edges": 120,
       "vertices": 80,
@@ -489,6 +489,16 @@
       "faces": 72,
       "edges": 210,
       "vertices": 140,
+      "numPuzzles": 3
+    },
+    {
+      "file": "etI",
+      "gridId": "etI",
+      "gridName": "Expanded truncated icosahedron",
+      "categories": ["Miscellaneous", "Near-miss Johnson solid"],
+      "faces": 182,
+      "edges": 360,
+      "vertices": 180,
       "numPuzzles": 3
     }
   ]

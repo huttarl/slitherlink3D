@@ -128,6 +128,7 @@ const CATEGORY_PAGES = {
     'antiprism': POLYTOPE_WIKI + 'Antiprism',
     'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
     'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',
+    'Near-miss Johnson solid': POLYTOPE_WIKI + 'Near-miss_Johnson_solid',
 };
 
 /** Categories we have deliberately decided not to link (see above). */
