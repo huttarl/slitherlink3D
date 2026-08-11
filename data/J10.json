@@ -2,6 +2,7 @@
   "gridId": "J10",
   "gridName": "Gyroelongated square pyramid (J10)",
   "categories": ["Johnson solid"],
+  "source": "https://levskaya.github.io/polyhedronisme/?recipe=J10",
   "recipe": "J10",
   "vertices": [
     [-0.69, 0.137, 0.335],

@@ -3,6 +3,7 @@
   "gridName": "Cuboctahedron",
   "categories": ["Archimedean solid", "quasiregular"],
   "recipe": "aC",
+  "source": "https://levskaya.github.io/polyhedronisme/?recipe=aC",
   "vertices": [
     [-0.707106781, -0.707106781, 0.0],
     [-0.707106781, 0.0, -0.707106781],

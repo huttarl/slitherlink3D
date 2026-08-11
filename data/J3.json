@@ -3,6 +3,7 @@
   "gridName": "Triangular cupola (J3)",
   "categories": ["Johnson solid"],
   "recipe": "J3",
+  "source": "https://levskaya.github.io/polyhedronisme/?recipe=J3",
   "vertices": [
     [-0.793, 0.58, 0.186],
     [-0.649, 0.316, -0.692],

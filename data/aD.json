@@ -2,6 +2,7 @@
   "gridId": "aD",
   "gridName": "Icosidodecahedron",
   "categories": ["Archimedean solid", "quasiregular"],
+  "source": "https://levskaya.github.io/polyhedronisme/?recipe=aD",
   "recipe": "aD",
   "vertices": [
     [-1.0, 0.0, 0.0],

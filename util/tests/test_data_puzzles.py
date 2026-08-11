@@ -146,6 +146,37 @@ def test_puzzle_agrees_with_its_grid(grid_path, puzzles_path, key, index):
         assert used == clue, f'face {fkey} says {clue} but the loop uses {used}'
 
 
+def grid_files():
+    """Every grid file in data/: not the puzzles, not the catalogue."""
+    return [p for p in sorted(DATA_DIR.glob('*.json'))
+            if p.name != 'grids.json' and not p.name.endswith('-puzzles.json')]
+
+
+def test_source_urls_name_the_right_solid():
+    """A polyHedronisme "source" must point at the solid it sits beside.
+
+    Worth a test because the failure is invisible: the URL is well-formed, it
+    returns 200, and it shows somebody else's polyhedron. data/J1.json really did
+    ship with ?recipe=J92 for a moment, copied from an example and not substituted,
+    and nothing else would have noticed.
+
+    The recipe in the URL should match the grid's own "recipe" field, or its gridId
+    where it has none -- which is what "recipe" is for these solids anyway.
+    """
+    prefix = 'https://levskaya.github.io/polyhedronisme/?recipe='
+    wrong = []
+    for path in grid_files():
+        grid = json.loads(path.read_text())
+        source = grid.get('source', '')
+        if not source.startswith(prefix):
+            continue            # generated grids say which script made them
+        named = source[len(prefix):]
+        expected = grid.get('recipe') or grid['gridId']
+        if named != expected:
+            wrong.append(f'{path.name} points at {named}, expected {expected}')
+    assert wrong == [], '; '.join(wrong)
+
+
 def test_display_puzzles_key_is_never_empty():
     """An empty "displayPuzzles" would promise the title screen a loop that isn't
     there; the key is omitted instead (see docs/json-format.md).

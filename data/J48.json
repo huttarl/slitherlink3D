@@ -3,6 +3,7 @@
   "gridName": "Gyroelongated pentagonal birotunda (J48)",
   "categories": ["Johnson solid", "chiral"],
   "recipe": "J48",
+  "source": "https://levskaya.github.io/polyhedronisme/?recipe=J48",
   "vertices": [
     [-0.929, 0.317, 0.192],
     [-0.928, 0.223, -0.299],

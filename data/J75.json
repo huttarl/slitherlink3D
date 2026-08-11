@@ -3,6 +3,7 @@
   "gridName": "Trigyrate rhombicosidodecahedron (J75)",
   "categories": ["Johnson solid"],
   "recipe": "J75",
+  "source": "https://levskaya.github.io/polyhedronisme/?recipe=J75",
   "vertices": [
     [-0.98, -0.197, -0.006],
     [-0.946, 0.151, -0.286],

@@ -3,6 +3,7 @@
   "gridName": "Gyroelongated pentagonal cupolarotunda (J47)",
   "categories": ["Johnson solid", "chiral"],
   "recipe": "J47",
+  "source": "https://levskaya.github.io/polyhedronisme/?recipe=J47",
   "vertices": [
     [-0.852, -0.506, -0.135],
     [-0.839, -0.358, 0.41],

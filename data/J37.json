@@ -3,6 +3,7 @@
   "gridName": "Elongated square gyrobicupola (J37)",
   "categories": ["Johnson solid"],
   "recipe": "J37",
+  "source": "https://levskaya.github.io/polyhedronisme/?recipe=J37",
   "vertices": [
     [-0.863, 0.357, -0.357],
     [-0.863, -0.357, -0.357],
