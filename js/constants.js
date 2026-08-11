@@ -41,6 +41,18 @@ export const CAMERA_DISTANCE = 6;
 // distance asked for.
 export const CAMERA_HEIGHT = 1;
 
+// The board's opening move: the camera begins this multiple of CAMERA_DISTANCE
+// out and closes in over CAMERA_INTRO_SECONDS, so the solid arrives rather than
+// merely being there. A factor rather than a distance of its own, so retuning
+// CAMERA_DISTANCE carries it along.
+//
+// It has to stay within CAMERA_MAX_ZOOM: the controls clamp the distance, so a
+// start beyond their limit would be hauled back in on the first frame and the
+// zoom would begin from the wrong place. 6 x 1.5 = 9 against a limit of 10, and
+// a test in cameraIntro.test.js holds the two together.
+export const CAMERA_INTRO_FACTOR = 1.5;
+export const CAMERA_INTRO_SECONDS = 1.2;
+
 // The camera's vertical field of view, in degrees. A perspective camera's fov is
 // the VERTICAL one, so the horizontal view depends on the viewport's aspect
 // ratio -- which is why a tall phone screen sees less of the solid at a given

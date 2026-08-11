@@ -44,8 +44,11 @@ import {debug} from './debug.js';
 let running = null;
 
 /** Does the player's system ask for less motion? Read per call rather than
- *  cached: the setting can change while the page is open. */
-function prefersReducedMotion() {
+ *  cached: the setting can change while the page is open.
+ *
+ *  Exported because the board's opening zoom asks the same question (see main.js),
+ *  and one copy of the query string is better than two that can drift apart. */
+export function prefersReducedMotion() {
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 

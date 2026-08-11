@@ -2,6 +2,10 @@ Completed items, moved out of TODOs.md (2026-08-05) to keep the live list
 readable. Text is verbatim, including the notes recording how each was settled.
 Anything still marked [~] or containing open sub-items stayed in TODOs.md.
 
+
+- [x] put in some aesthetic animation: smoothed zooming in on load, zooming out when solved,
+    smoothed autorotate after load (while zooming), stops when mouse clicked.
+
 - [x] quick?: highlight the "Check Solution" button automatically when it's ready to check.
     Not sure if "ready to check" should mean when all clues are satisfied and no mistakes are highlighted ... or only
     when the puzzle is completely & correctly solved... or when the loop is complete and not self-intersecting...

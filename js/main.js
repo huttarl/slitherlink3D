@@ -1,11 +1,11 @@
 import {updateTextVisibility} from './clueRenderer.js';
-import {updateCelebration} from './celebration.js';
+import {prefersReducedMotion, updateCelebration} from './celebration.js';
 import {createGameState} from "./scene.js";
 import {setupUI} from "./ui.js";
 import {expandDrawer, initPanelLayout} from "./panelLayout.js";
 import {initTitleScreen, openHowToPlay, titleScreenCameraDistance,
         wantsTitleScreen} from "./titleScreen.js";
-import {CAMERA_DISTANCE} from "./constants.js";
+import {CAMERA_DISTANCE, CAMERA_INTRO_FACTOR} from "./constants.js";
 
 async function main() {
     // Get the panel into its right shape before anything slow: loading the grid
@@ -43,6 +43,16 @@ async function main() {
     // first press on the board stops it (see onPointerDown in interaction.js),
     // so it costs nothing once they start playing.
     sceneManager.startTumble();
+
+    // And close in on the board as it appears, so the solid arrives rather than
+    // simply being there. Not on the title screen, which has its own framing
+    // (already closer in, and chosen to fit the window) -- and not for a player
+    // who has asked for less motion, for whom an unbidden camera move is exactly
+    // the wrong welcome.
+    if (!titleScreen && !prefersReducedMotion()) {
+        sceneManager.startIntroZoom(CAMERA_DISTANCE * CAMERA_INTRO_FACTOR,
+                                    CAMERA_DISTANCE);
+    }
 
     // Render loop.
     //
@@ -85,6 +95,13 @@ async function main() {
         // leaves the controls' zoom in effect, since the tumble takes the
         // camera's current distance as given.
         sceneManager.updateTumble(delta);
+
+        // The opening zoom, if one is running (a no-op otherwise). AFTER the
+        // tumble for the same reason the tumble comes after the controls: the
+        // tumble rebuilds the camera's position from its orientation at whatever
+        // radius it finds, so a distance set before it would be discarded. It only
+        // touches the distance, leaving the tumble's orientation alone.
+        sceneManager.updateIntroZoom(delta);
 
         // The solve celebration, if one is running (a no-op otherwise). Before
         // the render and independent of the camera: it only recolours and

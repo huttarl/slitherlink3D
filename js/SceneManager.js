@@ -1,8 +1,8 @@
 import * as THREE from './three/three.module.min.js';
 import { OrbitControls } from './three/OrbitControls.js';
 import { TrackballControls } from './three/TrackballControls.js';
-import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, CAMERA_HEIGHT, CAMERA_MAX_ZOOM,
-        CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS, LIGHT_INTENSITIES,
+import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, CAMERA_HEIGHT, CAMERA_INTRO_SECONDS,
+        CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS, LIGHT_INTENSITIES,
         TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED,
         TUMBLE_DEGREES_PER_SEC} from "./constants.js";
 import {debug} from "./debug.js";
@@ -54,6 +54,8 @@ export class SceneManager {
         // True while the "Right side up" button's animation is running;
         // see levelCamera() and updateLevelling().
         this.isLevelling = false;
+        // True while the board's opening zoom is running; see startIntroZoom().
+        this.isIntroZooming = false;
         // Timekeeping for the render loop and the solve timer. (THREE.Timer,
         // successor of the deprecated THREE.Clock.) connect(document) hooks
         // the Page Visibility API, so time doesn't accumulate while the tab
@@ -302,6 +304,78 @@ export class SceneManager {
             // the orientation we just settled into.
             this.camera.up.set(0, 1, 0);
         }
+    }
+
+    /**
+     * Starts the board's opening zoom: pull the camera out, then let it settle in
+     * to where it would have been.
+     *
+     * Only the DISTANCE from the target moves. The direction is left exactly as it
+     * is on every frame, which is what lets this run alongside the tumble without
+     * either having to know about the other: the tumble sets an orientation and
+     * derives a position at whatever radius it finds, and this then corrects the
+     * radius. Next frame the tumble takes the corrected radius as given, the same
+     * way it accepts a zoom from the player's own scroll wheel.
+     *
+     * Call it AFTER setupControls, since it needs controls.target, and the caller
+     * should place it after updateTumble in the frame (see main.js).
+     *
+     * @param {number} fromDistance - where to start, which must be inside the
+     *     controls' maxDistance or they will pull it back on the first frame
+     * @param {number} toDistance - where to end up
+     */
+    startIntroZoom(fromDistance, toDistance) {
+        this._introFrom = fromDistance;
+        this._introTo = toDistance;
+        this._introProgress = 0;
+        this.isIntroZooming = true;
+        // Put the camera at the starting distance now, before the first frame is
+        // drawn, so the zoom begins from out there rather than jumping out on
+        // frame two.
+        this._setCameraDistance(fromDistance);
+    }
+
+    /** Abandons the opening zoom where it stands, leaving the camera put. Called
+     *  when the player takes the view over; a zoom that fought a drag would
+     *  win, since it runs later in the frame. */
+    stopIntroZoom() {
+        this.isIntroZooming = false;
+    }
+
+    /**
+     * Advances the opening zoom, if one is running. A no-op otherwise, so the
+     * render loop can call it unconditionally.
+     * @param {number} deltaSeconds - time since the previous frame
+     */
+    updateIntroZoom(deltaSeconds) {
+        if (!this.isIntroZooming) return;
+
+        this._introProgress = Math.min(
+            1, this._introProgress + deltaSeconds / CAMERA_INTRO_SECONDS);
+        // The same ease as updateLevelling: smoothstep is 0 at 0 and 1 at 1 with
+        // zero slope at both ends, so the movement has no visible start or stop.
+        const t = this._introProgress;
+        const eased = t * t * (3 - 2 * t);
+        this._setCameraDistance(
+            this._introFrom + (this._introTo - this._introFrom) * eased);
+
+        if (this._introProgress >= 1) this.isIntroZooming = false;
+    }
+
+    /**
+     * Moves the camera to `distance` from the controls' target, along the
+     * direction it is already looking from. Orientation is untouched.
+     */
+    _setCameraDistance(distance) {
+        const outward = this._introOutward
+            || (this._introOutward = new THREE.Vector3());
+        outward.copy(this.camera.position).sub(this.controls.target);
+        // A zero vector has no direction to preserve, and setLength would give
+        // NaN. It cannot happen from any real camera position, but a NaN reaching
+        // the camera is unrecoverable and silent, so it is worth the two lines.
+        if (outward.lengthSq() === 0) return;
+        this.camera.position.copy(
+            outward.setLength(distance).add(this.controls.target));
     }
 
     /**

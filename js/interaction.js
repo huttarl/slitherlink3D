@@ -356,6 +356,10 @@ export function makeInteraction(gameState) {
         // lands rather than when it lifts.
         if (event.target === sceneManager.renderer.domElement) {
             sceneManager.stopTumble();
+            // And the opening zoom, for the same reason: it runs after the
+            // controls, so a pinch or a scroll during it would be overwritten
+            // rather than obeyed. Leaves the camera wherever it had got to.
+            sceneManager.stopIntroZoom();
 
             // Touching the board also takes keyboard focus out of the panel.
             // A canvas isn't focusable, so without this, focus STAYS on whatever
@@ -446,6 +450,13 @@ export function makeInteraction(gameState) {
     window.addEventListener('pointercancel', onPointerUp);
     window.addEventListener('contextmenu', onContextMenu);
     window.addEventListener('resize', onWindowResize);
+    // A wheel or trackpad zoom is the one way to take over the view without a
+    // pointerdown, so the opening zoom has to listen for it too or it would spend
+    // its remaining second undoing what the player just asked for. It does NOT
+    // stop the tumble: that has always ended on a press, and a zoom is not a
+    // request to stop looking round.
+    window.addEventListener('wheel', () => sceneManager.stopIntroZoom(),
+                            {passive: true});
 
     // Return cleanup function
     return {
