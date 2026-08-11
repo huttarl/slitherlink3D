@@ -17,8 +17,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 
 import * as THREE from '../three/three.module.min.js';
-import { CAMERA_DISTANCE, CAMERA_INTRO_FACTOR, CAMERA_INTRO_SECONDS,
-         CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM } from '../constants.js';
+import { CAMERA_DISTANCE, CAMERA_INTRO_FACTOR, CAMERA_INTRO_MAX_FRAME_SECONDS,
+         CAMERA_INTRO_SECONDS, CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM } from '../constants.js';
 
 // SceneManager's constructor hands its THREE.Timer to document, so that time
 // doesn't accumulate while the tab is hidden. Nothing to do with the zoom, but it
@@ -99,6 +99,13 @@ describe('startIntroZoom', () => {
 describe('updateIntroZoom', () => {
     /** Run the zoom to completion in `steps` equal frames, collecting distances. */
     function runToEnd(steps) {
+        // The frames have to be shorter than the cap, or they get shortened and the
+        // run doesn't reach the end -- which would make these tests quietly measure
+        // something else. Asserted rather than assumed, since it depends on two
+        // constants that may be retuned.
+        assert.ok(CAMERA_INTRO_SECONDS / steps <= CAMERA_INTRO_MAX_FRAME_SECONDS,
+            `${steps} frames of ${CAMERA_INTRO_SECONDS / steps}s each exceed the `
+            + `${CAMERA_INTRO_MAX_FRAME_SECONDS}s cap; use more steps`);
         const manager = managerLookingFrom(new THREE.Vector3(0, 0, CAMERA_DISTANCE));
         manager.startIntroZoom(START, CAMERA_DISTANCE);
         const seen = [distance(manager)];
@@ -128,18 +135,40 @@ describe('updateIntroZoom', () => {
 
     test('eases: it moves less in the first and last frames than in the middle', () => {
         // What smoothstep buys, and the reason for it: no visible start or stop.
-        const {seen} = runToEnd(10);
+        const {seen} = runToEnd(16);
         const step = (i) => seen[i] - seen[i + 1];
         const middle = step(Math.floor(seen.length / 2) - 1);
         assert.ok(step(0) < middle, 'should start gently');
         assert.ok(step(seen.length - 2) < middle, 'should finish gently');
     });
 
-    test('a long frame finishes the zoom rather than shooting past', () => {
-        // A tab that was hidden, or a slow first frame, hands over a huge delta.
+    test('a slow frame stretches the zoom instead of consuming it', () => {
+        // THE MOBILE BUG, in one call. A slow load or a first frame that compiles
+        // shaders hands over a delta worth much of the animation, and honouring it
+        // literally spent the entire zoom before anything was painted: the board
+        // appeared at its resting distance, as though there were no zoom at all.
+        // Fast machines never showed it. So a frame is worth at most
+        // CAMERA_INTRO_MAX_FRAME_SECONDS however long it really took.
         const manager = managerLookingFrom(new THREE.Vector3(0, 0, CAMERA_DISTANCE));
         manager.startIntroZoom(START, CAMERA_DISTANCE);
         manager.updateIntroZoom(60);
+        assert.strictEqual(manager.isIntroZooming, true,
+            'one slow frame should not be able to finish the zoom');
+        const capped = CAMERA_INTRO_MAX_FRAME_SECONDS / CAMERA_INTRO_SECONDS;
+        assert.ok(Math.abs(manager._introProgress - capped) < 1e-12,
+            `advanced to ${manager._introProgress}, expected the cap ${capped}`);
+        // And still most of the way out, which is the point: there is a zoom left
+        // to watch.
+        assert.ok(distance(manager) > CAMERA_DISTANCE + (START - CAMERA_DISTANCE) * 0.9);
+    });
+
+    test('slow frames still get there, and still stop', () => {
+        // Slow motion, not a stall: capping the step must not cost the zoom its
+        // ending. Enough long frames to cover the duration at the capped rate.
+        const manager = managerLookingFrom(new THREE.Vector3(0, 0, CAMERA_DISTANCE));
+        manager.startIntroZoom(START, CAMERA_DISTANCE);
+        const frames = Math.ceil(CAMERA_INTRO_SECONDS / CAMERA_INTRO_MAX_FRAME_SECONDS);
+        for (let i = 0; i < frames; i++) manager.updateIntroZoom(5);
         assert.ok(Math.abs(distance(manager) - CAMERA_DISTANCE) < 1e-9);
         assert.strictEqual(manager.isIntroZooming, false);
     });
@@ -153,7 +182,13 @@ describe('updateIntroZoom', () => {
     test('stopIntroZoom leaves the camera where it had got to', () => {
         const manager = managerLookingFrom(new THREE.Vector3(0, 0, CAMERA_DISTANCE));
         manager.startIntroZoom(START, CAMERA_DISTANCE);
-        manager.updateIntroZoom(CAMERA_INTRO_SECONDS / 2);
+        // Half the duration, in frames the cap will accept whole, so the camera is
+        // genuinely halfway rather than a capped nudge from the start.
+        const half = Math.round(CAMERA_INTRO_SECONDS / 2
+                                / CAMERA_INTRO_MAX_FRAME_SECONDS);
+        for (let i = 0; i < half; i++) {
+            manager.updateIntroZoom(CAMERA_INTRO_MAX_FRAME_SECONDS);
+        }
         const interrupted = distance(manager);
         manager.stopIntroZoom();
         manager.updateIntroZoom(CAMERA_INTRO_SECONDS);

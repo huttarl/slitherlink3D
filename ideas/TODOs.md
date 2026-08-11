@@ -1,6 +1,8 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
+- [ ] on phone: edges are too thin, hard to pick.
+
 - [ ] If I accidentally press "back", it goes to the previous puzzle, without any
   confirmation about leaving. If I then go "forward", it returns to the puzzle
   I was on, apparently preserving my marks, but then the puzzle is frozen and I can't

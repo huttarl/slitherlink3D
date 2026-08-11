@@ -1,7 +1,8 @@
 import * as THREE from './three/three.module.min.js';
 import { OrbitControls } from './three/OrbitControls.js';
 import { TrackballControls } from './three/TrackballControls.js';
-import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, CAMERA_HEIGHT, CAMERA_INTRO_SECONDS,
+import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, CAMERA_HEIGHT,
+        CAMERA_INTRO_MAX_FRAME_SECONDS, CAMERA_INTRO_SECONDS,
         CAMERA_MAX_ZOOM, CAMERA_MIN_ZOOM, LEVEL_CAMERA_SECONDS, LIGHT_INTENSITIES,
         TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED,
         TUMBLE_DEGREES_PER_SEC} from "./constants.js";
@@ -118,19 +119,13 @@ export class SceneManager {
      * to happen: createGameState needs the Scene early, to add the skybox and
      * the polyhedron to, while setupStuff (camera, renderer, controls) can only
      * run later, once the canvas container is in the DOM. So this is the point
-     * where the scene begins, and hence where the timer is re-baselined.
+     * where the scene begins.
      *
      * (A "TODO: this function is probably not helpful" sat here for a while.
      * The answer turned out to be that it is: the sequence above needs it.)
      */
     initializeScene() {
         this.scene = new THREE.Scene();
-        // Re-baseline the timer's delta computation so the first frame's
-        // delta doesn't span construction-to-now. (Timer.reset() does not
-        // zero the elapsed count -- but nothing has accumulated yet anyway,
-        // since elapsed time only advances via update() calls in the
-        // render loop, and only while the tab is visible.)
-        this.timer.reset();
         return this.scene;
     }
 
@@ -355,8 +350,12 @@ export class SceneManager {
     updateIntroZoom(deltaSeconds) {
         if (!this.isIntroZooming) return;
 
+        // Cap the step: see CAMERA_INTRO_MAX_FRAME_SECONDS. A slow frame stretches
+        // the zoom rather than eating it, which for a one-off gesture this short is
+        // the difference between arriving late and never being seen.
+        const step = Math.min(deltaSeconds, CAMERA_INTRO_MAX_FRAME_SECONDS);
         this._introProgress = Math.min(
-            1, this._introProgress + deltaSeconds / CAMERA_INTRO_SECONDS);
+            1, this._introProgress + step / CAMERA_INTRO_SECONDS);
         // The same ease as updateLevelling: smoothstep is 0 at 0 and 1 at 1 with
         // zero slope at both ends, so the movement has no visible start or stop.
         const t = this._introProgress;

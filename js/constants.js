@@ -53,6 +53,20 @@ export const CAMERA_HEIGHT = 1;
 export const CAMERA_INTRO_FACTOR = 1.5;
 export const CAMERA_INTRO_SECONDS = 1.2;
 
+// The longest single frame the opening zoom will believe in. Beyond this it runs
+// in slow motion rather than skipping ahead, because a zoom the player never saw
+// is worse than one that takes a moment longer than it meant to.
+//
+// It needs this and the render loop's re-baselined timer both. The board's first
+// frames are its most expensive -- shaders compile, geometry uploads -- and on a
+// phone one of them can cost a good fraction of a second. Against a whole
+// animation of only CAMERA_INTRO_SECONDS, a single unclamped frame like that is
+// most of the zoom, so the solid would already be sitting at its resting distance
+// by the time anything was painted. 1/10 s is four frames' grace at 60fps: long
+// enough to pass ordinary jitter through untouched, short enough that the worst
+// stall costs the zoom a twelfth of its length instead of half.
+export const CAMERA_INTRO_MAX_FRAME_SECONDS = 0.1;
+
 // The camera's vertical field of view, in degrees. A perspective camera's fov is
 // the VERTICAL one, so the horizontal view depends on the viewport's aspect
 // ratio -- which is why a tall phone screen sees less of the solid at a given

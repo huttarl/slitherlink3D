@@ -115,6 +115,23 @@ async function main() {
         // Render the scene
         gameState.render();
     }
+    // Start the clock HERE, immediately before the first frame, and not a moment
+    // earlier. Timer measures each delta from the previous update() -- or, until
+    // there has been one, from its last reset() -- so whatever gap it is left
+    // straddling arrives as the first frame's delta. Everything above this line is
+    // in that gap: two JSON fetches, the geometry, the edge cylinders, the clue
+    // sprites. Loading is not elapsed animation time, and handing it to the render
+    // loop as though it were made the opening zoom fail on slow devices while
+    // working on fast ones -- a phone spent its whole 1.2s of zoom before painting
+    // anything, so the board simply appeared at its resting distance. The tumble
+    // never showed the bug: it has no end to arrive at early, so one big first step
+    // only turned the solid a little further before carrying on.
+    //
+    // The solve time is unaffected. reset() does not zero the elapsed count, but
+    // nothing has accumulated yet: elapsed only advances through the update() below,
+    // and only while the tab is visible.
+    sceneManager.timer.reset();
+
     animate();
 
     // Handle window resize
