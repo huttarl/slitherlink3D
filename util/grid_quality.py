@@ -24,14 +24,22 @@ What it measures, and why each one matters:
               coordinates; small values are invisible, and note that
               util/obj2json.py rounds coordinates to 3 decimals, which alone
               costs a few thousandths.
-  zones       how many directions the edges run in, and -- when every face is a
-              quadrilateral -- how far the worst face is from being a
-              parallelogram, plus its longest side over its shortest. This is the
-              zonohedron test: a zonohedron is built from a few generating vectors
-              and every edge is a translate of one, so the directions are few, the
-              skew is 0 and the ratio is 1 for the rhombic ones. Being told that a
-              zonohedron's edges run in parallel families is no use if the solid on
-              screen doesn't show it.
+  zones       how many directions the edges run in, and -- when every face has an
+              even number of sides -- how far the worst face is from being
+              centrally symmetric, plus (for quadrilaterals) its longest side over
+              its shortest. This is the zonohedron test: a zonohedron is a sum of
+              line segments, so its edges are translates of a few generating
+              vectors, and every face is itself centrally symmetric. Directions are
+              therefore few and skew 0, with the ratio 1 for the rhombic ones.
+              Being told that a zonohedron's edges run in parallel families is no
+              use if the solid on screen doesn't show it.
+
+              An odd-sided face settles it with no measuring, since such a face
+              cannot be centrally symmetric. Even faces are NOT only quadrilaterals:
+              the truncated octahedron and truncated cuboctahedron are zonohedra
+              whose hexagons and octagons are centrally symmetric, which is the
+              degenerate case where coplanar generators merge two parallelograms
+              into one larger face.
   degrees     how many faces meet at each vertex. Slitherlink's vertex rule says
               0 or 2 of a vertex's edges are used, so a 3-valent vertex leaves
               four possibilities and a 10-valent one forty-six: high degree means
@@ -89,16 +97,25 @@ def report(path):
           f'(x{max(inradii) / min(inradii):.1f})')
     print(f'  bow       {max(face_bow(f) for f in faces):.1e}')
     zones = len(direction_classes(V, F, DIRECTION_TOLERANCE))
-    if all(len(face) == 4 for face in F):
-        print(f'  zones     {zones} edge directions; worst face skew '
-              f'{max(face_skew(f) for f in faces):.1e}, '
-              f'side ratio {max(side_ratio(f) for f in faces):.2f}')
+    if all(len(face) % 2 == 0 for face in F):
+        # Even-sided throughout, so central symmetry is testable face by face --
+        # which is what face_skew measures for any even face, not just a quad. The
+        # side ratio only means something for quads, where equal sides are what
+        # makes a rhombus; a zonohedron's hexagon has no reason to be equilateral.
+        line = (f'  zones     {zones} edge directions; worst face skew '
+                f'{max(face_skew(f) for f in faces):.1e}')
+        if all(len(face) == 4 for face in F):
+            line += f', side ratio {max(side_ratio(f) for f in faces):.2f}'
+        else:
+            line += ' (centrally symmetric faces)'
+        print(line)
     else:
-        # Skew and side ratio are only about parallelograms, so they would say
-        # nothing here -- but the direction count is a fact about any solid, and a
-        # small one is interesting in itself (a cube's edges run three ways).
+        # An odd-sided face cannot be centrally symmetric, and every face of a
+        # zonohedron must be, so this settles it with no measuring. The direction
+        # count is still a fact about any solid, and a small one is interesting in
+        # itself (a cube's edges run three ways).
         print(f'  zones     {zones} edge directions '
-              f'(faces are not all quadrilaterals)')
+              f'(an odd-sided face, so no zonohedron)')
     tally = {}
     for degree in vertex_degrees(F).values():
         tally[degree] = tally.get(degree, 0) + 1
