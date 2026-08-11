@@ -1,20 +1,25 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
-- [ ] tetrakis snub cube (geodesic-ish)
-I want to add a few geodesic polyhedra to our grid. It's probably not worth a new family though; we'll keep them under Miscellaneous. But "geodesic" would be a new category.
-- Read https://en.wikipedia.org/wiki/Geodesic_polyhedron 
-- What would be the best 2 or 3 geodesic polyhedra to add? My criteria are:
-- Simpler is better
-- Get the real "flavor" of geodesic solids
-- distinct from existing grids (like icosahedron)
-- Maybe a variety of class I, II, III from the wikipedia article
-- Don't let them get too big. All-triangle solids are probably boring at large size.
-
+- [x] tetrakis snub cube (geodesic-ish)
+- [x] I want to add a few geodesic polyhedra to our grid. It's probably not worth a new family though; we'll keep them under Miscellaneous. But "geodesic" would be a new category.
+  - Read https://en.wikipedia.org/wiki/Geodesic_polyhedron 
+  - What would be the best 2 or 3 geodesic polyhedra to add? My criteria are:
+  - Simpler is better
+  - Get the real "flavor" of geodesic solids
+  - distinct from existing grids (like icosahedron)
+  - Maybe a variety of class I, II, III from the wikipedia article
+  - Don't let them get too big. All-triangle solids are probably boring at large size.
 - [ ] If I accidentally press "back", it goes to the previous puzzle, without any
   confirmation about leaving. If I then go "forward", it returns to the puzzle
   I was on, apparently preserving my marks, but then the puzzle is frozen and I can't
   mark it.
+- [ ] If, during the celebration sequence, the user types or clicks, cancel the sequence...
+  or at least skip to the end (the dialog).
+- [ ] Once the user has done "Check solution" and it's correct, stop the "solved in" clock.
+  Otherwise they might fire the button again, and now their solution time is longer.
+  - [ ] and make sure the clock stops (i.e. the "solved in" time is measured) when the solution
+  is found correct, not when the dialog pops up a few seconds later.
 - [ ] Check solution: says "You haven't filled in any edges yet" even if you've
   ruled out some edges. What if I just wanted to check whether my ruling-out was correct?
 - [ ] Settings: sound on / off. (Opens the door to other sounds, music.)
@@ -25,8 +30,6 @@ I want to add a few geodesic polyhedra to our grid. It's probably not worth a ne
     seems to be for the whole loop.)
   - [x] It's harder to test with a longer loop, because it takes longer to solve the puzzle by hand. Maybe I need an "insta-solve" key.
     The existing debug "show solution" shows this, but then you still have to copy the solution by clicking.
-- [ ] Once the user has done "Check solution" and it's correct, stop the "solved in" clock.
-  Otherwise they might fire the button again, and now their solution time is longer.
 - [ ] We could have a setting for automatically marking edges as ruledOut. E.g.
   when there's a 0 clue, its edges are ruled out; or when a vertex has 0 filled and
   1 unknown; or 2 filled and any number of unknown.

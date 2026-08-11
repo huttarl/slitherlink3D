@@ -234,12 +234,18 @@ export function updateCelebration(gameState, delta) {
     // which clashed with the amber and teal the faces are taking at the same time.
     // Black reads as a drawn line over them.
     //
-    // Glow and swell share one envelope: sin over half a cycle is 0 at each end
-    // and 1 in the middle, with zero slope at both, so the loop brightens and
-    // fattens and then subsides with no visible start or stop. Taking the phase
-    // modulo 1 repeats that hump per cycle, and because the sine is 0 with zero
-    // slope where the humps meet, consecutive ones join into one continuous
-    // pulsing rather than showing a seam.
+    // Glow and swell share one envelope: sin over half a cycle, 0 at each end and
+    // 1 in the middle, so the loop fattens and brightens and comes back to exactly
+    // the thickness and darkness it started at -- no jump at either end. Taking the
+    // phase modulo 1 repeats that hump once per cycle.
+    //
+    // Consecutive humps meet at a CORNER, not smoothly: sin's slope at a zero is
+    // +-1, so this traces |sin| and turns around sharply at each trough. That does
+    // not show, because the turn falls exactly where the effect is nothing -- glow
+    // 0 and thickness 1x, the loop momentarily just itself -- and a reversal in a
+    // quantity that is zero has nothing visible to be abrupt about. sin SQUARED
+    // would remove the corner outright, being the one with zero slope at its ends,
+    // if a reason ever appears; it also holds less time near full brightness.
     //
     // The darkening runs over the descent of the LAST hump only, so the colour
     // drains as the glow finally does -- one gesture, not two -- and the loop is

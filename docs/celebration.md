@@ -81,16 +81,21 @@ points at this puzzle.
 ## The sequence, as built
 
 Driven by `js/celebration.js`, advanced once per frame from the render loop in
-`js/main.js`, with timings and colors in `js/constants.js` (`CELEBRATION_TIMING`,
-`CELEBRATION_COLORS`).
+`js/main.js`. The four beats overlap rather than following one another, and how
+much is a matter of taste that has been retuned several times — so the actual
+durations live in `js/constants.js` (`CELEBRATION_TIMING`, `CELEBRATION_COLORS`)
+and are deliberately not repeated here, where they would only go stale. Each
+constant carries a comment saying what its value is for.
 
-1. **The loop flares** (0 → 1.8s), pulsing **twice**, then subsides — thin again,
-   and **black**, not the blue it is played in. Glow and swell ride one envelope (a
-   half cycle of sine, so zero slope at both ends and no visible start or stop),
-   repeated once per pulse; because the sine is 0 with zero slope where two humps
-   meet, they join into continuous pulsing rather than showing a seam. The colour
-   drains over the descent of the last pulse only, so the loop keeps its own blue
-   while it beats and the darkening reads as part of the final subsidence.
+1. **The loop flares**, pulsing **twice**, then subsides — thin again, and
+   **black**, not the blue it is played in. Glow and swell ride one envelope, a half
+   cycle of sine: 0 at each end and 1 in the middle, so the loop comes back to
+   exactly the thickness and darkness it started at. Repeating that hump per pulse
+   traces |sin|, so the pulses meet at a *corner* rather than smoothly — which
+   doesn't show, because the turn falls exactly where the effect is nothing, the loop
+   momentarily just itself. The colour drains over the descent of the last pulse
+   only, so the loop keeps its own blue while it beats and the darkening reads as
+   part of the final subsidence.
 
    **Two pulses because the tune has two cycles** (beat 4 below). It flared once at
    first, which started in step with the music and then left the loop still while
@@ -115,8 +120,10 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
    tried first and was worse: it made every other edge look like the loop itself.
    The clue digits go gray over the same moment for free, since solving satisfies
    every clue.
-2. **The two sides colour in** (0.5 → 2.0s). Pale amber on one region, pale teal
-   on the other, the whole surface fading together from its near-white. The
+2. **The two sides colour in**, starting while the loop is still pulsing. Pale
+   amber on one region, pale teal on the other, the whole surface fading together
+   from its near-white — the overlap matters, since the loop lighting up and the
+   surface colouring are one event and a gap between them would read as two. The
    smaller region takes the warm colour, since warm advances and cool recedes, so
    the minority side pops instead of hiding.
 
@@ -130,11 +137,13 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
    spreading fill would mean something if it started from the last edge the player
    filled — but that needs the solve detected the instant it happens, rather than
    when Check is pressed.
-3. **The tumble** (2.1s). Not decoration here, which is why it moved: a partition
-   of a closed surface cannot be seen from one side, so turning the solid is what
-   shows the two colours carrying on round the back. It had no such job in an
-   earlier version and merely made the running lights harder to follow.
-4. **The dialog** (5s). Last, and **low on the screen** rather than centered,
+3. **The tumble**, once the colours are on their way. Not decoration here, which is
+   why it moved later than it used to be: a partition of a closed surface cannot be
+   seen from one side, so turning the solid is what shows the two colours carrying
+   on round the back. It had no such job in an earlier version and merely made the
+   running lights harder to follow.
+4. **The dialog**, last of all and well after the rest, since the box hides the
+   very thing it congratulates. It is **low on the screen** rather than centered,
    because a centered box covered exactly the two things worth looking at. It sits
    as low as there is room for: bottom-anchored, with a `max-height` cap so that
    on a short screen it grows upward and then scrolls inside itself instead of
