@@ -25,6 +25,13 @@ import { CAMERA_DISTANCE, CAMERA_INTRO_FACTOR, CAMERA_INTRO_SECONDS,
 // has to exist before the class can be built. Set before the import below, which is
 // why that one is dynamic: a static import would be hoisted above this.
 globalThis.document = {addEventListener() {}, removeEventListener() {}};
+
+// And a window, because startTumble and startIntroZoom both ask whether the player
+// wants motion at all (see js/motion.js). Read per call, so a test can change the
+// answer between calls.
+let reducedMotion = false;
+globalThis.window = {matchMedia: () => ({matches: reducedMotion})};
+
 const { SceneManager } = await import('../SceneManager.js');
 
 const START = CAMERA_DISTANCE * CAMERA_INTRO_FACTOR;
@@ -155,3 +162,47 @@ describe('updateIntroZoom', () => {
             'should have been caught partway');
     });
 });
+
+describe('less motion, if the player asks for it', () => {
+    // Both of these must be able to fail, or they say nothing -- so each pairs the
+    // refusal with the same call going ahead when motion is welcome.
+
+    test('the opening zoom does not run, and the camera stays put', () => {
+        const manager = managerLookingFrom(new THREE.Vector3(0, 0, CAMERA_DISTANCE));
+        reducedMotion = true;
+        try {
+            manager.startIntroZoom(START, CAMERA_DISTANCE);
+            assert.strictEqual(manager.isIntroZooming, false);
+            // Not merely stopped: never pulled out in the first place, so the board
+            // opens at its normal distance with no movement at all.
+            assert.ok(Math.abs(distance(manager) - CAMERA_DISTANCE) < 1e-9);
+            manager.updateIntroZoom(0.1);
+            assert.ok(Math.abs(distance(manager) - CAMERA_DISTANCE) < 1e-9);
+        } finally {
+            reducedMotion = false;
+        }
+        manager.startIntroZoom(START, CAMERA_DISTANCE);
+        assert.strictEqual(manager.isIntroZooming, true, 'should run otherwise');
+    });
+
+    test('the tumble does not start', () => {
+        // Checked here rather than at the call sites because startTumble has two,
+        // and one of them is the celebration's fallback for having itself declined
+        // to animate -- which is exactly when a tumble would be least wanted.
+        const manager = managerLookingFrom(new THREE.Vector3(0, 0, CAMERA_DISTANCE));
+        reducedMotion = true;
+        try {
+            manager.startTumble();
+            assert.strictEqual(manager.isTumbling, false);
+            // And the per-frame step stays a no-op, so nothing drifts.
+            const before = manager.camera.position.clone();
+            manager.updateTumble(0.5);
+            assert.ok(manager.camera.position.distanceTo(before) < 1e-12);
+        } finally {
+            reducedMotion = false;
+        }
+        manager.startTumble();
+        assert.strictEqual(manager.isTumbling, true, 'should run otherwise');
+    });
+});
+

@@ -1,5 +1,5 @@
 import {updateTextVisibility} from './clueRenderer.js';
-import {prefersReducedMotion, updateCelebration} from './celebration.js';
+import {updateCelebration} from './celebration.js';
 import {createGameState} from "./scene.js";
 import {setupUI} from "./ui.js";
 import {expandDrawer, initPanelLayout} from "./panelLayout.js";
@@ -45,11 +45,10 @@ async function main() {
     sceneManager.startTumble();
 
     // And close in on the board as it appears, so the solid arrives rather than
-    // simply being there. Not on the title screen, which has its own framing
-    // (already closer in, and chosen to fit the window) -- and not for a player
-    // who has asked for less motion, for whom an unbidden camera move is exactly
-    // the wrong welcome.
-    if (!titleScreen && !prefersReducedMotion()) {
+    // simply being there. Not on the title screen, which has its own framing:
+    // already closer in, and chosen to fit the window. (Whether motion is welcome
+    // at all is startIntroZoom's own business, as it is startTumble's.)
+    if (!titleScreen) {
         sceneManager.startIntroZoom(CAMERA_DISTANCE * CAMERA_INTRO_FACTOR,
                                     CAMERA_DISTANCE);
     }

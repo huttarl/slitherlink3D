@@ -30,6 +30,7 @@ import {CELEBRATION_COLORS, CELEBRATION_TIMING, EDGE_COLORS,
         FACE_COLORS} from './constants.js';
 import {partitionFacesByLoop} from './solutionChecker.js';
 import {playCelebrationTune} from './celebrationSound.js';
+import {prefersReducedMotion} from './motion.js';
 import {debug} from './debug.js';
 
 /**
@@ -42,15 +43,6 @@ import {debug} from './debug.js';
  *          elapsed: number}}
  */
 let running = null;
-
-/** Does the player's system ask for less motion? Read per call rather than
- *  cached: the setting can change while the page is open.
- *
- *  Exported because the board's opening zoom asks the same question (see main.js),
- *  and one copy of the query string is better than two that can drift apart. */
-export function prefersReducedMotion() {
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 /**
  * The solution loop's edge meshes.

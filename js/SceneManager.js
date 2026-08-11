@@ -6,6 +6,7 @@ import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, CAMERA_HEIGHT, CAMERA_INTRO_SECONDS
         TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED,
         TUMBLE_DEGREES_PER_SEC} from "./constants.js";
 import {debug} from "./debug.js";
+import {prefersReducedMotion} from "./motion.js";
 
 // The direction levelCamera() restores as "up", and the reference the tumble
 // carries along with the camera. Module-level so it isn't rebuilt every frame.
@@ -325,6 +326,10 @@ export class SceneManager {
      * @param {number} toDistance - where to end up
      */
     startIntroZoom(fromDistance, toDistance) {
+        if (prefersReducedMotion()) {
+            debug('intro zoom: skipped, prefers-reduced-motion');
+            return;
+        }
         this._introFrom = fromDistance;
         this._introTo = toDistance;
         this._introProgress = 0;
@@ -386,8 +391,17 @@ export class SceneManager {
      * We move the camera ourselves rather than using OrbitControls' autoRotate,
      * so the tumble behaves the same under both control schemes -- and because
      * autoRotate only spins about one axis, which is not a tumble.
+     *
+     * Declines for a player who has asked for less motion, and does so HERE rather
+     * than at each call site: a turning solid is the plainest thing that setting
+     * exists to prevent, and there are two callers, one of which is the
+     * celebration's fallback for having already declined to animate.
      */
     startTumble() {
+        if (prefersReducedMotion()) {
+            debug('tumble: skipped, prefers-reduced-motion');
+            return;
+        }
         this.isTumbling = true;
         // Ease in, so the view doesn't lurch when the tumble begins.
         this.tumbleSpeedFactor = 0;
