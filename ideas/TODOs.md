@@ -23,6 +23,7 @@ Finished items live in ideas/TODOs-done.md.
   - [ ] add aliases, like "buckyball" / "soccer ball" for truncated icosahedron
   - [ ] link to dual solid - linking to that solid in the game, if we have it
   - [ ] display Conway recipe, with link to polyhedronisme
+  - [ ] don't display "Miscellaneous" on an info card -- use it only as a grouping label on the selection dropdown.
   - [ ] Where to fit all this stuff, without overwhelming the user? Put some of it
     under a "More" fold?
 - [ ] Add more rules, after A B C and D, to help the puzzle generator / evaluator know

@@ -52,8 +52,8 @@ def input_vertex(line):
     if len(s) < 4:
         raise ParseError("Malformed vertex line: '%s'" % line)
     else:
-        # Trim to 3 decimal places, for compactness.
-        vertex = [float("%0.3f" % float(coord))
+        # Trim to 6 decimal places, for compactness.
+        vertex = [float("%0.6f" % float(coord))
                   for coord in s[1:]]
         # print("Appending vertex ", vertex)
         vertices.append(vertex)

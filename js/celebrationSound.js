@@ -97,7 +97,7 @@ export function playCelebrationTune() {
     const {notes, noteSeconds, holdSeconds} = CELEBRATION_TUNE;
     let at = ctx.currentTime;
     for (let i = 0; i < notes.length; i++) {
-        const semitones = SEMITONES[notes[i]];
+        const semitones = SEMITONES[notes[i]]; // number of semitones away from C
         if (semitones === undefined) {
             debug(`celebration tune: no such note '${notes[i]}'`);
             continue;
