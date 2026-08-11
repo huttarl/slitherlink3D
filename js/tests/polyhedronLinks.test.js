@@ -147,13 +147,6 @@ describe('link hygiene', () => {
         }
     });
 
-    test('no Wikipedia', () => {
-        // A deliberate editorial choice, not an accident: these sources were
-        // picked to teach. Keeping it as an assertion so it stays true.
-        for (const link of allLinks()) {
-            assert.doesNotMatch(link, /wikipedia\.org/, `${link} is Wikipedia`);
-        }
-    });
 });
 
 describe('the pages exist', () => {

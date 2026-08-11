@@ -74,6 +74,7 @@ const SOLID_PAGE_EXCEPTIONS = {
     // "(2,0)" that is part of the name, exactly as for GP(1,2).)
     'gd20': null,
     'gd21': null,
+    'etI': null,
     'RandomsphereA': null,
     'RandomsphereC': null,
     'RandomsphereD': null,
