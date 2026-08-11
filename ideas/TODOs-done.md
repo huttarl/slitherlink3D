@@ -7,6 +7,22 @@ Anything still marked [~] or containing open sub-items stayed in TODOs.md.
     when the puzzle is completely & correctly solved... or when the loop is complete and not self-intersecting...
     or some combination of these. I don't want to add an expensive test on the player's every click.
     But maybe if there's a cheap test that short-circuits expensive tests...
+- [x] Celebration tweaking:
+  - [x] have end of music coincide with end of animation (3 "beats"). Probably by shortening notes.
+  - [x] cycling of loop needs to be slower than it is when loop is longer. (too flashy now
+    -- is it proportional to loop length? effectively yes: shimmerCyclesPerSecond: 0.3
+    seems to be for the whole loop.)
+  - [x] It's harder to test with a longer loop, because it takes longer to solve the puzzle by hand. Maybe I need an "insta-solve" key.
+    The existing debug "show solution" shows this, but then you still have to copy the solution by clicking.
+- [x] tetrakis snub cube (geodesic-ish)
+- [x] I want to add a few geodesic polyhedra to our grid. It's probably not worth a new family though; we'll keep them under Miscellaneous. But "geodesic" would be a new category.
+  - Read https://en.wikipedia.org/wiki/Geodesic_polyhedron 
+  - What would be the best 2 or 3 geodesic polyhedra to add? My criteria are:
+  - Simpler is better
+  - Get the real "flavor" of geodesic solids
+  - distinct from existing grids (like icosahedron)
+  - Maybe a variety of class I, II, III from the wikipedia article
+  - Don't let them get too big. All-triangle solids are probably boring at large size.
 
 - [x] genSliPuzzles LIVELOCKS on dtC, in Phase A -- painting the red/blue regions
   -- and never reaches a clue set at all. Profiled 2026-08-06: of 240s, 210s was

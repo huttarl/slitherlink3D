@@ -1,15 +1,6 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
-- [x] tetrakis snub cube (geodesic-ish)
-- [x] I want to add a few geodesic polyhedra to our grid. It's probably not worth a new family though; we'll keep them under Miscellaneous. But "geodesic" would be a new category.
-  - Read https://en.wikipedia.org/wiki/Geodesic_polyhedron 
-  - What would be the best 2 or 3 geodesic polyhedra to add? My criteria are:
-  - Simpler is better
-  - Get the real "flavor" of geodesic solids
-  - distinct from existing grids (like icosahedron)
-  - Maybe a variety of class I, II, III from the wikipedia article
-  - Don't let them get too big. All-triangle solids are probably boring at large size.
 - [ ] If I accidentally press "back", it goes to the previous puzzle, without any
   confirmation about leaving. If I then go "forward", it returns to the puzzle
   I was on, apparently preserving my marks, but then the puzzle is frozen and I can't
@@ -23,13 +14,6 @@ Finished items live in ideas/TODOs-done.md.
 - [ ] Check solution: says "You haven't filled in any edges yet" even if you've
   ruled out some edges. What if I just wanted to check whether my ruling-out was correct?
 - [ ] Settings: sound on / off. (Opens the door to other sounds, music.)
-- [ ] Celebration tweaking:
-  - [x] have end of music coincide with end of animation (3 "beats"). Probably by shortening notes.
-  - [x] cycling of loop needs to be slower than it is when loop is longer. (too flashy now
-    -- is it proportional to loop length? effectively yes: shimmerCyclesPerSecond: 0.3
-    seems to be for the whole loop.)
-  - [x] It's harder to test with a longer loop, because it takes longer to solve the puzzle by hand. Maybe I need an "insta-solve" key.
-    The existing debug "show solution" shows this, but then you still have to copy the solution by clicking.
 - [ ] We could have a setting for automatically marking edges as ruledOut. E.g.
   when there's a 0 clue, its edges are ruled out; or when a vertex has 0 filled and
   1 unknown; or 2 filled and any number of unknown.
@@ -38,7 +22,7 @@ Finished items live in ideas/TODOs-done.md.
 - [ ] Adding more info about each polyhedron, as applicable:
   - [ ] add aliases, like "buckyball" / "soccer ball" for truncated icosahedron
   - [ ] link to dual solid - linking to that solid in the game, if we have it
-  - [ ] Conway recipe, with link to polyhedronisme
+  - [ ] display Conway recipe, with link to polyhedronisme
   - [ ] Where to fit all this stuff, without overwhelming the user? Put some of it
     under a "More" fold?
 - [ ] Add more rules, after A B C and D, to help the puzzle generator / evaluator know

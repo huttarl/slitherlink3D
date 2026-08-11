@@ -27,21 +27,21 @@ All of these will be convex (unless otherwise noted).
 
 Specific shapes & categories:
 
-- Platonics, Archimedean solids, Johnson solids,
-- near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_solid
-    - e.g. expanded truncated icosahedron, with 3/4/5/6-gons!
+x Platonics, Archimedean solids, Johnson solids,
+x near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_solid
+    x e.g. expanded truncated icosahedron, with 3/4/5/6-gons!
         https://levskaya.github.io/polyhedronisme/?recipe=C1000aatI
         also shown at https://www.youtube.com/watch?v=XMiT2iCnZFE
         (dual of rhombic enneacontahedron)
-- Catalan solids
+x Catalan solids
 - zonohedra, such as rhombic enneacontahedron
-- prisms & antiprisms
-- Goldberg (hex-based) polyhedra, beyond dodecahedron and truncated icosahedron.
+x prisms & antiprisms
+x Goldberg (hex-based) polyhedra, beyond dodecahedron and truncated icosahedron.
         https://en.wikipedia.org/wiki/Goldberg_polyhedron
     - including those with triangles or squares rather than pentagons
         See https://en.wikipedia.org/wiki/Chamfer_(geometry)#Relation_to_Goldberg_polyhedra
     - Class I, II, III? I don't understand this system.
-- geodesic polyhedra
+x geodesic polyhedra
 - fullerenes
     - carbon nanotube - the ends could be 20-gons, but maybe smaller is better. 8-gon ends?
         The animation on Wikipedia shows a nanotube with each ring having 8 hexagons.
@@ -58,7 +58,7 @@ Specific shapes & categories:
 - Parallelohedra https://en.wikipedia.org/wiki/Parallelohedron
     - truncated octahedron in particular
 - play with Polyhedronisme!
-- generated stochastically, by randomly generating points on the surface of a sphere, then simulating
+x generated stochastically, by randomly generating points on the surface of a sphere, then simulating
     repulsion & damping (and/or Hart's canonicalization algorith?).
     Could nickname this style "Volvox".
     I'm pretty sure I've written this code... need to find it. Look for "wooble" code.

@@ -492,6 +492,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "jtI",
+      "gridId": "jtI",
+      "gridName": "Rhombic enneacontahedron",
+      "categories": ["Miscellaneous", "zonohedron"],
+      "faces": 90,
+      "edges": 180,
+      "vertices": 92,
+      "numPuzzles": 3
+    },
+    {
       "file": "dbD",
       "gridId": "dbD",
       "gridName": "Disdyakis triacontahedron",
