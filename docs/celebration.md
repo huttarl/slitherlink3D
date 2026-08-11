@@ -84,11 +84,21 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
 `js/main.js`, with timings and colors in `js/constants.js` (`CELEBRATION_TIMING`,
 `CELEBRATION_COLORS`).
 
-1. **The loop flares** (0 → 0.9s). It swells and takes up an emissive glow, then
-   subsides — thin again, and **black**, not the blue it is played in. Glow, swell
-   and darkening ride one envelope (a half cycle of sine, so zero slope at both
-   ends and no visible start or stop), with the colour draining over the second
-   half so the whole thing reads as a single gesture.
+1. **The loop flares** (0 → 1.8s), pulsing **twice**, then subsides — thin again,
+   and **black**, not the blue it is played in. Glow and swell ride one envelope (a
+   half cycle of sine, so zero slope at both ends and no visible start or stop),
+   repeated once per pulse; because the sine is 0 with zero slope where two humps
+   meet, they join into continuous pulsing rather than showing a seam. The colour
+   drains over the descent of the last pulse only, so the loop keeps its own blue
+   while it beats and the darkening reads as part of the final subsidence.
+
+   **Two pulses because the tune has two cycles** (beat 4 below). It flared once at
+   first, which started in step with the music and then left the loop still while
+   the phrase carried on — reading as though the animation had finished early.
+   `swellSeconds` is therefore one cycle of the tune and `swellCycles` its number
+   of repeats; the two sets of constants are kept apart on purpose, so that the
+   visual still works when audio is blocked, and a test in
+   `js/tests/celebration.test.js` holds them equal.
 
    It ends black on purpose. Two earlier versions got this wrong in opposite
    directions: one left the loop *breathing indefinitely*, which fought the
@@ -124,7 +134,7 @@ Driven by `js/celebration.js`, advanced once per frame from the render loop in
    of a closed surface cannot be seen from one side, so turning the solid is what
    shows the two colours carrying on round the back. It had no such job in an
    earlier version and merely made the running lights harder to follow.
-4. **The dialog** (3.5s). Last, and **low on the screen** rather than centered,
+4. **The dialog** (5s). Last, and **low on the screen** rather than centered,
    because a centered box covered exactly the two things worth looking at. It sits
    as low as there is room for: bottom-anchored, with a `max-height` cap so that
    on a short screen it grows upward and then scrolls inside itself instead of

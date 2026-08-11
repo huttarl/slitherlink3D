@@ -246,9 +246,18 @@ export const CELEBRATION_TIMING = {
     // The loop's edges swell and then return to their normal size, all together.
     // A swell that STAYED read as the loop having been permanently redrawn
     // thicker, rather than as something happening to it. thickenFactor is the
-    // size at the peak, swellSeconds the whole there-and-back.
+    // size at the peak, swellSeconds ONE whole there-and-back.
     thickenFactor: 1.5,
     swellSeconds: 0.9,
+    // How many of those, back to back: one per cycle of the tune, so the loop
+    // pulses with the music rather than under it. With a single swell against the
+    // tune's two cycles, the two started together and then the loop went still
+    // while the music carried on -- which read as the animation having finished
+    // early. swellSeconds * swellCycles is therefore the tune's short notes,
+    // 12 * 0.075 * 2 = 1.8s; a test in celebration.test.js keeps them equal, since
+    // they live apart on purpose (the visual has to stand alone when audio is
+    // blocked or, one day, muted).
+    swellCycles: 2,
 
     // The glow at its peak, as emissive intensity. It rides the same envelope as
     // the swell -- up together, down together -- and ends at nothing, the loop
@@ -277,9 +286,23 @@ export const CELEBRATION_TIMING = {
 // then a held note. Letters are scale degrees around middle C -- A and B are the
 // two BELOW it, so "C B A B C" dips under the tonic and returns, which is what
 // makes the phrase settle rather than just stop. See js/celebrationSound.js.
+//
+// The phrase and how many times it goes round are named rather than written out
+// twice, because the loop's swell is paced to them: one swell per repeat (see
+// swellCycles above, and the test that holds the two together).
+const TUNE_PHRASE = 'C D E F G F E D C B A B'.split(' ');
+const TUNE_REPEATS = 2;
+
+const TUNE_NOTES = [];
+for (let repeat = 0; repeat < TUNE_REPEATS; repeat++) {
+    TUNE_NOTES.push(...TUNE_PHRASE);
+}
+TUNE_NOTES.push('C');       // the held tonic, which ends the phrase
+
 export const CELEBRATION_TUNE = {
-    notes: ('C D E F G F E D C B A B ' +
-            'C D E F G F E D C B A B C').split(' '),
+    phrase: TUNE_PHRASE,
+    repeats: TUNE_REPEATS,
+    notes: TUNE_NOTES,
     // Rapid: at this length the 24 short notes run just under two seconds, so the
     // phrase tracks beats 1 and 2 and the held note lands as the dialog opens.
     noteSeconds: 0.075,

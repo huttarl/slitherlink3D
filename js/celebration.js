@@ -11,10 +11,13 @@
  *
  * Four beats, advanced once per frame from the render loop:
  *
- *   1. the loop takes up an emissive glow and thickens, while the other edges
- *      fade toward the ruled-out near-white and leave it alone on the solid;
- *   2. the two regions colour in, spreading from each one's deepest interior so
- *      the colours arrive at the loop last and meet along it;
+ *   1. the loop takes up an emissive glow and thickens -- pulsing twice, in step
+ *      with the tune's two cycles -- while the other edges fade toward the
+ *      ruled-out near-white and leave it alone on the solid;
+ *   2. the two regions colour in, the whole surface at once. (Spreading the
+ *      colour as a front was built twice and dropped both times, once ordered by
+ *      distance from the loop and once from a seed face; see faceColors below for
+ *      why neither ordering meant anything.)
  *   3. the tumble starts, which is what shows the regions carry on round the
  *      back -- a partition of a closed surface can't be seen from one side;
  *   4. the dialog, last, since it covers the middle of the board.
@@ -226,18 +229,26 @@ export function updateCelebration(gameState, delta) {
         mesh.material.color.copy(was).lerp(CELEBRATION_COLORS.quiet, dim);
     }
 
-    // The loop swells and glows, then settles thin and BLACK -- deliberately not
-    // back to its playing blue, which clashed with the amber and teal the faces
-    // are taking at the same time. Black reads as a drawn line over them.
+    // The loop swells and glows -- twice, in step with the tune's two cycles --
+    // then settles thin and BLACK, deliberately not back to its playing blue,
+    // which clashed with the amber and teal the faces are taking at the same time.
+    // Black reads as a drawn line over them.
     //
     // Glow and swell share one envelope: sin over half a cycle is 0 at each end
     // and 1 in the middle, with zero slope at both, so the loop brightens and
-    // fattens and then subsides with no visible start or stop. The darkening runs
-    // over the envelope's SECOND half, so the colour drains as the glow does --
-    // one gesture, not two.
-    const swellPhase = Math.min(1, t / timing.swellSeconds);
-    const swell = Math.sin(Math.PI * swellPhase);
-    const darkening = Math.max(0, Math.min(1, (swellPhase - 0.5) * 2));
+    // fattens and then subsides with no visible start or stop. Taking the phase
+    // modulo 1 repeats that hump per cycle, and because the sine is 0 with zero
+    // slope where the humps meet, consecutive ones join into one continuous
+    // pulsing rather than showing a seam.
+    //
+    // The darkening runs over the descent of the LAST hump only, so the colour
+    // drains as the glow finally does -- one gesture, not two -- and the loop is
+    // still its own blue while it pulses.
+    const cycles = timing.swellCycles;
+    const swellPhase = Math.min(cycles, t / timing.swellSeconds);
+    const swell = Math.sin(Math.PI * (swellPhase % 1));
+    const darkening = Math.max(0,
+        Math.min(1, (swellPhase - (cycles - 0.5)) * 2));
     const thickness = 1 + (timing.thickenFactor - 1) * swell;
     for (const mesh of running.loop) {
         mesh.material.emissiveIntensity = timing.glowPeak * swell;
