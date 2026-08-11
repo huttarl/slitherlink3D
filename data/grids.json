@@ -212,6 +212,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "zico5",
+      "gridId": "zico5",
+      "gridName": "Rhombic icosahedron",
+      "categories": ["Miscellaneous", "zonohedron"],
+      "faces": 20,
+      "edges": 40,
+      "vertices": 22,
+      "numPuzzles": 3
+    },
+    {
       "file": "randA",
       "gridId": "RandomsphereA",
       "gridName": "Random sphere A",
@@ -493,7 +503,7 @@
     },
     {
       "file": "jtI",
-      "gridId": "jtI",
+      "gridId": "dakdI",
       "gridName": "Rhombic enneacontahedron",
       "categories": ["Miscellaneous", "zonohedron"],
       "faces": 90,

@@ -150,6 +150,85 @@ def wound_outward(corners, solid_centre):
     return dot(face_normal(corners), subtract(centroid(corners), solid_centre)) > 0
 
 
+# --------------------------------------------------------------------------
+# Zones: the structure that makes a zonohedron one
+# --------------------------------------------------------------------------
+# A zonohedron is built from a small set of generating vectors, and every edge is
+# a translate of one of them. So its edges fall into as many DIRECTION classes as
+# there are generators -- its zones -- and every face is a parallelogram spanned
+# by two of them. Those are the two properties worth measuring, because they are
+# what a player is being shown: told that a zonohedron's edges run in parallel
+# families, they should be able to see it.
+#
+# Any solid has some number of edge directions, so these work on anything; it is
+# a small count plus parallelogram faces that means "zonohedron".
+
+def direction_classes(vertices, faces, tolerance):
+    """The solid's edges grouped by direction -- a zonohedron's zones.
+
+    Direction regardless of sense, so an edge and its reverse belong together.
+    Rather than canonicalising each unit vector's sign, which is awkward when a
+    component sits near zero, this compares against both senses of each class
+    representative.
+
+    @param tolerance: how far apart two unit vectors may be and still count as one
+        direction. Worth choosing deliberately: an exactly-built solid wants
+        something near floating-point noise, while a file whose coordinates were
+        rounded to three decimals cannot do better than a few thousandths.
+    @returns list of lists of (a, b) vertex-index pairs, largest class first
+    """
+    classes = []                # [[representative unit vector, [edges]], ...]
+    for (a, b) in edges_of(faces):
+        direction = subtract(vertices[b], vertices[a])
+        length = norm(direction)
+        if length == 0:
+            continue            # a doubled vertex; nothing to take a direction from
+        direction = [component / length for component in direction]
+        reversed_direction = [-component for component in direction]
+        for entry in classes:
+            if min(distance(entry[0], direction),
+                   distance(entry[0], reversed_direction)) <= tolerance:
+                entry[1].append((a, b))
+                break
+        else:
+            classes.append([direction, [(a, b)]])
+    classes.sort(key=lambda entry: -len(entry[1]))
+    return [edges for (_, edges) in classes]
+
+
+def face_skew(corners):
+    """How far a face is from being a parallelogram, as a distance.
+
+    Opposite sides of a parallelogram are equal and opposite, so as vectors they
+    sum to zero; this is the largest such sum. 0 exactly for a parallelogram, and
+    math.inf for a face with an odd number of sides, which cannot be one.
+
+    Deliberately a distance rather than a yes/no, and in the same units as
+    face_bow: what matters is whether the departure is visible, and that is a
+    judgement about magnitude.
+    """
+    count = len(corners)
+    if count % 2 == 1:
+        return math.inf
+    half = count // 2
+    sides = [subtract(corners[(i + 1) % count], corners[i]) for i in range(count)]
+    return max(norm([sides[i][axis] + sides[i + half][axis] for axis in range(3)])
+               for i in range(half))
+
+
+def side_ratio(corners):
+    """The longest side of a face over its shortest: 1.0 for a rhombus.
+
+    A zonohedron whose generators are all the same length has none but rhombic
+    faces, which is the case for every named one (see the star presets in
+    genZonohedron.py). Generators of differing lengths give general
+    parallelograms instead -- still a zonohedron, just not a rhombic one.
+    """
+    lengths = edge_lengths(corners)
+    shortest = min(lengths, default=0.0)
+    return max(lengths) / shortest if shortest > 0 else math.inf
+
+
 def face_census(faces):
     """How many faces of each size, as {sides: count}."""
     census = {}
@@ -228,6 +307,38 @@ def check_equal_vertex_radii(vertices, tolerance, centre=None):
         return []
     return [f'vertex radii vary by {spread:.3g} '
             f'(min {min(radii):.6f}, max {max(radii):.6f})']
+
+
+def check_parallelogram_faces(vertices, faces, tolerance):
+    """Every face a parallelogram, which is the definition of a zonohedron.
+
+    Reported as the worst offender rather than a tally, matching check_flat_faces:
+    a generator that gets this wrong usually gets it wrong everywhere, and the
+    magnitude is what says whether the cause is arithmetic or rounding.
+    """
+    worst = 0.0
+    worst_face = None
+    for (index, face) in enumerate(faces):
+        skew = face_skew(corners_of(vertices, face))
+        if skew > worst:
+            (worst, worst_face) = (skew, index)
+    if worst <= tolerance:
+        return []
+    return [f'faces are not parallelograms (worst skew {worst:.3g}, '
+            f'on face {worst_face})']
+
+
+def check_direction_classes(vertices, faces, expected, tolerance):
+    """The edges should run in exactly `expected` directions: the zone count.
+
+    For a zonohedron this is the number of generating vectors, and getting it
+    wrong is the signature of a degenerate star -- generators sharing a plane make
+    faces merge, so directions and faces stop agreeing with the counts.
+    """
+    found = len(direction_classes(vertices, faces, tolerance))
+    if found == expected:
+        return []
+    return [f'{expected} edge directions expected, got {found}']
 
 
 def check_flat_faces(vertices, faces, tolerance):

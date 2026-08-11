@@ -13,10 +13,12 @@ import pytest
 import grid_checks
 from grid_checks import (
     census_text, check_census, check_closed_surface, check_congruent_faces,
-    check_counts, check_equal_edge_lengths, check_equal_vertex_radii, check_euler,
-    check_flat_faces, check_outward_winding, check_regular_faces,
-    check_vertex_degrees, corner_angles, edge_lengths, face_bow, face_census,
-    face_normal, inscribed_radius, sharpest_corner,
+    check_counts, check_direction_classes, check_equal_edge_lengths,
+    check_equal_vertex_radii, check_euler, check_flat_faces,
+    check_outward_winding, check_parallelogram_faces, check_regular_faces,
+    check_vertex_degrees, corner_angles, direction_classes, edge_lengths,
+    face_bow, face_census, face_normal, face_skew, inscribed_radius,
+    sharpest_corner, side_ratio,
 )
 from grid_topology import load_grid
 
@@ -208,3 +210,82 @@ class TestChecksPassOnStoredGrids:
         grid = load_grid(DATA_DIR / 'daC.json')
         assert check_congruent_faces(grid['vertices'], grid['faces'],
                                      1e-2, 1.0) == []
+
+
+class TestZones:
+    """The zone measures, which say whether a zonohedron looks like one.
+
+    A zonohedron is built from n generating vectors and every edge is a translate
+    of one, so its edges run in exactly n directions and every face is a
+    parallelogram. Both are visible properties -- a player told that a zonohedron's
+    edges come in parallel families should be able to see the families -- so they
+    are worth measuring rather than assuming from the name.
+    """
+
+    # The zonohedra in data/ with the number of zones each should have: the
+    # generating star's size. See STARS in genZonohedron.py.
+    ZONOHEDRA = [('cube', 3), ('daC', 4), ('zico5', 5), ('daD', 6), ('jtI', 10)]
+
+    # Reading zones back out of a STORED grid needs more slack than the generator's
+    # own check, which works on the unrounded solid at 1e-9. Coordinates in data/
+    # are written to 6 decimals, so a unit direction can be out by about
+    # 2 * 5e-7 / (edge length) -- a few times 1e-6 on these solids, which at a
+    # tolerance of 1e-6 split the rhombic icosahedron's 5 zones into 8. Still
+    # thousands of times tighter than the angle between any two real zones, which
+    # is tens of degrees.
+    FILE_TOLERANCE = 1e-4
+
+    def test_a_cubes_edges_run_three_ways(self):
+        classes = direction_classes(CUBE_VERTICES, CUBE_FACES, 1e-9)
+        assert len(classes) == 3
+        assert sorted(len(edges) for edges in classes) == [4, 4, 4]
+
+    @pytest.mark.parametrize(('stem', 'zones'), ZONOHEDRA)
+    def test_the_stored_zonohedra_have_the_zones_they_should(self, stem, zones):
+        """The count is the point: it was 90 rather than 10 for the rhombic
+        enneacontahedron as first imported, because a canonicalised model of that
+        combinatorial type is a different shape from the zonohedral one."""
+        grid = load_grid(DATA_DIR / f'{stem}.json')
+        classes = direction_classes(grid['vertices'], grid['faces'],
+                                    self.FILE_TOLERANCE)
+        assert len(classes) == zones
+        # Every zone is a band right round the solid, so they are all the same size.
+        assert len({len(edges) for edges in classes}) == 1
+
+    @pytest.mark.parametrize(('stem', 'zones'), ZONOHEDRA)
+    def test_the_stored_zonohedra_have_rhombic_faces(self, stem, zones):
+        grid = load_grid(DATA_DIR / f'{stem}.json')
+        (vertices, faces) = (grid['vertices'], grid['faces'])
+        assert check_parallelogram_faces(vertices, faces, 1e-5) == []
+        assert check_direction_classes(vertices, faces, zones,
+                                       self.FILE_TOLERANCE) == []
+        # Equal-length generators, so every face is a rhombus and not merely a
+        # parallelogram.
+        for face in faces:
+            corners = grid_checks.corners_of(vertices, face)
+            assert side_ratio(corners) < 1.001, stem
+
+    def test_face_skew_is_zero_for_a_parallelogram_and_finite_otherwise(self):
+        square = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]]
+        assert face_skew(square) < 1e-15
+        # Slide one corner: opposite sides no longer cancel.
+        kite = [[0, 0, 0], [1, 0, 0], [1.5, 1, 0], [0, 1, 0]]
+        assert face_skew(kite) == pytest.approx(0.5)
+        # A triangle cannot be a parallelogram, and says so rather than pretending.
+        assert face_skew([[0, 0, 0], [1, 0, 0], [0, 1, 0]]) == math.inf
+
+    def test_side_ratio_tells_a_rhombus_from_a_parallelogram(self):
+        rhombus = [[0, 0, 0], [1, 0, 0], [1.6, 0.8, 0], [0.6, 0.8, 0]]
+        assert side_ratio(rhombus) == pytest.approx(1.0)
+        oblong = [[0, 0, 0], [2, 0, 0], [2, 1, 0], [0, 1, 0]]
+        assert side_ratio(oblong) == pytest.approx(2.0)
+
+    def test_a_solid_that_is_no_zonohedron_says_so(self):
+        """The checks have to be able to fail, and the tetrahedron is the
+        clearest case: triangles cannot be parallelograms at all."""
+        grid = load_grid(DATA_DIR / 'T.json')
+        (vertices, faces) = (grid['vertices'], grid['faces'])
+        assert check_parallelogram_faces(vertices, faces, 1e-5) != []
+        # Six edges, all in different directions: as far from a zone structure as
+        # a solid can be.
+        assert len(direction_classes(vertices, faces, self.FILE_TOLERANCE)) == 6

@@ -24,6 +24,14 @@ What it measures, and why each one matters:
               coordinates; small values are invisible, and note that
               util/obj2json.py rounds coordinates to 3 decimals, which alone
               costs a few thousandths.
+  zones       how many directions the edges run in, and -- when every face is a
+              quadrilateral -- how far the worst face is from being a
+              parallelogram, plus its longest side over its shortest. This is the
+              zonohedron test: a zonohedron is built from a few generating vectors
+              and every edge is a translate of one, so the directions are few, the
+              skew is 0 and the ratio is 1 for the rhombic ones. Being told that a
+              zonohedron's edges run in parallel families is no use if the solid on
+              screen doesn't show it.
   degrees     how many faces meet at each vertex. Slitherlink's vertex rule says
               0 or 2 of a vertex's edges are used, so a 3-valent vertex leaves
               four possibilities and a 10-valent one forty-six: high degree means
@@ -41,12 +49,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from grid_checks import (  # noqa: E402
-    centroid, distance, face_bow, inscribed_radius, sharpest_corner,
-    wound_outward,
+    centroid, direction_classes, distance, face_bow, face_skew,
+    inscribed_radius, sharpest_corner, side_ratio, wound_outward,
 )
 from grid_topology import edges_of, vertex_degrees  # noqa: E402
 
 DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
+
+# How far apart two edge directions may be and still be called the same one, for
+# the zones line. Loose on purpose: a grid converted by obj2json has its
+# coordinates rounded, which moves a unit vector by roughly the same few
+# thousandths that shows up as bow, and calling those separate directions would
+# report a rhombic triacontahedron as having sixty zones instead of six.
+DIRECTION_TOLERANCE = 5e-3
 
 
 def report(path):
@@ -73,6 +88,17 @@ def report(path):
     print(f'  inradius  {min(inradii):.3f} to {max(inradii):.3f}  '
           f'(x{max(inradii) / min(inradii):.1f})')
     print(f'  bow       {max(face_bow(f) for f in faces):.1e}')
+    zones = len(direction_classes(V, F, DIRECTION_TOLERANCE))
+    if all(len(face) == 4 for face in F):
+        print(f'  zones     {zones} edge directions; worst face skew '
+              f'{max(face_skew(f) for f in faces):.1e}, '
+              f'side ratio {max(side_ratio(f) for f in faces):.2f}')
+    else:
+        # Skew and side ratio are only about parallelograms, so they would say
+        # nothing here -- but the direction count is a fact about any solid, and a
+        # small one is interesting in itself (a cube's edges run three ways).
+        print(f'  zones     {zones} edge directions '
+              f'(faces are not all quadrilaterals)')
     tally = {}
     for degree in vertex_degrees(F).values():
         tally[degree] = tally.get(degree, 0) + 1
