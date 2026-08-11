@@ -84,10 +84,11 @@ rhombi come out at 70.53°/109.47°, and the rhombic triacontahedron's at
 63.43°/116.57°.
 
 One caveat worth knowing: the dual inherits the primal's stored precision.
-`data/tI.json` and `data/sD.json` came through `obj2json.py`, which rounds to 3
-decimals, so their duals' faces agree only to about a quarter of a degree
-rather than exactly. Harmless, but it is why the congruence tolerances aren't
-tighter.
+`data/tI.json` and `data/sD.json` came through `obj2json.py` when it rounded to 3
+decimals, so their duals' faces agree only to about a quarter of a degree rather
+than exactly. Harmless, but it is why the congruence tolerances aren't tighter.
+The converter writes 6 decimals now, so a model imported today is a hundred times
+closer; re-converting those two would tighten their duals in turn.
 
 ## genGoldberg.py — Goldberg polyhedra
 
@@ -147,7 +148,21 @@ util/obj2json.py myPolyhedron.obj > data/myGrid.json
 The grid's `gridId`/`gridName` are derived from the OBJ's group name — the
 whole of it, so `g Random sphere B` gives that name and a `RandomsphereB` id.
 The converter sanity-checks Euler's formula (F + V = E + 2) and fails
-if it doesn't hold. It writes no `categories`, so add the family by hand.
+if it doesn't hold.
+
+Give the metadata on the command line rather than patching the result, so that
+re-converting the same OBJ reproduces the same grid file:
+
+```
+util/obj2json.py data-scratch/J84.obj --id=J84 --name="Snub disphenoid (J84)" \
+    --categories="Johnson solid,deltahedron" \
+    "--source=https://levskaya.github.io/polyhedronisme/?recipe=J84" > data/J84.json
+```
+
+`--name` earns its keep here because polyHédronisme's group line is the recipe
+(`J84`), which is an id and not a name. Quote the `--source` value: the `?` in the
+URL is a shell glob otherwise. `--source` records where the coordinates came from,
+which for an imported model is what `_comment` records for a generated one.
 
 ## genRandomPolyh.py — random sphere-like solids
 

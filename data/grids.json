@@ -32,6 +32,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "J12",
+      "gridId": "J12",
+      "gridName": "Triangular bipyramid (J12)",
+      "categories": ["Johnson solid", "deltahedron"],
+      "faces": 6,
+      "edges": 9,
+      "vertices": 5,
+      "numPuzzles": 3
+    },
+    {
       "file": "J2",
       "gridId": "J2",
       "gridName": "Pentagonal pyramid (J2)",
@@ -72,6 +82,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "J13",
+      "gridId": "J13",
+      "gridName": "Pentagonal bipyramid (J13)",
+      "categories": ["Johnson solid", "deltahedron"],
+      "faces": 10,
+      "edges": 15,
+      "vertices": 7,
+      "numPuzzles": 3
+    },
+    {
       "file": "A4",
       "gridId": "A4",
       "gridName": "Square antiprism",
@@ -99,6 +119,16 @@
       "faces": 8,
       "edges": 18,
       "vertices": 12,
+      "numPuzzles": 3
+    },
+    {
+      "file": "J84",
+      "gridId": "J84",
+      "gridName": "Snub disphenoid (J84)",
+      "categories": ["Johnson solid", "deltahedron"],
+      "faces": 12,
+      "edges": 18,
+      "vertices": 8,
       "numPuzzles": 3
     },
     {
@@ -132,6 +162,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "J51",
+      "gridId": "J51",
+      "gridName": "Triaugmented triangular prism (J51)",
+      "categories": ["Johnson solid", "deltahedron"],
+      "faces": 14,
+      "edges": 21,
+      "vertices": 9,
+      "numPuzzles": 3
+    },
+    {
       "file": "daC",
       "gridId": "daC",
       "gridName": "Rhombic dodecahedron",
@@ -149,6 +189,26 @@
       "faces": 14,
       "edges": 24,
       "vertices": 12,
+      "numPuzzles": 3
+    },
+    {
+      "file": "J17",
+      "gridId": "J17",
+      "gridName": "Gyroelongated square bipyramid (J17)",
+      "categories": ["Johnson solid", "deltahedron"],
+      "faces": 16,
+      "edges": 24,
+      "vertices": 10,
+      "numPuzzles": 3
+    },
+    {
+      "file": "J91",
+      "gridId": "J91",
+      "gridName": "Bilunabirotunda (J91)",
+      "categories": ["Johnson solid"],
+      "faces": 14,
+      "edges": 26,
+      "vertices": 14,
       "numPuzzles": 3
     },
     {
@@ -192,6 +252,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "J92",
+      "gridId": "J92",
+      "gridName": "Triangular hebesphenorotunda (J92)",
+      "categories": ["Johnson solid"],
+      "faces": 20,
+      "edges": 36,
+      "vertices": 18,
+      "numPuzzles": 3
+    },
+    {
       "file": "dtC",
       "gridId": "dtC",
       "gridName": "Triakis octahedron",
@@ -209,6 +279,16 @@
       "faces": 24,
       "edges": 36,
       "vertices": 14,
+      "numPuzzles": 3
+    },
+    {
+      "file": "J60",
+      "gridId": "J60",
+      "gridName": "Metabiaugmented dodecahedron (J60)",
+      "categories": ["Johnson solid"],
+      "faces": 20,
+      "edges": 40,
+      "vertices": 22,
       "numPuzzles": 3
     },
     {
@@ -399,6 +479,16 @@
       "faces": 32,
       "edges": 90,
       "vertices": 60,
+      "numPuzzles": 3
+    },
+    {
+      "file": "J81",
+      "gridId": "J81",
+      "gridName": "Metabidiminished rhombicosidodecahedron (J81)",
+      "categories": ["Johnson solid"],
+      "faces": 42,
+      "edges": 90,
+      "vertices": 50,
       "numPuzzles": 3
     },
     {

@@ -77,50 +77,91 @@ def sanitize_for_id(s):
     # Allow alphanumeric ASCII characters + underscore.
     return re.sub(r"[^0-9A-Za-z_]", "", s)
 
-def output():
+def output(options):
+    """Write the grid JSON to stdout.
+
+    The metadata an OBJ file cannot carry -- a readable name, the categories, where
+    the model came from -- is taken from the options rather than patched into the
+    result afterwards, so that re-converting the same OBJ reproduces the same grid
+    file. Patching by hand loses it silently on the next conversion, which is how a
+    gridId once came to disagree with everything referring to it.
+    """
+    # Built key by key to keep data/'s usual order, with the optional fields in the
+    # middle where the other grid files have them.
+    grid = {
+        "gridId": options["id"] or sanitize_for_id(name),  # machine-friendly ID
+        # User-visible name, e.g. "Rhombille". polyHédronisme's group line is its
+        # recipe ("J84"), which is an id and not a name, so --name earns its keep.
+        "gridName": options["name"] or name,
+        "categories": options["categories"],
+        }
+    if options["source"]:
+        grid["source"] = options["source"]
     # Compact enough to load quickly, but a line per vertex and per face so a
     # person can read it. See util/json_format.py.
-    print(json_format.format_json({
-        "gridId": sanitize_for_id(name),  # machine-friendly ID
-        "gridName": name,  # user-visible name, e.g. "Rhombille"
-        # At some point, add categories like "Johnson solid" and/or "zonohedron" etc.
-        # That may come after the OBJ-to-JSON conversion.
-        "categories": [],
-#         "nCells": len(cells),  # "cell" == "face"
-#         "nEdges": int(num_edges), # Not sure why we need these counts, but they don't hurt.
-#         "nVertices": len(vertices),
-        "vertices": vertices,
-        "faces": cells,
-#         "puzzles": []
-        }))
-    
+    grid["vertices"] = vertices
+    grid["faces"] = cells
+    print(json_format.format_json(grid))
+
+
 def usage():
     """Print how to run this, and exit. Reached when there's no filename to
     read, which used to raise IndexError from sys.argv[1] and print a traceback
     that said nothing about what was wrong."""
-    print("Usage: util/obj2json.py myPolyhedron.obj > data/myGrid.json",
+    print("Usage: util/obj2json.py myPolyhedron.obj [options] > data/myGrid.json",
           file=sys.stderr)
     print("Converts an OBJ export (e.g. from polyHedronisme) to grid JSON.",
           file=sys.stderr)
-    print("The grid's name and id come from the OBJ's group ('g') line, so give",
+    print("The grid's name and id come from the OBJ's group ('g') line unless",
           file=sys.stderr)
-    print("each solid its own; see docs/generating-grids.md.", file=sys.stderr)
+    print("given here; see docs/generating-grids.md. Options:", file=sys.stderr)
+    print('  --id=J84                     gridId, else the group line', file=sys.stderr)
+    print('  --name="Snub disphenoid (J84)"    gridName, else the group line',
+          file=sys.stderr)
+    print('  --categories="Johnson solid,deltahedron"', file=sys.stderr)
+    print('  --source=https://...         where the model came from',
+          file=sys.stderr)
     sys.exit(1)
 
-def main():
-    # One argument, the OBJ file: the JSON goes to stdout, so there's no output
-    # filename to give. "-h" is worth catching separately, or we'd go looking
-    # for a file called "-h".
-    if len(sys.argv) != 2 or sys.argv[1] in ("-h", "--help"):
+def parse_options(arguments):
+    """Split the command line into the OBJ filename and the metadata options."""
+    options = {"id": None, "name": None, "categories": [], "source": None}
+    filename = None
+    for argument in arguments:
+        if argument in ("-h", "--help"):
+            usage()  # exits
+        if argument.startswith("--"):
+            if "=" not in argument:
+                print("Option needs a value: %s" % argument, file=sys.stderr)
+                usage()  # exits
+            (key, value) = argument[2:].split("=", 1)
+            if key not in options:
+                print("Unknown option: --%s" % key, file=sys.stderr)
+                usage()  # exits
+            # Categories are a comma-separated list; the rest are plain strings.
+            options[key] = ([part.strip() for part in value.split(",") if part.strip()]
+                            if key == "categories" else value)
+        elif filename is None:
+            filename = argument
+        else:
+            print("Only one OBJ file at a time: %s" % argument, file=sys.stderr)
+            usage()  # exits
+    if filename is None:
         usage()  # exits
+    return (filename, options)
+
+def main():
+    # One positional argument, the OBJ file: the JSON goes to stdout, so there's
+    # no output filename to give.
+    (filename, options) = parse_options(sys.argv[1:])
     try:
-        with open(sys.argv[1], "r") as f:
+        with open(filename, "r") as f:
             for line in f:
                 process(line.rstrip())
         if num_edges + 2 != len(cells) + len(vertices):
             raise ParseError("F + V != E + 2: %d + %d != %0.1f + 2" %
                              (len(cells), len(vertices), num_edges))
-        output()
+        output(options)
     except ParseError as e:
         print("Parse error: %s" % e.args, file=sys.stderr)
         sys.exit(1)

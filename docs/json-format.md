@@ -6,6 +6,13 @@ A JSON object containing the following properties:
 - "gridName": string, a human-readable name for the grid. E.g. "Dodecahedron"
 - "recipe" (optional): string, Conway's notation for the polyhedron. E.g. "aC". (This can be used
    in a link to a polyhedron construction site, e.g. https://levskaya.github.io/polyhedronisme/?recipe=aC)
+- "source" (optional): string, a URL saying where this grid's coordinates came from, for
+  a solid whose model was imported rather than generated. E.g.
+  "https://levskaya.github.io/polyhedronisme/?recipe=J84". This is provenance, not a
+  construction: it answers "where did these numbers come from", which for a generated
+  grid is answered by "_comment" instead. Written by `util/obj2json.py --source=...`.
+  Note that neither this nor "recipe" is read by the app at present; both are for
+  whoever is reading the data files.
 - "categories" (optional): an array of strings, human-readable names for the categories that the polyhedron
   belongs to. E.g. ["Platonic solid", "zonohedron"]
   - Exactly one of these should be a *family* — "Platonic solid", "Archimedean solid",
