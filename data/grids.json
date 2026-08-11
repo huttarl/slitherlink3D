@@ -352,6 +352,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "dwC",
+      "gridId": "dwC",
+      "gridName": "Tetrakis snub cube",
+      "categories": ["Miscellaneous", "geodesic", "chiral"],
+      "faces": 56,
+      "edges": 84,
+      "vertices": 30,
+      "numPuzzles": 3
+    },
+    {
       "file": "tD",
       "gridId": "tD",
       "gridName": "Truncated dodecahedron",

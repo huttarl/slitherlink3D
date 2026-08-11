@@ -19,8 +19,8 @@
  *    contribute to decentralizing authority over knowledge. So I'm using other
  *    sources.
  *
- * Every URL these produce was checked (all HTTP 200): the 26 named solids on
- * 2026-08-04, and GP(1,2) on 2026-08-05. Per-solid articles follow a rule, with a table for any
+ * Every URL these produce should be checked (all HTTP 200).
+ * Per-solid articles follow a rule, with a table for any
  * exceptions; the categories are a table, there being no rule to have.
  *
  * A category with no entry is fine and means "no link": the card leaves the word
@@ -74,6 +74,9 @@ const SOLID_PAGE_EXCEPTIONS = {
     // "(2,0)" that is part of the name, exactly as for GP(1,2).)
     'gd20': null,
     'gd21': null,
+    // The tetrakis snub cube is the geodesic on an octahedron rather than an
+    // icosahedron; the wiki has no article on it under that name or any other.
+    'dwC': null,
     'etI': null,
     'RandomsphereA': null,
     'RandomsphereC': null,
