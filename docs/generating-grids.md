@@ -87,7 +87,7 @@ One caveat worth knowing: the dual inherits the primal's stored precision.
 `data/tI.json` and `data/sD.json` came through `obj2json.py` when it rounded to 3
 decimals, so their duals' faces agree only to about a quarter of a degree rather
 than exactly. Harmless, but it is why the congruence tolerances aren't tighter.
-The converter writes 6 decimals now, so a model imported today is a hundred times
+The converter writes 6 decimals now, so a model imported today is a thousand times
 closer; re-converting those two would tighten their duals in turn.
 
 ## genGoldberg.py — Goldberg polyhedra
