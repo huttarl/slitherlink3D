@@ -19,7 +19,8 @@
 Each writes one grid to stdout, or into data/ when asked for a whole family. The
 first four verify the result through grid_checks before writing it.
 - genUniformPolyh — the Platonic and Archimedean solids, from exact coordinates.
-- genGoldberg — a Goldberg polyhedron GP(m,n): 12 pentagons and hexagons.
+- genGoldberg — a Goldberg polyhedron GP(m,n): 12 pentagons and hexagons. With
+  --geodesic, its dual GD(m,n) instead: all triangles, on the sphere.
 - genPrism — an n-prism or n-antiprism, all faces regular.
 - genDual — the dual of an existing grid, which is how the Catalan solids are made.
 - genRandomPolyh — invented sphere-like solids, from repelled random points.

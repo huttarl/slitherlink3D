@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Generate a Goldberg polyhedron GP(m,n) as a grid JSON file.
+"""Generate a Goldberg polyhedron GP(m,n), or its dual the geodesic polyhedron
+GD(m,n), as a grid JSON file.
 
-Usage: util/genGoldberg.py m n [gridId] [gridName]
+Usage: util/genGoldberg.py [--geodesic] m n [gridId] [gridName]
 Output is written to stdout; progress and the self-check go to stderr.
 For the JSON format, see docs/json-format.md.
 
@@ -38,6 +39,28 @@ polyhedron's hexagons directly is not:
     exactly FLAT faces -- every vertex of the face around geodesic vertex v
     satisfies v.x = 1, which is a plane. Centroids projected back onto the
     sphere would leave the hexagons very slightly saddle-shaped.
+
+--geodesic stops after step 1 and writes GD(m,n) itself, which needs no work the
+Goldberg didn't already need. Being the dual, it has the same counts with faces
+and vertices swapped,
+
+    faces = 20T,  vertices = 10T + 2,  edges = 30T
+
+all of them triangles, with 5 or 6 meeting at each vertex -- exactly 12 of 5,
+those being the icosahedron's own corners, the only places a hexagonal patch
+can't form. These are the solids of geodesic domes and of 3D modellers'
+icospheres. Which of the three classes one belongs to is just what (m,n) says:
+n = 0 is Class I, m = n is Class II, and anything else is the chiral Class III.
+See https://en.wikipedia.org/wiki/Geodesic_polyhedron. GD(1,0) is the
+icosahedron and GD(1,1) the pentakis dodecahedron, both of which data/ already
+has (as I and dtI), so the first new one here is GD(2,0).
+
+The geodesic is NOT the same shape as the Conway kis-operator solid with the same
+topology, though it is easy to assume so: every vertex here sits on the sphere,
+which is what keeps the edge lengths nearly equal, whereas a kis pyramid's apex
+stands out from the face it was raised on. Hence the check below reports the
+edge-length spread for a geodesic -- near-equal edges are the whole point of one,
+and they are what makes it worth drawing.
 
 The counts above are then checked against what came out (see main), so a
 mistake in the lattice can't quietly produce a plausible-looking solid.
@@ -76,6 +99,19 @@ RECIPES = {
     (2, 1): 'wD',
 }
 
+# The same for the geodesics, which are the duals -- so mostly the recipe above
+# with Conway's d in front. Note these recipes give the right TOPOLOGY and not
+# quite this shape: polyHédronisme's dual leaves the vertices where reciprocation
+# puts them, off the sphere (see the note on kis in the docstring). Good enough
+# for its purpose, which is to let a player go and look at the solid.
+GEODESIC_RECIPES = {
+    (1, 0): 'I',        # icosahedron
+    (1, 1): 'kD',       # pentakis dodecahedron: a pyramid on each face of D
+    (2, 0): 'dcD',      # dual of the chamfered dodecahedron
+    (1, 2): 'dwD',      # dual of the whirled dodecahedron, either handedness
+    (2, 1): 'dwD',
+}
+
 
 def log(*args):
     """Progress and diagnostics, on stderr: stdout carries the JSON."""
@@ -106,8 +142,11 @@ def orient_outward(vertices, face):
     The solid is centred on the origin here, so "outside" is simply the
     direction of the face itself: the right-hand-rule normal should point the
     same way as the face's own centroid.
+
+    Plain ints, not the numpy ones ConvexHull hands back, since a face list may
+    be written straight out as JSON, which has no idea what an int32 is.
     """
-    face = list(face)
+    face = [int(vertex) for vertex in face]
     p = vertices[face]
     normal = np.cross(p[1] - p[0], p[2] - p[0])
     if np.dot(normal, p.mean(axis=0)) < 0:
@@ -225,8 +264,8 @@ def cycle_around(axis, corners, corner_ids):
     return [int(corner_ids[k]) for k in order]
 
 
-def check(m, n, vertices, faces):
-    """Verify the solid against what GP(m,n) must be, and report it.
+def check(m, n, vertices, faces, want_geodesic):
+    """Verify the solid against what GP(m,n) or GD(m,n) must be, and report it.
 
     Cheap insurance on the lattice arithmetic: a wrong set of lattice points
     still yields *a* polyhedron, but not one with these counts.
@@ -236,20 +275,42 @@ def check(m, n, vertices, faces):
     T = m * m + m * n + n * n
     sizes = grid_checks.face_census(faces)
 
-    problems = (
-        grid_checks.check_counts(vertices, faces,
-                                 {'vertices': 20 * T, 'faces': 10 * T + 2,
-                                  'edges': 30 * T})
+    if want_geodesic:
+        expected = {'vertices': 10 * T + 2, 'faces': 20 * T, 'edges': 30 * T}
+        # All triangles with 5 or 6 at a vertex, and exactly 12 fives, is what
+        # makes a solid geodesic. The fives are the icosahedron's own corners:
+        # the subdivision leaves them alone and hexagonally packs everything
+        # else, so a different count means the lattice went wrong.
+        five_valent = sum(1 for degree in grid_topology.vertex_degrees(faces).values()
+                          if degree == 5)
+        shape_problems = []
+        if set(sizes) != {3}:
+            shape_problems.append(f'only triangles expected, got {sorted(sizes)}')
+        shape_problems += grid_checks.check_vertex_degrees(faces, {5, 6})
+        if five_valent != 12:
+            shape_problems.append(
+                f'12 five-valent vertices expected, got {five_valent}')
+    else:
+        expected = {'vertices': 20 * T, 'faces': 10 * T + 2, 'edges': 30 * T}
         # 12 pentagons and hexagons for the rest, at three faces per vertex, is
         # what makes a solid Goldberg. Euler forces exactly 12 once no face is
         # anything but a pentagon or hexagon.
-        + ([f'12 pentagons expected, got {sizes.get(5, 0)}']
-           if sizes.get(5) != 12 else [])
-        + ([f'only pentagons and hexagons expected, got {sorted(sizes)}']
-           if set(sizes) - {5, 6} else [])
-        + grid_checks.check_vertex_degrees(faces, {3})
+        shape_problems = []
+        if sizes.get(5) != 12:
+            shape_problems.append(f'12 pentagons expected, got {sizes.get(5, 0)}')
+        if set(sizes) - {5, 6}:
+            shape_problems.append(
+                f'only pentagons and hexagons expected, got {sorted(sizes)}')
+        shape_problems += grid_checks.check_vertex_degrees(faces, {3})
+
+    problems = (
+        grid_checks.check_counts(vertices, faces, expected)
+        + shape_problems
         # Flatness is the point of going via the polar dual, so it is checked
-        # tightly: these faces should be flat to floating-point noise.
+        # tightly: these faces should be flat to floating-point noise. (A
+        # geodesic's triangles cannot bow at all, so for those this passes for
+        # free -- left in rather than skipped, since it costs nothing and would
+        # catch a face that somehow came out with four corners.)
         + grid_checks.check_flat_faces(vertices, faces, 1e-9)
         + grid_checks.check_closed_surface(faces)
         + grid_checks.check_outward_winding(vertices, faces))
@@ -259,12 +320,22 @@ def check(m, n, vertices, faces):
             log(f'Error: {problem}.')
         sys.exit(1)
 
+    name = f'GD({m},{n})' if want_geodesic else f'GP({m},{n})'
+    report = (f'{name}: T={T}, {len(vertices)} vertices, '
+              f'{len(grid_topology.edges_of(faces))} edges, '
+              f'{len(faces)} faces ({grid_checks.census_text(faces)}); ')
+    if want_geodesic:
+        # Near-equal edges are what a geodesic is for, so report the spread
+        # rather than the flatness that came free. It also decides how the app
+        # draws the solid: the edge radius follows the median edge length (see
+        # radiusScale in js/geometryUtils.js).
+        lengths = [grid_checks.distance(vertices[a], vertices[b])
+                   for (a, b) in grid_topology.edges_of(faces)]
+        return (report + f'edges {min(lengths):.4f} to {max(lengths):.4f} '
+                f'(ratio {max(lengths) / min(lengths):.3f})')
     worst_bow = max(grid_checks.face_bow(grid_checks.corners_of(vertices, face))
                     for face in faces)
-    return (f'GP({m},{n}): T={T}, {len(vertices)} vertices, '
-            f'{len(grid_topology.edges_of(faces))} edges, '
-            f'{len(faces)} faces ({grid_checks.census_text(faces)}); '
-            f'faces flat to {worst_bow:.1e}')
+    return report + f'faces flat to {worst_bow:.1e}'
 
 
 def goldberg(m, n):
@@ -277,38 +348,63 @@ def goldberg(m, n):
     return (vertices / np.abs(np.linalg.norm(vertices, axis=1)).max(), faces)
 
 
-def main():
-    if len(sys.argv) < 3:
-        log('Usage: python3 genGoldberg.py m n [gridId] [gridName]')
-        sys.exit(1)
-    (m, n) = (int(sys.argv[1]), int(sys.argv[2]))
-    if m < 1 or n < 0:
-        log('Error: GP(m,n) wants m >= 1 and n >= 0.')
-        sys.exit(1)
-    grid_id = sys.argv[3] if len(sys.argv) > 3 else f'gp{m}{n}'
-    grid_name = sys.argv[4] if len(sys.argv) > 4 else f'Goldberg GP({m},{n})'
+def geodesic(m, n):
+    """GD(m,n) as (vertices, faces): step 1 of the construction, on its own.
 
-    (vertices, faces) = goldberg(m, n)
-    log(check(m, n, vertices, faces))
+    No scaling to do, unlike goldberg() above: geodesic_points pushed every point
+    onto the unit sphere, so the circumradius is already the 1 that the rest of
+    data/ uses. The triangles are the convex hull, since a point on a sphere is a
+    vertex of the hull of any set of points on that sphere.
+    """
+    points = geodesic_points(m, n)
+    faces = [orient_outward(points, simplex)
+             for simplex in ConvexHull(points).simplices]
+    return (points, faces)
+
+
+def main():
+    # --geodesic is taken out of the arguments first, so the positional ones keep
+    # the places the usage message gives them wherever the flag is written.
+    want_geodesic = '--geodesic' in sys.argv[1:]
+    argv = [arg for arg in sys.argv[1:] if arg != '--geodesic']
+    if len(argv) < 2:
+        log('Usage: python3 genGoldberg.py [--geodesic] m n [gridId] [gridName]')
+        sys.exit(1)
+    (m, n) = (int(argv[0]), int(argv[1]))
+    if m < 1 or n < 0:
+        log('Error: GP(m,n) and GD(m,n) want m >= 1 and n >= 0.')
+        sys.exit(1)
+    kind = 'gd' if want_geodesic else 'gp'
+    default_name = (f'Geodesic GD({m},{n})' if want_geodesic
+                    else f'Goldberg GP({m},{n})')
+    grid_id = argv[2] if len(argv) > 2 else f'{kind}{m}{n}'
+    grid_name = argv[3] if len(argv) > 3 else default_name
+
+    (vertices, faces) = geodesic(m, n) if want_geodesic else goldberg(m, n)
+    log(check(m, n, vertices, faces, want_geodesic))
 
     # "Miscellaneous" is the family for a solid in none of the classical ones,
     # the picker having to file every solid under exactly one family. GP(1,0) and
     # GP(1,1) are the exceptions -- they're the dodecahedron and the truncated
-    # icosahedron, so they're Platonic and Archimedean respectively -- and this
-    # script isn't how those two got into data/.
-    categories = ['Miscellaneous', 'Goldberg']
+    # icosahedron, so they're Platonic and Archimedean respectively -- as are
+    # GD(1,0) and GD(1,1), the icosahedron and the pentakis dodecahedron, which
+    # are Platonic and Catalan. This script isn't how those four got into data/.
+    categories = ['Miscellaneous', 'geodesic' if want_geodesic else 'Goldberg']
     # GP(m,n) is chiral unless it is its own mirror image, which happens only
-    # along the two symmetric edges of the (m,n) family.
+    # along the two symmetric edges of the (m,n) family. Its dual has whatever
+    # symmetry it has, so the same test settles the geodesic.
     if n != 0 and m != n:
         categories.append('chiral')
 
     # Built key by key to keep data/'s usual order, with the optional fields in
     # the middle where the other grid files have them.
     grid = {'gridId': grid_id, 'gridName': grid_name, 'categories': categories}
-    if (m, n) in RECIPES:
-        grid['recipe'] = RECIPES[(m, n)]
+    recipes = GEODESIC_RECIPES if want_geodesic else RECIPES
+    if (m, n) in recipes:
+        grid['recipe'] = recipes[(m, n)]
     # So the file says where it came from, and can be reproduced exactly.
-    grid['_comment'] = f'Generated by util/genGoldberg.py {m} {n}.'
+    flag = '--geodesic ' if want_geodesic else ''
+    grid['_comment'] = f'Generated by util/genGoldberg.py {flag}{m} {n}.'
     grid['vertices'] = [[round(float(c), 6) for c in v] for v in vertices]
     grid['faces'] = faces
     json_format.write_json(grid, sys.stdout)

@@ -165,7 +165,7 @@
       "file": "I",
       "gridId": "I",
       "gridName": "Icosahedron",
-      "categories": ["Platonic solid", "deltahedron"],
+      "categories": ["Platonic solid", "geodesic"],
       "faces": 20,
       "edges": 30,
       "vertices": 12,
@@ -395,7 +395,7 @@
       "file": "dtI",
       "gridId": "dtI",
       "gridName": "Pentakis dodecahedron",
-      "categories": ["Catalan solid"],
+      "categories": ["Catalan solid", "geodesic"],
       "faces": 60,
       "edges": 90,
       "vertices": 32,
@@ -439,6 +439,16 @@
       "faces": 62,
       "edges": 120,
       "vertices": 60,
+      "numPuzzles": 3
+    },
+    {
+      "file": "gd20",
+      "gridId": "gd20",
+      "gridName": "Geodesic GD(2,0)",
+      "categories": ["Miscellaneous", "geodesic"],
+      "faces": 80,
+      "edges": 120,
+      "vertices": 42,
       "numPuzzles": 3
     },
     {
@@ -489,6 +499,16 @@
       "faces": 72,
       "edges": 210,
       "vertices": 140,
+      "numPuzzles": 3
+    },
+    {
+      "file": "gd21",
+      "gridId": "gd21",
+      "gridName": "Geodesic GD(2,1)",
+      "categories": ["Miscellaneous", "geodesic", "chiral"],
+      "faces": 140,
+      "edges": 210,
+      "vertices": 72,
       "numPuzzles": 3
     },
     {

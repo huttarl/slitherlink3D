@@ -1,6 +1,16 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
+- [ ] tetrakis snub cube (geodesic-ish)
+I want to add a few geodesic polyhedra to our grid. It's probably not worth a new family though; we'll keep them under Miscellaneous. But "geodesic" would be a new category.
+- Read https://en.wikipedia.org/wiki/Geodesic_polyhedron 
+- What would be the best 2 or 3 geodesic polyhedra to add? My criteria are:
+- Simpler is better
+- Get the real "flavor" of geodesic solids
+- distinct from existing grids (like icosahedron)
+- Maybe a variety of class I, II, III from the wikipedia article
+- Don't let them get too big. All-triangle solids are probably boring at large size.
+
 - [ ] If I accidentally press "back", it goes to the previous puzzle, without any
   confirmation about leaving. If I then go "forward", it returns to the puzzle
   I was on, apparently preserving my marks, but then the puzzle is frozen and I can't
@@ -10,10 +20,10 @@ Finished items live in ideas/TODOs-done.md.
 - [ ] Settings: sound on / off. (Opens the door to other sounds, music.)
 - [ ] Celebration tweaking:
   - [x] have end of music coincide with end of animation (3 "beats"). Probably by shortening notes.
-  - [ ] cycling of loop needs to be slower than it is when loop is longer. (too flashy now
+  - [x] cycling of loop needs to be slower than it is when loop is longer. (too flashy now
     -- is it proportional to loop length? effectively yes: shimmerCyclesPerSecond: 0.3
     seems to be for the whole loop.)
-  - [ ] It's harder to test with a longer loop, because it takes longer to solve the puzzle by hand. Maybe I need an "insta-solve" key.
+  - [x] It's harder to test with a longer loop, because it takes longer to solve the puzzle by hand. Maybe I need an "insta-solve" key.
     The existing debug "show solution" shows this, but then you still have to copy the solution by clicking.
 - [ ] Once the user has done "Check solution" and it's correct, stop the "solved in" clock.
   Otherwise they might fire the button again, and now their solution time is longer.

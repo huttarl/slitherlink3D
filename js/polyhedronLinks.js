@@ -1,7 +1,7 @@
 /**
  * Where the About card sends a player who wants to know more.
  *
- * Three sources, chosen for what each does best, and deliberately not Wikipedia:
+ * Various sources, chosen for what each does best:
  *
  *  - Polytope Wiki (polytope.miraheze.org) for the individual solid: an article
  *    per polyhedron, with prose, pictures, a "Related polyhedra" section and
@@ -14,6 +14,10 @@
  *    per-solid links are raw .wrl model files, so they're no use here.
  *  - Plus Magazine (Cambridge's Millennium Mathematics Project) for Euler's
  *    formula: authoritative and written for a general reader.
+ *  - Wikipedia is a great go-to, but it has a huge amount of power to shape
+ *    public opinion concentrated in the hands of one organization. I'd rather
+ *    contribute to decentralizing authority over knowledge. So I'm using other
+ *    sources.
  *
  * Every URL these produce was checked (all HTTP 200): the 26 named solids on
  * 2026-08-04, and GP(1,2) on 2026-08-05. Per-solid articles follow a rule, with a table for any
@@ -61,6 +65,15 @@ const SOLID_PAGE_EXCEPTIONS = {
     // null: no article anywhere, so the card leaves the name as plain text. The
     // random solids (util/genRandomPolyh.py) are one-offs nobody has written
     // about -- and unlike a missing entry, this can't quietly become a 404.
+    //
+    // The two geodesics are here for a different reason: they are perfectly
+    // well-known solids, but this wiki has nothing on the geodesic polyhedra at
+    // all -- not even the family article that gp12 above falls back on. So the
+    // reading for them is the 'geodesic' category link instead, and the name
+    // stays plain. (The derivation would give 'Geodesic_GD' anyway, stripping the
+    // "(2,0)" that is part of the name, exactly as for GP(1,2).)
+    'gd20': null,
+    'gd21': null,
     'RandomsphereA': null,
     'RandomsphereC': null,
     'RandomsphereD': null,
@@ -128,6 +141,7 @@ const CATEGORY_PAGES = {
     'antiprism': POLYTOPE_WIKI + 'Antiprism',
     'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
     'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',
+    'geodesic': 'https://geometryofthinking.com/2024/02/01/geodesics/',
     'Near-miss Johnson solid': POLYTOPE_WIKI + 'Near-miss_Johnson_solid',
 };
 

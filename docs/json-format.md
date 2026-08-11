@@ -12,7 +12,7 @@ A JSON object containing the following properties:
     "Catalan solid", "Johnson solid", "Miscellaneous" — since the polyhedron picker
     groups by family, and a solid can only be filed under one heading.
     The rest are cross-cutting properties: "deltahedron", "quasiregular", "zonohedron",
-    "parallelohedron", "chiral", "self-dual", "Goldberg", "prism", "antiprism".
+    "parallelohedron", "chiral", "self-dual", "Goldberg", "geodesic", "prism", "antiprism".
   - Some of those attributes catch a classical solid too, which is the point of their
     being cross-cutting: the cube is a "prism" as well as Platonic, and the octahedron
     an "antiprism".

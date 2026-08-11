@@ -1,7 +1,7 @@
 {
   "gridId": "I",
   "gridName": "Icosahedron",
-  "categories": ["Platonic solid", "deltahedron"],
+  "categories": ["Platonic solid", "geodesic"],
   "recipe": "I",
   "vertices": [
     [-0.0, 0.0, 1.0],
