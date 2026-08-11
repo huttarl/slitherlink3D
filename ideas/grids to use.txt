@@ -34,13 +34,15 @@ x near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_soli
         also shown at https://www.youtube.com/watch?v=XMiT2iCnZFE
         (dual of rhombic enneacontahedron)
 x Catalan solids
-- zonohedra, such as rhombic enneacontahedron
+~ zonohedra, such as rhombic enneacontahedron
+    x see https://www.georgehart.com/virtual-polyhedra/zonohedra-info.html
+    ~ I would also like to be able to produce some "zonish polyhedra" (https://www.georgehart.com/virtual-polyhedra/zonish_polyhedra.html) from other seed polyhedra
 x prisms & antiprisms
 x Goldberg (hex-based) polyhedra, beyond dodecahedron and truncated icosahedron.
         https://en.wikipedia.org/wiki/Goldberg_polyhedron
     - including those with triangles or squares rather than pentagons
         See https://en.wikipedia.org/wiki/Chamfer_(geometry)#Relation_to_Goldberg_polyhedra
-    - Class I, II, III? I don't understand this system.
+    x Class I, II, III? I don't understand this system.
 x geodesic polyhedra
 - fullerenes
     - carbon nanotube - the ends could be 20-gons, but maybe smaller is better. 8-gon ends?

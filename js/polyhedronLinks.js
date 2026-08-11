@@ -78,6 +78,17 @@ const SOLID_PAGE_EXCEPTIONS = {
     // icosahedron; the wiki has no article on it under that name or any other.
     'dwC': null,
     'etI': null,
+    // The zonish solids (util/genZonish.py). Their names are Hart's descriptions of
+    // his own figures rather than established names, so there is no article to find
+    // -- and unlike the geodesics, the 'zonish' category link goes to the very page
+    // the solids came from, which is the best reading available anyway. J43 needs no
+    // entry: it is a Johnson solid with an article of its own, which is worth
+    // knowing about it.
+    'zonaC4': null,
+    'zonaD2': null,
+    'zonaD3o': null,
+    'zonaD3p': null,
+    'zonaD6': null,
     'RandomsphereA': null,
     'RandomsphereC': null,
     'RandomsphereD': null,
@@ -146,6 +157,9 @@ const CATEGORY_PAGES = {
     'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
     'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',
     'geodesic': 'https://geometryofthinking.com/2024/02/01/geodesics/',
+    // Hart again, and the rare case where the page that explains a category is also
+    // the page these solids came from: util/genZonish.py reproduces its figures.
+    'zonish': VIRTUAL_POLYHEDRA + 'zonish_polyhedra.html',
     'Near-miss Johnson solid': POLYTOPE_WIKI + 'Near-miss_Johnson_solid',
 };
 

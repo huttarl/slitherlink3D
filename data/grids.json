@@ -342,6 +342,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "J43",
+      "gridId": "J43",
+      "gridName": "Elongated pentagonal gyrobirotunda (J43)",
+      "categories": ["Johnson solid", "zonish"],
+      "faces": 42,
+      "edges": 80,
+      "vertices": 40,
+      "numPuzzles": 3
+    },
+    {
       "file": "J47",
       "gridId": "J47",
       "gridName": "Gyroelongated pentagonal cupolarotunda (J47)",
@@ -422,6 +432,26 @@
       "numPuzzles": 3
     },
     {
+      "file": "zonaC4",
+      "gridId": "zonaC4",
+      "gridName": "Four-zone cuboctahedron",
+      "categories": ["Miscellaneous", "zonish"],
+      "faces": 50,
+      "edges": 96,
+      "vertices": 48,
+      "numPuzzles": 3
+    },
+    {
+      "file": "zonaD2",
+      "gridId": "zonaD2",
+      "gridName": "Two-zone icosidodecahedron",
+      "categories": ["Miscellaneous", "zonish"],
+      "faces": 54,
+      "edges": 104,
+      "vertices": 52,
+      "numPuzzles": 3
+    },
+    {
       "file": "cD",
       "gridId": "cD",
       "gridName": "Chamfered dodecahedron",
@@ -469,6 +499,26 @@
       "faces": 80,
       "edges": 120,
       "vertices": 42,
+      "numPuzzles": 3
+    },
+    {
+      "file": "zonaD3o",
+      "gridId": "zonaD3o",
+      "gridName": "Oblate three-zone icosidodecahedron",
+      "categories": ["Miscellaneous", "zonish"],
+      "faces": 68,
+      "edges": 132,
+      "vertices": 66,
+      "numPuzzles": 3
+    },
+    {
+      "file": "zonaD3p",
+      "gridId": "zonaD3p",
+      "gridName": "Prolate three-zone icosidodecahedron",
+      "categories": ["Miscellaneous", "zonish"],
+      "faces": 68,
+      "edges": 132,
+      "vertices": 66,
       "numPuzzles": 3
     },
     {
@@ -539,6 +589,16 @@
       "faces": 140,
       "edges": 210,
       "vertices": 72,
+      "numPuzzles": 3
+    },
+    {
+      "file": "zonaD6",
+      "gridId": "zonaD6",
+      "gridName": "Six-zone icosidodecahedron",
+      "categories": ["Miscellaneous", "zonish"],
+      "faces": 122,
+      "edges": 240,
+      "vertices": 120,
       "numPuzzles": 3
     },
     {

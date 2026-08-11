@@ -17,7 +17,7 @@
 
 ## Grid generators
 Each writes one grid to stdout, or into data/ when asked for a whole family. The
-first five verify the result through grid_checks before writing it.
+first six verify the result through grid_checks before writing it.
 - genUniformPolyh — the Platonic and Archimedean solids, from exact coordinates.
 - genGoldberg — a Goldberg polyhedron GP(m,n): 12 pentagons and hexagons. With
   --geodesic, its dual GD(m,n) instead: all triangles, on the sphere.
@@ -25,6 +25,8 @@ first five verify the result through grid_checks before writing it.
 - genDual — the dual of an existing grid, which is how the Catalan solids are made.
 - genZonohedron — a zonohedron from a star of generating vectors, faces exactly
   parallelogram.
+- genZonish — a seed solid expanded by zones taken from its own symmetry, after
+  Hart's zonish polyhedra.
 - genRandomPolyh — invented sphere-like solids, from repelled random points.
 - obj2json — converts Wavefront OBJ format (such as from polyHedronisme) to our JSON format.
 
