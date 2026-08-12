@@ -16,8 +16,10 @@ import {
 // The app's own value, rather than a copy that would drift out of step with it.
 // (constants.js pulls in THREE, which imports fine under Node -- the headless
 // unit tests do the same.)
-import { CAMERA_DISTANCE, CAMERA_HEIGHT, CELEBRATION_TIMING, DEFAULT_GRID,
-         LONG_PRESS_MS, TITLE_SCREEN_FALLBACK_GRID,
+import { CAMERA_DISTANCE, CAMERA_HEIGHT, CELEBRATION_TIMING,
+         COARSE_POINTER_RADIUS_FACTOR, DEFAULT_GRID, LONG_PRESS_MS, PICK_RADIUS,
+         RADIUS_LENGTH_EXPONENT, RADIUS_REFERENCE_EDGE,
+         TITLE_SCREEN_FALLBACK_GRID,
          TITLE_SCREEN_MIN_FACES } from '../../constants.js';
 import { titleScreenCameraDistance } from '../../titleScreen.js';
 
@@ -110,6 +112,22 @@ test.describe('touch input', () => {
             'a tap on an edge should fill it in').toBe(1);
     });
 
+    test('a tap that wobbles a little still counts', async ({page}) => {
+        // A fingertip rolls as it presses, so a tap is never as still as a click,
+        // and a tap that strays past the drag threshold isn't merely harder to
+        // aim -- it is discarded, which reads as the board ignoring you. This
+        // drift is about 7px (the helper moves diagonally), which the mouse's
+        // 5px threshold would have thrown away.
+        const edgeId = await someVisibleEdge(page);
+        await clearAllMarks(page);
+        const {x, y} = await edgeMidpointOnScreen(page, edgeId);
+
+        await touchPress(page, x, y, 0, {driftPx: 5});
+        expect(await edgeState(page, edgeId),
+            'a tap with a few pixels of finger wobble should still fill the edge')
+            .toBe(1);
+    });
+
     test('a long press cycles an edge backward', async ({page}) => {
         // The touch stand-in for shift+click, a phone having no shift key.
         const edgeId = await someVisibleEdge(page);
@@ -132,6 +150,44 @@ test.describe('touch input', () => {
             expect(await edgeState(page, edgeId),
                 'a press that wanders is a drag, so no mark should be made')
                 .toBe(0);
+        });
+});
+
+test.describe('how big the edges are', () => {
+    // Both projects, because the interesting assertion is that the two DIFFER.
+    // The headless tests stub matchMedia, so they can prove the arithmetic but not
+    // that a real phone browser answers `(pointer: coarse)` the way the code
+    // assumes -- and if it answered "no", the whole thing would silently do
+    // nothing on the devices it exists for.
+    test('a finger gets a thicker board and more slack; a mouse does not',
+        async ({page, hasTouch}) => {
+            await openDefaultPuzzle(page);
+            const measured = await page.evaluate(async () => {
+                const [{GameState}, geometry, {hasCoarsePointer}] =
+                    await Promise.all([import('/js/GameState.js'),
+                                       import('/js/geometryUtils.js'),
+                                       import('/js/pointer.js')]);
+                const grid = GameState.getInstance().getPuzzleGrid();
+                return {
+                    coarse: hasCoarsePointer(),
+                    median: geometry.medianEdgeLength(grid),
+                    scale: geometry.radiusScale(grid),
+                    pickRadius: geometry.pickTolerances(grid).pickRadius,
+                };
+            });
+
+            expect(measured.coarse,
+                'the pointer query should follow the emulated device')
+                .toBe(hasTouch);
+
+            // Expected from the constants, not hard-coded, so retuning either dial
+            // moves the test with it.
+            const fromEdgeLength = Math.min(1, Math.pow(
+                measured.median / RADIUS_REFERENCE_EDGE, RADIUS_LENGTH_EXPONENT));
+            expect(measured.scale).toBeCloseTo(
+                fromEdgeLength * (hasTouch ? COARSE_POINTER_RADIUS_FACTOR : 1), 10);
+            // And the click target is still exactly twice the tube on screen.
+            expect(measured.pickRadius).toBeCloseTo(PICK_RADIUS * measured.scale, 10);
         });
 });
 
@@ -532,6 +588,10 @@ test.describe('the title screen', () => {
             await page.goto('/main.html');
             await waitForScene(page);
             await page.locator('#titleStart').click();
+            // The URL first: Start navigates, and waitForScene alone can be
+            // satisfied by the title screen's own scene on the way out. See its
+            // docstring.
+            await page.waitForURL(/[?&]grid=/);
             await waitForScene(page);
 
             expect(new URL(page.url()).searchParams.get('grid'))
@@ -553,6 +613,7 @@ test.describe('the title screen', () => {
             await page.goto('/main.html');
             await waitForScene(page);
             await page.locator('#titleHowTo').click();
+            await page.waitForURL(/[?&]grid=/);   // as above: it navigates
             await waitForScene(page);
 
             const state = await page.evaluate(() => ({

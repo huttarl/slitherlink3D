@@ -79,7 +79,11 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   `createEdgeGeometry()` makes a cylinder per edge.
 - `geometryUtils.js` — pure vector math (centroids, point-to-line distance,
   face inscribed radius, face normals, vertex normalization); no Grid or
-  scene dependencies, unit-tested headless.
+  scene dependencies, unit-tested headless. Also `radiusScale()` and
+  `pickTolerances()`, the one multiplier the edge radius, the vertex radius and
+  the click tolerance all pass through — so it is where the grid's edge length
+  and the player's pointer (see `pointer.js`) are both applied, and the only
+  thing here that wants a `window`.
 - `clueRenderer.js` — gameplay clue digits, drawn on canvas textures and
   "painted" onto faces, each sized to its face's inscribed circle; plus
   per-frame culling of clues on faces turned away from the camera.
@@ -217,6 +221,9 @@ All ES6 modules; Three.js vendored under `js/three/`.
 - Polyhedron facts: `solidFacts.js`, `polyhedronLinks.js`, plus `categories`
   in the grid data and `groupGridsByFamily` in `catalogue.js`
 - Configuration: `constants.js`; `debug.js` (gated tracing)
+- What the player's device is like, each a single media query with its reasoning:
+  `motion.js` (does it want less animation?) and `pointer.js` (a finger or a
+  mouse?)
 - Data loading: `puzzleLoader.js` (puzzle JSON), plus
   `loadPolyhedronFromJSON()` in `geometry.js`
 - Celebration: `celebration.js` (lights running round the solved loop) and

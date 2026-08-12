@@ -7,7 +7,17 @@
  * needing test hooks.
  */
 
-/** Waits until the scene is built and the first frame has been drawn. */
+/**
+ * Waits until the scene is built and the first frame has been drawn.
+ *
+ * NOT sufficient on its own after a click that NAVIGATES. The outgoing document is
+ * still there for a moment, scene and all, so this is satisfied by the page being
+ * left rather than the one being waited for -- and the assertions that follow then
+ * race the new document's load. That made both title-screen navigation tests fail
+ * intermittently, reading a puzzle grid with no faces in it yet. Wait for the URL
+ * first (`page.waitForURL`), which resolves only once the new document has
+ * committed, and then call this.
+ */
 export async function waitForScene(page) {
     await page.waitForFunction(async () => {
         const {GameState} = await import('/js/GameState.js');

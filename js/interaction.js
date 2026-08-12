@@ -8,7 +8,7 @@ import * as THREE from './three/three.module.min.js';
 import { findCentroid, findFaceNormal } from './geometryUtils.js';
 import { debug } from './debug.js';
 import { DRAG_THRESHOLD_PIXELS, FACE_COLORS, EDGE_STATES,
-         LONG_PRESS_MS } from './constants.js';
+         LONG_PRESS_MS, TOUCH_DRAG_THRESHOLD_PIXELS } from './constants.js';
 import { pickTolerances } from './geometryUtils.js';
 
 /**
@@ -41,7 +41,7 @@ export function makeInteraction(gameState) {
     let selectedEdge = null;
 
     // To distinguish a click from a drag, we track how far the pointer moves
-    // while the button is held: more than DRAG_THRESHOLD_PIXELS means the
+    // while the button is held: more than dragThreshold (below) means the
     // user was rotating the camera, not picking an edge.
     //
     // We deliberately do NOT use OrbitControls' 'start'/'change' events for
@@ -56,6 +56,12 @@ export function makeInteraction(gameState) {
     let pointerDownX = 0, pointerDownY = 0;
     // Farthest the pointer has strayed from its starting point in this gesture.
     let maxPointerMovement = 0;
+    // How far this gesture may stray and still count as a tap rather than a
+    // camera drag. Per gesture, from event.pointerType, because a finger cannot
+    // hold as still as a mouse: a tap that wobbles past the threshold is silently
+    // swallowed, which reads as the board ignoring you. Set at pointerdown, and
+    // defaulted for the mouse in case anything reads it before the first press.
+    let dragThreshold = DRAG_THRESHOLD_PIXELS;
 
     // Long press: the touch equivalent of shift+click, which a phone can't do.
     // The pending timer, and whether it fired and already handled this gesture
@@ -313,7 +319,7 @@ export function makeInteraction(gameState) {
 
         // Suppress the click if the pointer moved far enough during this
         // gesture to count as a drag (i.e. a camera rotation).
-        if (maxPointerMovement > DRAG_THRESHOLD_PIXELS) return;
+        if (maxPointerMovement > dragThreshold) return;
 
         pickAt(event.clientX, event.clientY, event.shiftKey);
     }
@@ -346,6 +352,10 @@ export function makeInteraction(gameState) {
         pointerDownX = event.clientX;
         pointerDownY = event.clientY;
         maxPointerMovement = 0;
+        // A pen is held like a pencil and aims like one, so it keeps the mouse's
+        // tighter threshold; only a finger gets the extra room.
+        dragThreshold = (event.pointerType === 'touch')
+            ? TOUCH_DRAG_THRESHOLD_PIXELS : DRAG_THRESHOLD_PIXELS;
         cancelLongPress();
 
         // Touching the board hands the view back to the player: a drag would
@@ -386,7 +396,7 @@ export function makeInteraction(gameState) {
             longPressTimer = null;
             // Holding still is a long press; wandering off is a camera drag,
             // and onPointerMove will already have cancelled us in that case.
-            if (maxPointerMovement > DRAG_THRESHOLD_PIXELS) return;
+            if (maxPointerMovement > dragThreshold) return;
             // Act now rather than on release, so the edge changes under the
             // finger while it's still down -- that IS the feedback that the
             // long press registered.
@@ -418,7 +428,7 @@ export function makeInteraction(gameState) {
         maxPointerMovement = Math.max(maxPointerMovement, movement);
         // Straying this far means the finger is rotating the camera, not
         // holding an edge, so a long press is no longer on the cards.
-        if (maxPointerMovement > DRAG_THRESHOLD_PIXELS) {
+        if (maxPointerMovement > dragThreshold) {
             cancelLongPress();
         }
     }

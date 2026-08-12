@@ -1,16 +1,21 @@
 /**
  * Pure geometry math helpers: centroids, distances, normals, normalization.
- * No dependencies on Grid, scene-building, or the DOM (just THREE vector
- * types), so consumers like clueRenderer.js can import the math without
- * dragging in the polyhedron builder -- and the functions test headless
- * (see js/tests/geometryUtils.test.js).
+ * No dependencies on Grid or scene-building, so consumers like clueRenderer.js can
+ * import the math without dragging in the polyhedron builder.
+ *
+ * One exception to the DOM-freedom this module otherwise keeps: radiusScale (and
+ * so pickTolerances) asks whether the player is using a finger, because it is the
+ * single multiplier every radius goes through and that is where the answer has to
+ * be applied. The tests supply a window stub; everything else here still runs on
+ * nothing but THREE's vector types (see js/tests/geometryUtils.test.js).
  *
  * (Split out of geometry.js, which keeps the polyhedron/scene construction.)
  */
 import * as THREE from './three/three.module.min.js';
-import {PICK_RADIUS, RADIUS_LENGTH_EXPONENT,
+import {COARSE_POINTER_RADIUS_FACTOR, PICK_RADIUS, RADIUS_LENGTH_EXPONENT,
         RADIUS_REFERENCE_EDGE} from './constants.js';
 import {debug} from './debug.js';
+import {hasCoarsePointer} from './pointer.js';
 
 /**
  * The median rendered edge length of a grid.
@@ -70,15 +75,26 @@ export function medianEdgeLength(grid) {
  * at visibly different thicknesses looks like a mistake rather than a response
  * to scale.
  *
+ * A finger then gets everything half again as thick, applied AFTER the clamp so
+ * the two decisions stay separable: the clamp is about which grid this is, and the
+ * factor is about who is playing. See COARSE_POINTER_RADIUS_FACTOR.
+ *
+ * Being the one multiplier both radii and the pick tolerance go through is the
+ * reason the touch factor belongs here rather than at the three call sites: it is
+ * what keeps the click target at twice the drawn tube without anyone having to
+ * remember to multiply.
+ *
  * @param {Grid} grid - with normalized vertex positions
- * @returns {number} a multiplier for EDGE_RADIUS and VERTEX_RADIUS, never above
- *     1, so the constants stay the maximum they have always been
+ * @returns {number} a multiplier for EDGE_RADIUS and VERTEX_RADIUS, never above 1
+ *     for a mouse -- so the constants stay the maximum they have always been --
+ *     and never above COARSE_POINTER_RADIUS_FACTOR for a finger
  */
 export function radiusScale(grid) {
+    const pointerFactor = hasCoarsePointer() ? COARSE_POINTER_RADIUS_FACTOR : 1;
     const median = medianEdgeLength(grid);
-    if (median <= 0) return 1;
+    if (median <= 0) return pointerFactor;
     return Math.min(1, Math.pow(median / RADIUS_REFERENCE_EDGE,
-                                RADIUS_LENGTH_EXPONENT));
+                                RADIUS_LENGTH_EXPONENT)) * pointerFactor;
 }
 
 /**

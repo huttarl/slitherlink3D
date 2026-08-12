@@ -16,9 +16,26 @@ import {
     pickTolerances,
     radiusScale,
 } from '../geometryUtils.js';
-import { PICK_RADIUS, RADIUS_LENGTH_EXPONENT,
+import { COARSE_POINTER_RADIUS_FACTOR, PICK_RADIUS, RADIUS_LENGTH_EXPONENT,
          RADIUS_REFERENCE_EDGE } from '../constants.js';
 import { makeCubeGrid } from './helpers.js';
+
+// radiusScale asks what the player is pointing with (see js/pointer.js), so it
+// needs a window even here. A mouse by default, which is what the rest of this file
+// was written against; the coarse-pointer tests flip it and put it back. Read per
+// call, so no import has to be deferred for this.
+let coarsePointer = false;
+globalThis.window = {matchMedia: () => ({matches: coarsePointer})};
+
+/** Runs `body` as though the player were using a finger. */
+function withFinger(body) {
+    coarsePointer = true;
+    try {
+        return body();
+    } finally {
+        coarsePointer = false;
+    }
+}
 
 /** Wrap raw [x,y,z] triples as vertex-like objects with .position. */
 function asVertices(coords) {
@@ -188,5 +205,46 @@ describe('radiusScale', () => {
         const grid = makeCubeGrid();
         grid.edges.clear();
         assert.strictEqual(radiusScale(grid), 1);
+    });
+});
+
+describe('radiusScale for a finger', () => {
+    test('everything is drawn thicker, by the same factor on every grid', () => {
+        // Uniform, so a phone sees the same relative thicknesses between grids
+        // that a desktop does -- the touch factor answers who is playing, and the
+        // exponent answers which grid this is, and neither disturbs the other.
+        for (const length of [0.256, 1.155, RADIUS_REFERENCE_EDGE]) {
+            const grid = cubeWithEdgeLength(length);
+            const mouse = radiusScale(grid);
+            const finger = withFinger(() => radiusScale(grid));
+            assert.ok(Math.abs(finger - mouse * COARSE_POINTER_RADIUS_FACTOR) < 1e-12,
+                `edge ${length}: ${finger} is not ${COARSE_POINTER_RADIUS_FACTOR}x `
+                + `${mouse}`);
+            assert.ok(finger > mouse, 'a finger needs a bigger target, not smaller');
+        }
+    });
+
+    test('the clamp still bites, so a long-edged grid gains nothing extra', () => {
+        // The factor multiplies the clamped result rather than being clamped with
+        // it: the ceiling is on how much a grid may have, not on what a finger
+        // gets. Were the order reversed, the reference-length grid and every
+        // longer one would be left at 1 and a phone would see no change at all on
+        // the sparsest solids.
+        const capped = withFinger(() => radiusScale(cubeWithEdgeLength(5)));
+        assert.strictEqual(capped, COARSE_POINTER_RADIUS_FACTOR);
+    });
+
+    test('the pick target follows, staying twice the drawn tube', () => {
+        // The promise the constants make, kept without pickTolerances having to
+        // know about pointers: it goes through radiusScale like the radii do.
+        const grid = cubeWithEdgeLength(0.256);
+        const mouse = pickTolerances(grid);
+        const finger = withFinger(() => pickTolerances(grid));
+        assert.ok(Math.abs(finger.pickRadius
+                           - mouse.pickRadius * COARSE_POINTER_RADIUS_FACTOR) < 1e-12);
+        assert.strictEqual(finger.pickDepthTolerance, finger.pickRadius * 2);
+        assert.ok(Math.abs(finger.pickRadius
+                           - PICK_RADIUS * withFinger(() => radiusScale(grid)))
+                  < 1e-12);
     });
 });

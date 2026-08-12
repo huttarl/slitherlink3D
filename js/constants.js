@@ -27,6 +27,20 @@ export const VERTEX_RADIUS = 0.04;
 export const RADIUS_LENGTH_EXPONENT = 1 / 4;
 export const RADIUS_REFERENCE_EDGE = 1.633;
 
+// How much thicker the edges and vertices are drawn for a finger (see
+// hasCoarsePointer in pointer.js). The radii above suit a mouse: at the phone's
+// scale a dense grid's tube comes out about 7 CSS pixels wide, which is fiddly to
+// hit and hard to see under the finger covering it.
+//
+// The click target grows with it and stays twice the drawn tube, since radiusScale
+// carries both -- so this widens what the player can see and what they can hit by
+// the same factor, and the promise the constants make about the two stays true.
+// Half again is the largest step that still looks like a wireframe on the dense
+// solids, where 1.5 takes the tube to about a fifth of an edge's length. If a
+// finger still wants more room, the honest next move is to let touch have a wider
+// PICK_RADIUS_FACTOR than a mouse rather than to keep fattening the drawing.
+export const COARSE_POINTER_RADIUS_FACTOR = 1.5;
+
 // Camera movement constraints
 export const CAMERA_MIN_ZOOM = 2;
 export const CAMERA_MAX_ZOOM = 10;
@@ -81,6 +95,20 @@ export const TITLE_SCREEN_FILL = 0.85;
 
 // Mouse interaction threshold (pixels moved before considering it a drag)
 export const DRAG_THRESHOLD_PIXELS = 5;
+
+// The same threshold for a finger, which cannot hold as still as a mouse: a
+// fingertip rolls as it presses, and its reported position is the centre of a
+// contact patch that changes shape while it lands. 5 pixels of that is easy, and
+// crossing the line doesn't merely widen the target -- it cancels the tap
+// outright, and cancels a long press with it, so the board looks like it ignored
+// the player. Double is enough for a settled press while staying far below the
+// travel of a deliberate drag.
+//
+// Chosen per gesture from event.pointerType rather than per device, so a
+// touchscreen laptop gets the tight threshold from its mouse and the loose one
+// from its hand. That is a distinction the drawn radius cannot make (see
+// pointer.js), which is why only this one is per gesture.
+export const TOUCH_DRAG_THRESHOLD_PIXELS = 10;
 
 // How near an edge a click has to land to count, as a radius around the edge's
 // centre line: the drawn cylinders are thin enough that hitting one exactly is
