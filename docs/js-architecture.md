@@ -57,15 +57,20 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   application, solution validation/highlighting, user-guess checking
   (`checkUserSolution`, whose pure rule/solution queries live in
   `solutionChecker.js`), the undo/redo history (each move is an array of
-  edge-state deltas, so Reset and Clear-errors are single compound moves),
-  and `clearErrors()`. Deliberately imports nothing from the UI/GameState
+  edge-state deltas, so Reset, Clear-errors, and a move that auto-rules-out are
+  single compound moves), and `clearErrors()`. Two player settings live here as
+  plain flags that `ui.js` writes from its checkboxes: `highlightRuleViolations`
+  and `autoRuleOut`. Deliberately imports nothing from the UI/GameState
   layers (that once formed an import cycle): it exposes null-safe observer
   callbacks (`onHistoryChanged`, `onSolved`) that `ui.js` registers, and it
   runs headless in the JS unit tests.
 - **solutionChecker** (`js/solutionChecker.js`) — pure queries mirroring the
   Python solver's rule structure: vertex violations, clue violations, the
   single-loop check, and solution mismatches (spoiler data: report counts,
-  not locations).
+  not locations). Also `findDeducibleRuleOuts`, the deduction behind the
+  auto-rule-out setting: the same rules read forwards, saying which edges a move
+  has just made impossible. Local to the moved edge and one pass deep, on
+  purpose — see its docstring.
 - **Vertex / Edge / Face** (`js/Vertex.js`, `Edge.js`, `Face.js`) — small data
   classes. Each carries a `metadata` object: e.g. `Edge.metadata.userGuess`
   (0=unknown, 1=filled, 2=ruled out), `Face.metadata.clue`, `.index`,

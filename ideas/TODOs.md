@@ -1,7 +1,6 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
-- [ ] on phone: edges are too thin, hard to pick.
 
 - [ ] If I accidentally press "back", it goes to the previous puzzle, without any
   confirmation about leaving. If I then go "forward", it returns to the puzzle
@@ -18,10 +17,6 @@ Finished items live in ideas/TODOs-done.md.
   ruled out some edges. What if I just wanted to check whether my ruling-out was correct?
 
 - [ ] Settings: sound on / off. (Opens the door to other sounds, music.)
-
-- [ ] We could have a setting for automatically marking edges as ruledOut. E.g.
-  when there's a 0 clue, its edges are ruled out; or when a vertex has 0 filled and
-  1 unknown; or 2 filled and any number of unknown.
 
 - [~] At some point I'll need to go back and add sources to the grid files...
   - [~] those that came from polyhedronisme (J files and some others),

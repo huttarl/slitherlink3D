@@ -1,6 +1,7 @@
 import { Grid } from './Grid.js';
 import {EDGE_COLORS, EDGE_STATES} from './constants.js';
-import {checkSingleLoop, findClueViolations, findSolutionMismatches, findVertexViolations} from './solutionChecker.js';
+import {checkSingleLoop, findClueViolations, findDeducibleRuleOuts,
+        findSolutionMismatches, findVertexViolations} from './solutionChecker.js';
 import {debug} from './debug.js';
 // NOTE: deliberately no imports of ui.js or GameState.js here. This class is
 // the puzzle model; reaching up into the UI/coordinator layer above it created
@@ -45,6 +46,17 @@ export class PuzzleGrid extends Grid {
         // whether passive checks highlight rule violations in red as the
         // player clicks. Explicit "Check solution" requests always highlight.
         this.highlightRuleViolations = true;
+
+        // Player setting, likewise: whether each move also rules out the edges
+        // it has just made impossible (see findDeducibleRuleOuts, and
+        // setEdgeState, which is where it happens).
+        //
+        // Off by default, unlike the highlighting above, because the two are
+        // different in kind: highlighting only REPORTS on the player's marks,
+        // while this one makes marks of its own. An assistant that starts
+        // uninvited would also make the game look, to a first-time player,
+        // like it was playing itself.
+        this.autoRuleOut = false;
     }
 
     /** Notify the UI layer (if any) that the undo/redo history changed. */
@@ -259,11 +271,18 @@ export class PuzzleGrid extends Grid {
 
     /**
      * Sets an edge's guess state and updates its mesh color, recording the
-     * change in the undo history as a one-delta move.
+     * change in the undo history as one move.
      *
      * This is the choke point for new user guesses: route guess mutations
      * through here (or record them yourself, like resetPuzzle) so the undo
      * history stays complete.
+     *
+     * With the autoRuleOut setting on, the move also carries whatever the change
+     * has just made impossible (see findDeducibleRuleOuts). Those go into the SAME
+     * history entry, which is the whole reason this can be one function rather than
+     * two: undo already restores a compound move in reverse, so one press takes
+     * back the click together with everything it caused. Recorded separately they
+     * would be several presses to unwind, in an order the player never chose.
      *
      * @param {number} edgeId - ID of the edge to change
      * @param {number} newState - New state, an index into EDGE_STATES
@@ -271,10 +290,32 @@ export class PuzzleGrid extends Grid {
      */
     setEdgeState(edgeId, newState) {
         const edge = this.edges.get(edgeId);
-        this.undoStack.push([{ edgeId, prevState: edge.metadata.userGuess, newState }]);
+        const move = [{ edgeId, prevState: edge.metadata.userGuess, newState }];
+        // The player's own change goes in FIRST, before anything is deduced: the
+        // rules read the board as it now stands, so they need the new mark in place
+        // to see what it rules out.
+        this.applyEdgeState(edgeId, newState);
+
+        if (this.autoRuleOut) {
+            for (const deducedId of findDeducibleRuleOuts(this, edgeId)) {
+                const deduced = this.edges.get(deducedId);
+                // prevState is read rather than assumed to be unknown, so that a
+                // rule added later which marks an already-marked edge cannot
+                // quietly make undo restore the wrong state.
+                move.push({ edgeId: deducedId,
+                            prevState: deduced.metadata.userGuess,
+                            newState: 2 });   // 2 = ruled out
+                this.applyEdgeState(deducedId, 2);
+            }
+            if (move.length > 1) {
+                debug(`autoRuleOut: edge ${edgeId} -> ${newState} also ruled out `
+                      + `${move.slice(1).map(d => d.edgeId).join(', ')}`);
+            }
+        }
+
+        this.undoStack.push(move);
         // A new move invalidates any previously-undone moves.
         this.redoStack.length = 0;
-        this.applyEdgeState(edgeId, newState);
         this.historyChanged();
     }
 

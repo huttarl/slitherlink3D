@@ -138,6 +138,21 @@ function wireSettingToggles(gameState, puzzleGrid) {
             puzzleGrid.clearEdgeHighlights();
         }
     });
+
+    // Player setting: rule out edges a move has just made impossible.
+    const autoRuleOutToggle = document.getElementById('autoRuleOut');
+    puzzleGrid.autoRuleOut = autoRuleOutToggle.checked;
+    autoRuleOutToggle.addEventListener('change', (e) => {
+        puzzleGrid.autoRuleOut = e.target.checked;
+    });
+    // Nothing else to do in either direction, which is the opposite of the
+    // highlighting above and worth saying why. Switching ON does not sweep the
+    // board: this assists a MOVE, and a sweep would deduce from every face and
+    // vertex at once -- a chain reaction landing in the history as one huge entry
+    // belonging to no click. Switching OFF leaves the existing marks alone,
+    // because by then they are ordinary rule-outs, undone with Undo or Reset like
+    // any other. Red highlights are decoration and so get cleared; these are
+    // moves, and taking a player's marks away for them would be a liberty.
 }
 
 /** Undo, Redo, Reset, and "Right side up". (Check and Clear errors belong to

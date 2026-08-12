@@ -128,6 +128,83 @@ export function isClueSatisfied(grid, face) {
 }
 
 /**
+ * Which edges beside a just-changed one are now certainly NOT in the loop.
+ *
+ * The optional assistant behind the "Auto-rule-out" setting (see autoRuleOut in
+ * PuzzleGrid). Two deductions, both of them the ones a player makes by eye:
+ *
+ *   1. a clue with as many filled edges as it asks for wants no more, so the rest
+ *      of that face is out. A 0 clue is this rule with nothing filled, not a rule
+ *      of its own.
+ *   2. a loop passes through a vertex twice or not at all. So two filled edges at
+ *      a vertex forbid the rest -- and where none is filled and only ONE candidate
+ *      is left, that one is out too, since it cannot be the loop's only edge here.
+ *
+ * ONE PASS, LOCAL. Only the changed edge's own faces and endpoints are examined,
+ * and the edges this returns are not themselves followed up. Iterating to a fixed
+ * point is a small solver: on an easy puzzle a single click would unfold a large
+ * region, which is a choice about how much the game plays itself rather than a
+ * missing feature. Chaining would also want cycle care and a much larger undo
+ * entry.
+ *
+ * Deliberately silent on positions that are already wrong -- three filled edges at
+ * a vertex, or more filled than the clue allows -- because both rules ask for an
+ * exact count. Deducing from a contradiction would "help" by burying the mistake
+ * under marks that follow from it. Reporting it is findVertexViolations' and
+ * findClueViolations' job.
+ *
+ * The rule that a vertex with ONE filled edge and one candidate left must FILL
+ * that candidate is the same family and is deliberately absent: this setting only
+ * ever rules edges out, so it can never draw part of the loop for the player.
+ *
+ * @param {Grid} grid - the grid, with the change already applied
+ * @param {number} movedEdgeId - the edge the player just changed
+ * @returns {number[]} IDs of edges to rule out; all currently unknown, and never
+ *     including movedEdgeId -- see the note in the body for why that matters
+ */
+export function findDeducibleRuleOuts(grid, movedEdgeId) {
+    const movedEdge = grid.edges.get(movedEdgeId);
+    if (!movedEdge) return [];
+
+    const isUnknown = (edgeId) =>
+        grid.edges.get(edgeId)?.metadata.userGuess === 0;
+    // Never the edge just changed. Without this, a player cycling an edge back to
+    // unknown could not keep it there: clearing it can leave its vertex with two
+    // filled edges and exactly one candidate -- that same edge -- so rule 2 would
+    // rule it out again on the spot, and the third click of the cycle would look
+    // broken.
+    const markable = (edgeId) => edgeId !== movedEdgeId && isUnknown(edgeId);
+
+    const ruleOuts = new Set();
+
+    for (const faceId of movedEdge.faceIDs) {
+        const face = grid.faces.get(faceId);
+        if (face && isClueSatisfied(grid, face)) {
+            for (const edgeId of face.edgeIDs) {
+                if (markable(edgeId)) ruleOuts.add(edgeId);
+            }
+        }
+    }
+
+    for (const vertexId of movedEdge.vertexIDs) {
+        const vertex = grid.vertices.get(vertexId);
+        if (!vertex) continue;
+        const { numEdgesFilled } = countGuesses(grid, vertex.edgeIDs);
+        // The counts describe the VERTEX, so they include the moved edge even
+        // though it can't be marked. Excluding it from the arithmetic as well
+        // would invent deductions that don't hold.
+        const candidates = count(vertex.edgeIDs, isUnknown);
+        if (numEdgesFilled === 2 || (numEdgesFilled === 0 && candidates === 1)) {
+            for (const edgeId of vertex.edgeIDs) {
+                if (markable(edgeId)) ruleOuts.add(edgeId);
+            }
+        }
+    }
+
+    return [...ruleOuts];
+}
+
+/**
  * Split the surface into the two regions the solution loop separates.
  *
  * This is what the loop MEANS: a closed curve on a closed surface cuts it in two,

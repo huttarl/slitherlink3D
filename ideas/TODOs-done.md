@@ -3,8 +3,21 @@ readable. Text is verbatim, including the notes recording how each was settled.
 Anything still marked [~] or containing open sub-items stayed in TODOs.md.
 
 
+- [x] We could have a setting for automatically marking edges as ruledOut. E.g.
+  - when there's a 0 clue, its edges are ruled out;
+  - when a face is already satisfied (has filled = clue).
+  - when a vertex has 0 filled and 1 unknown; or 2 filled and any number of unknown.
+  - we'd have to make sure that "undo" will undo auto-markings as well as manual.
+  - Built as a checkbox below "auto-highlight mistakes", off by default. The 0-clue
+    case turned out to be the satisfied-face rule with nothing filled, so there are
+    two rules, not three. One pass, local to the moved edge: chaining them to a
+    fixed point would unfold a large region from one click. The move and its
+    rule-outs share one undo entry, which the history's existing array-of-deltas
+    shape already supported.
+
 - [x] put in some aesthetic animation: smoothed zooming in on load, zooming out when solved,
     smoothed autorotate after load (while zooming), stops when mouse clicked.
+- [x] on phone: edges are too thin, hard to pick.
 
 - [x] quick?: highlight the "Check Solution" button automatically when it's ready to check.
     Not sure if "ready to check" should mean when all clues are satisfied and no mistakes are highlighted ... or only

@@ -7,6 +7,7 @@ import assert from 'node:assert';
 
 import {
     countGuesses,
+    findDeducibleRuleOuts,
     findVertexViolations,
     findClueViolations,
     isClueSatisfied,
@@ -152,6 +153,119 @@ describe('isClueSatisfied', () => {
         // An edge of the top face, which face 0 (the bottom) does not touch.
         setEdge(grid, 4, 7, 1);
         assert.strictEqual(isClueSatisfied(grid, grid.faces.get(0)), true);
+    });
+});
+
+describe('findDeducibleRuleOuts', () => {
+    // Cube topology, for reading the expectations below: vertices 0-3 round the
+    // bottom and 4-7 round the top, face 0 the bottom and face 1 the top, and each
+    // vertex has exactly 3 edges -- two round its face and one vertical.
+
+    /** The edge IDs of the given vertex pairs, as a set, for order-free compares. */
+    function edgeSet(grid, pairs) {
+        return new Set(pairs.map(([v1, v2]) => grid.findEdgeByVertices(v1, v2)));
+    }
+
+    test('a satisfied clue rules out the rest of its face', () => {
+        const grid = makeCubeGrid();
+        grid.faces.get(1).metadata.clue = 0;      // the top face wants no edges
+        // Ruling out one of its edges doesn't change the count, but it is the move
+        // that brings the player to the face, and a 0 clue was satisfied all along.
+        const moved = setEdge(grid, 4, 5, 2);
+        assert.deepStrictEqual(
+            new Set(findDeducibleRuleOuts(grid, moved)),
+            edgeSet(grid, [[5, 6], [6, 7], [7, 4]]));
+    });
+
+    test('one pass only: what it rules out, it does not then reason from', () => {
+        // THE DESIGN DECISION, pinned down. After the three top edges go, vertex 4
+        // has nothing filled and only the vertical left, so a chaining version
+        // would take that too, and keep going round the solid. This asks for the
+        // move's own consequences and stops.
+        const grid = makeCubeGrid();
+        grid.faces.get(1).metadata.clue = 0;
+        const moved = setEdge(grid, 4, 5, 2);
+        const first = findDeducibleRuleOuts(grid, moved);
+        const verticals = edgeSet(grid, [[0, 4], [1, 5]]);
+        assert.ok(!first.some(edgeId => verticals.has(edgeId)),
+            'a single pass should not reach the verticals');
+
+        // And the chain really is there -- so this is a decision, not an accident.
+        for (const edgeId of first) grid.edges.get(edgeId).metadata.userGuess = 2;
+        const second = findDeducibleRuleOuts(grid, moved);
+        assert.deepStrictEqual(new Set(second), verticals,
+            'the next pass is what a cascading version would have gone on to do');
+    });
+
+    test('two filled edges at a vertex rule out the rest', () => {
+        const grid = makeCubeGrid();
+        setEdge(grid, 0, 1, 1);
+        const moved = setEdge(grid, 0, 3, 1);     // vertex 0 now has its two
+        assert.deepStrictEqual(new Set(findDeducibleRuleOuts(grid, moved)),
+            edgeSet(grid, [[0, 4]]));
+    });
+
+    test('a lone candidate at an untouched vertex is ruled out', () => {
+        // Nothing filled here and only one edge left, and the loop cannot enter a
+        // vertex and stop: it needs two edges or none.
+        const grid = makeCubeGrid();
+        setEdge(grid, 0, 1, 2);
+        const moved = setEdge(grid, 0, 3, 2);
+        assert.deepStrictEqual(new Set(findDeducibleRuleOuts(grid, moved)),
+            edgeSet(grid, [[0, 4]]));
+    });
+
+    test('never the edge just moved, so cycling it back to unknown sticks', () => {
+        // The trap this guards: vertex 0 has its two filled edges, and the player
+        // clicks the third from ruled-out back to unknown. It is the only candidate
+        // there, so the vertex rule would rule it out again on the spot and the
+        // third click of the cycle would look broken.
+        const grid = makeCubeGrid();
+        setEdge(grid, 0, 1, 1);
+        setEdge(grid, 0, 3, 1);
+        const moved = setEdge(grid, 0, 4, 0);     // 0 = unknown again
+        assert.deepStrictEqual(findDeducibleRuleOuts(grid, moved), []);
+    });
+
+    test('marks only unknown edges, and several rules can fire at once', () => {
+        const grid = makeCubeGrid();
+        grid.faces.get(0).metadata.clue = 2;
+        setEdge(grid, 0, 3, 1);
+        const moved = setEdge(grid, 3, 2, 1);
+        // The clue is satisfied, so the bottom's other two edges go; and vertex 3
+        // now has two filled, so its vertical goes as well.
+        const deduced = findDeducibleRuleOuts(grid, moved);
+        assert.deepStrictEqual(new Set(deduced),
+            edgeSet(grid, [[2, 1], [1, 0], [3, 7]]));
+        // The player's own filled edges are untouched -- a rule that wanted to rule
+        // out a filled edge would be reporting a mistake, which is not this job.
+        for (const edgeId of deduced) {
+            assert.strictEqual(grid.edges.get(edgeId).metadata.userGuess, 0,
+                'only unknown edges should be marked');
+        }
+    });
+
+    test('deduces nothing from a position that is already wrong', () => {
+        // Both rules ask for an exact count, so neither fires here. Burying a
+        // mistake under marks that follow from it would be the worst kind of help.
+        const threeAtAVertex = makeCubeGrid();
+        setEdge(threeAtAVertex, 0, 1, 1);
+        setEdge(threeAtAVertex, 0, 3, 1);
+        const third = setEdge(threeAtAVertex, 0, 4, 1);   // 3 at vertex 0
+        assert.deepStrictEqual(findDeducibleRuleOuts(threeAtAVertex, third), []);
+
+        const overfilledClue = makeCubeGrid();
+        overfilledClue.faces.get(0).metadata.clue = 1;
+        setEdge(overfilledClue, 0, 3, 1);
+        // Opposite edge, so no vertex gains a second filled edge either.
+        const over = setEdge(overfilledClue, 2, 1, 1);
+        assert.deepStrictEqual(findDeducibleRuleOuts(overfilledClue, over), []);
+    });
+
+    test('an unclued face says nothing, however its edges are marked', () => {
+        const grid = makeCubeGrid();     // every clue is -1
+        const moved = setEdge(grid, 0, 3, 1);
+        assert.deepStrictEqual(findDeducibleRuleOuts(grid, moved), []);
     });
 });
 

@@ -81,6 +81,76 @@ describe('undo/redo history', () => {
     });
 });
 
+describe('the auto-rule-out setting', () => {
+    // What the rules deduce is solutionChecker's business (see
+    // findDeducibleRuleOuts there); what matters here is that a move and its
+    // consequences travel through the history together.
+    //
+    // The position: fill the bottom edge 0-3, then 0-1. Vertex 0 then has its two
+    // filled edges, so the vertical 0-4 can be ruled out -- one deduction, from the
+    // second move.
+    function playIntoADeduction(pg) {
+        pg.setEdgeState(pg.findEdgeByVertices(0, 3), 1);
+        pg.setEdgeState(pg.findEdgeByVertices(0, 1), 1);
+    }
+
+    test('the move and what it rules out are ONE history entry', () => {
+        // The requirement the whole design turns on: were these recorded
+        // separately, Undo would peel off the assistant's marks one at a time,
+        // in an order the player never chose.
+        const pg = makePuzzle();
+        pg.autoRuleOut = true;
+        playIntoADeduction(pg);
+
+        assert.strictEqual(pg.undoStack.length, 2, 'two clicks, two entries');
+        const move = pg.undoStack[1];
+        assert.strictEqual(move.length, 2);
+        // The player's own change comes first, and the deduced mark after it.
+        assert.deepStrictEqual(move[0],
+            {edgeId: pg.findEdgeByVertices(0, 1), prevState: 0, newState: 1});
+        assert.deepStrictEqual(move[1],
+            {edgeId: pg.findEdgeByVertices(0, 4), prevState: 0, newState: 2});
+    });
+
+    test('one undo takes back the move and its rule-outs; one redo restores them',
+        () => {
+            const pg = makePuzzle();
+            pg.autoRuleOut = true;
+            playIntoADeduction(pg);
+            const guess = (v1, v2) =>
+                pg.edges.get(pg.findEdgeByVertices(v1, v2)).metadata.userGuess;
+            assert.strictEqual(guess(0, 4), 2, 'the vertical should be ruled out');
+
+            pg.undo();
+            assert.strictEqual(guess(0, 1), 0, 'the click should be taken back');
+            assert.strictEqual(guess(0, 4), 0,
+                'and the mark it caused with it, in the same press');
+            assert.strictEqual(guess(0, 3), 1,
+                'but not the move before it');
+
+            pg.redo();
+            assert.strictEqual(guess(0, 1), 1);
+            assert.strictEqual(guess(0, 4), 2);
+        });
+
+    test('with the setting off, moves record exactly as they always did', () => {
+        const pg = makePuzzle();            // autoRuleOut defaults to off
+        assert.strictEqual(pg.autoRuleOut, false, 'it should be off by default');
+        playIntoADeduction(pg);
+        assert.strictEqual(pg.undoStack[1].length, 1);
+        assert.strictEqual(
+            pg.edges.get(pg.findEdgeByVertices(0, 4)).metadata.userGuess, 0,
+            'nothing should have been ruled out');
+    });
+
+    test('a move that deduces nothing is still a plain one-delta move', () => {
+        const pg = makePuzzle();
+        pg.autoRuleOut = true;
+        pg.setEdgeState(pg.findEdgeByVertices(0, 3), 1);   // the first move alone
+        assert.strictEqual(pg.undoStack[0].length, 1);
+    });
+});
+
 describe('resetPuzzle', () => {
     test('clears all guesses as one compound move; one undo restores them', () => {
         const pg = makePuzzle();

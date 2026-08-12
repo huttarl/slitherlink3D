@@ -731,6 +731,11 @@
                     <input type="checkbox" id="highlightViolations" checked>
                     Auto-highlight mistakes</label>
             </div>
+            <div style="margin-top: 1ex; font-size: 14px">
+                <label title="After each move, rule out the edges it has just made impossible: the rest of a clue you have finished, and the edges the loop can no longer use at a corner. Undo takes back a move and its rule-outs together.">
+                    <input type="checkbox" id="autoRuleOut">
+                    Auto-rule out impossible edges</label>
+            </div>
             <div id="checkFeedback" style="margin-top: 1ex; font-size: 14px" class="hidden">
                 <span id="checkStatus"></span>
                 <button id="clearErrors" class="hidden" style="margin-top: 0.5ex"
