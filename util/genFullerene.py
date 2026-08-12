@@ -44,6 +44,7 @@ borrowed from genRandomPolyh.py, which draws with it. See docs/project-overview.
 """
 import contextlib
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -54,12 +55,12 @@ from scipy.spatial import ConvexHull
 # comes from the Goldberg generator, whose 12-pentagons-and-hexagons solids are the
 # icosahedral fullerenes -- the same construction, one step shorter. The repulsion
 # comes from the random one, where the grids in data/ already exercise it. And the
-# canonical form is its own shared module, because getting a solid's shape right
+# shaping passes are their own shared module, because getting a solid's shape right
 # once its structure is settled is wanted in more places than this.
-import canonical_form
 import grid_checks
 import grid_topology
 import json_format
+import polyhedron_shape
 from genGoldberg import polar_dual
 from genRandomPolyh import simulate_repulsion
 
@@ -173,27 +174,34 @@ def fullerene(atoms, rings=None, seed=None):
             f'{faces_wanted} faces.')
         sys.exit(1)
 
-    # Two stages, doing two different jobs. The repulsion decides the CAGE'S
-    # STRUCTURE -- which faces meet which -- by spreading the points until every
-    # degree is 5 or 6. Canonicalizing then fixes its SHAPE without touching that
-    # structure, since reciprocation moves points but never changes who neighbours
-    # whom.
+    # Three stages, and it matters that only the first decides STRUCTURE. The
+    # repulsion spreads the points until every degree is 5 or 6, which is what
+    # fixes which faces meet which; the two shaping passes then move vertices
+    # about without ever changing that.
     settled = relax(start)
     (_, cage_faces) = polar_dual(settled)
-    (canonical, rounds, shift) = canonical_form.canonicalize(
-        settled, ConvexHull(settled).simplices, cage_faces)
-    if shift < canonical_form.SETTLED:
-        log(f'Canonical after {rounds} rounds (last move {shift:.1e})')
-    else:
-        log(f'Warning: still moving {shift:.1e} after {rounds} rounds; '
-            'the shape has not settled')
 
-    # The last dual is taken exactly, rather than keeping the cage the iteration
-    # was carrying, because polar_dual puts every face in the plane x.p = 1 of the
-    # point it replaces -- flat to floating-point noise, where the iteration only
-    # approaches flatness. check() holds it to that.
+    # Canonicalizing first, as a well-behaved intermediate: it leaves the cage
+    # convex and roughly even, which is a much better place to regularize from
+    # than the raw dual, whose edges vary by nearly a factor of two.
+    (canonical, rounds, shift) = polyhedron_shape.canonicalize(
+        settled, ConvexHull(settled).simplices, cage_faces)
+    log(f'Canonical after {rounds} rounds (last move {shift:.1e})'
+        if shift < polyhedron_shape.SETTLED
+        else f'Warning: still moving {shift:.1e} after {rounds} rounds')
     (vertices, faces) = polar_dual(canonical)
-    return (vertices / np.abs(np.linalg.norm(vertices, axis=1)).max(), faces)
+
+    # Then regularize, which is what gives a fullerene its real proportions.
+    # Canonical form alone draws C70 exactly as round as C60, because tangency to
+    # one sphere is a roundness condition; asking instead for regular faces of a
+    # common edge length elongates it, as the molecule is elongated, and does so
+    # without a weight to tune. See polyhedron_shape.py.
+    #
+    # This is also why check() cannot ask for flatness to floating-point noise any
+    # more: regular and flat are incompatible on a curved cage, and the molecule's
+    # own hexagons are not flat either.
+    vertices = polyhedron_shape.regularize(vertices, faces)
+    return (vertices, faces)
 
 
 def pentagons_isolated(faces):
@@ -238,9 +246,13 @@ def check(atoms, vertices, faces, want_isolated):
         problems.append('two pentagons share an edge, so this is not the isomer '
                         'wanted (see RECIPES)')
     problems += (
-        # Flatness is the point of going via the polar dual, so it is held to
-        # floating-point noise rather than to a tolerance.
-        grid_checks.check_flat_faces(vertices, faces, 1e-9)
+        # Faces are bowed here, unavoidably: regularizing asks them to be regular
+        # polygons of one size, which on a curved cage cannot also be flat, and the
+        # molecule's hexagons aren't flat either. So the tolerance is set to catch a
+        # face that has gone WRONG rather than one that is merely curved -- 5% of the
+        # circumradius, against the 2% these cages actually reach and the 0.05% that
+        # data/tI.json has always carried.
+        grid_checks.check_flat_faces(vertices, faces, 0.05)
         + grid_checks.check_closed_surface(faces)
         + grid_checks.check_outward_winding(vertices, faces))
 
@@ -251,12 +263,28 @@ def check(atoms, vertices, faces, want_isolated):
 
     lengths = [grid_checks.distance(vertices[a], vertices[b])
                for (a, b) in grid_topology.edges_of(faces)]
+    worst_bow = max(grid_checks.face_bow(grid_checks.corners_of(vertices, face))
+                    for face in faces)
+    # Length against width about the z axis, which the ring recipes put the cage's
+    # main symmetry axis on. Reported because it is the point of regularizing: a
+    # canonical C70 reads 0.95 here, the same as a round C60, and the molecule is
+    # nearer 1.1. Not a check -- there is nothing to compare against for a cage
+    # whose shape nobody has published -- but the number to look at.
+    (along, across) = extent(vertices)
     return (f'C{atoms}: {len(vertices)} atoms, {len(lengths)} bonds, '
             f'{len(faces)} faces ({grid_checks.census_text(faces)}); '
             f'bonds {min(lengths):.4f} to {max(lengths):.4f} '
             f'(ratio {max(lengths) / min(lengths):.3f}); '
+            f'length/width {along / across:.3f}; faces bowed {worst_bow:.1e}; '
             + ('no two pentagons adjacent' if isolated
                else 'some pentagons adjacent'))
+
+
+def extent(vertices):
+    """How long the cage is along z, and how wide across it."""
+    zs = [v[2] for v in vertices]
+    widest = max(math.hypot(v[0], v[1]) for v in vertices)
+    return (max(zs) - min(zs), 2 * widest)
 
 
 def build(grid_id, recipe):

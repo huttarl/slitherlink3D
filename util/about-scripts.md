@@ -14,9 +14,9 @@
   installed. Imported by all four coordinate generators and grid_quality.
 - json_format — readable JSON for the data files: one line per vertex, face and
   clue list.
-- canonical_form — Hart's canonical form: flat faces and every edge grazing one
-  sphere, for a solid whose structure is settled but whose shape is not. Needs numpy,
-  unlike the three above.
+- polyhedron_shape — shaping a solid whose topological structure is settled but whose shape is
+  not, without changing which faces meet: Hart's canonical form, or regular faces of
+  one edge length. Needs numpy, unlike the three above.
 
 ## Grid generators
 Each writes one grid to stdout, or into data/ when asked for a whole family. The
