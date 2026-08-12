@@ -30,7 +30,8 @@ UTIL_DIR = Path(__file__).resolve().parent.parent
 EXPECTED_SHEBANG = '#!/usr/bin/env python3'
 
 # Libraries: imported, never run. No shebang, not executable.
-LIBRARIES = {'grid_topology.py', 'grid_checks.py', 'slisolver.py'}
+LIBRARIES = {'canonical_form.py', 'grid_topology.py', 'grid_checks.py',
+             'slisolver.py'}
 
 
 def scripts():

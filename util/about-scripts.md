@@ -14,6 +14,9 @@
   installed. Imported by all four coordinate generators and grid_quality.
 - json_format — readable JSON for the data files: one line per vertex, face and
   clue list.
+- canonical_form — Hart's canonical form: flat faces and every edge grazing one
+  sphere, for a solid whose structure is settled but whose shape is not. Needs numpy,
+  unlike the three above.
 
 ## Grid generators
 Each writes one grid to stdout, or into data/ when asked for a whole family. The
@@ -21,6 +24,8 @@ first six verify the result through grid_checks before writing it.
 - genUniformPolyh — the Platonic and Archimedean solids, from exact coordinates.
 - genGoldberg — a Goldberg polyhedron GP(m,n): 12 pentagons and hexagons. With
   --geodesic, its dual GD(m,n) instead: all triangles, on the sphere.
+- genFullerene — a fullerene cage of 12 pentagons and hexagons, for the ones that
+  aren't Goldberg polyhedra: built as the dual of a triangulation, then canonicalized.
 - genPrism — an n-prism or n-antiprism, all faces regular.
 - genDual — the dual of an existing grid, which is how the Catalan solids are made.
 - genZonohedron — a zonohedron from a star of generating vectors, faces exactly

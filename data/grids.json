@@ -282,6 +282,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "C26",
+      "gridId": "C26",
+      "gridName": "C26 fullerene",
+      "categories": ["Miscellaneous", "fullerene"],
+      "faces": 15,
+      "edges": 39,
+      "vertices": 26,
+      "numPuzzles": 3
+    },
+    {
       "file": "J60",
       "gridId": "J60",
       "gridName": "Metabiaugmented dodecahedron (J60)",
@@ -539,6 +549,16 @@
       "faces": 54,
       "edges": 104,
       "vertices": 52,
+      "numPuzzles": 3
+    },
+    {
+      "file": "C70",
+      "gridId": "C70",
+      "gridName": "C70 fullerene",
+      "categories": ["Miscellaneous", "fullerene"],
+      "faces": 37,
+      "edges": 105,
+      "vertices": 70,
       "numPuzzles": 3
     },
     {

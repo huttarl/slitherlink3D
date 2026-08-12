@@ -14,11 +14,13 @@ symmetric clues admitted at least two solutions, discovered only by a
 player in July 2026. This sweep would have caught it.
 """
 import json
+from collections import Counter
 from pathlib import Path
 
 import pytest
 from compas.datastructures import Mesh
 
+import grid_topology
 from slisolver import solution_is_unique
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / 'data'
@@ -175,6 +177,52 @@ def test_source_urls_name_the_right_solid():
         if named != expected:
             wrong.append(f'{path.name} points at {named}, expected {expected}')
     assert wrong == [], '; '.join(wrong)
+
+
+def test_fullerenes_really_are_fullerene_cages():
+    """Anything labelled "fullerene" must have the structure the word names: three
+    faces at every corner, exactly 12 pentagons, and nothing else but hexagons.
+
+    Cheap here, and worth having in the data as well as in the generator, because a
+    grid file outlives the run that made it: these come from a simulation followed
+    by a convex hull (see util/genFullerene.py), so what they are was measured
+    rather than laid out, and a re-run with a different seed or a retuned relaxation
+    could quietly produce a different cage under the same name.
+    """
+    wrong = []
+    for path in grid_files():
+        grid = json.loads(path.read_text())
+        if 'fullerene' not in grid.get('categories', []):
+            continue
+        faces = grid['faces']
+        census = Counter(len(face) for face in faces)
+        degrees = Counter(v for face in faces for v in face)
+        atoms = len(grid['vertices'])
+        if census.get(5) != 12 or set(census) - {5, 6}:
+            wrong.append(f'{path.name}: faces {dict(sorted(census.items()))}')
+        if set(degrees.values()) != {3} or len(degrees) != atoms:
+            wrong.append(f'{path.name}: not every atom has three bonds')
+        if len(faces) != atoms // 2 + 2:
+            wrong.append(f'{path.name}: {atoms} atoms wants {atoms // 2 + 2} faces, '
+                         f'has {len(faces)}')
+    assert wrong == [], '; '.join(wrong)
+
+
+def test_C70_is_the_isolated_pentagon_isomer():
+    """C70 has thousands of isomers and this is the one chemistry means: the only
+    one with no two pentagons sharing an edge.
+
+    The property is what identifies the solid, and nothing else in the repo would
+    notice its loss -- a different isomer has the same atom, bond and face counts,
+    and passes every check above. See util/genFullerene.py, where a symmetric
+    starting arrangement is what reaches this isomer in the first place.
+    """
+    grid = json.loads((DATA_DIR / 'C70.json').read_text())
+    faces = grid['faces']
+    adjacency = grid_topology.face_adjacency(faces)
+    pentagons = {f for (f, face) in enumerate(faces) if len(face) == 5}
+    touching = [(f, n) for f in pentagons for n in adjacency[f] if n in pentagons]
+    assert touching == [], f'pentagons sharing an edge: {touching}'
 
 
 def test_display_puzzles_key_is_never_empty():

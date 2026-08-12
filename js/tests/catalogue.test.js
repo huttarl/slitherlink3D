@@ -173,7 +173,11 @@ describe('the catalogue\'s categories', () => {
     // broader is a click away on the narrower one's page, and the card has
     // little room. Every parallelohedron is a zonohedron, so the cube is listed
     // as a parallelohedron and leaves it at that.
-    const IMPLIES = [['parallelohedron', 'zonohedron']];
+    // Goldberg implies fullerene for the same reason: a Goldberg polyhedron is the
+    // fullerene cage with icosahedral symmetry, so tI and cD say 'Goldberg' and
+    // stop, while C70 and C26 -- which have no (m,n) -- say 'fullerene'.
+    const IMPLIES = [['parallelohedron', 'zonohedron'],
+                     ['Goldberg', 'fullerene']];
 
     test('no grid lists both a category and one it implies', () => {
         const redundant = [];

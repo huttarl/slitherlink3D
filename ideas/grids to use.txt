@@ -34,9 +34,9 @@ x near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_soli
         also shown at https://www.youtube.com/watch?v=XMiT2iCnZFE
         (dual of rhombic enneacontahedron)
 x Catalan solids
-~ zonohedra, such as rhombic enneacontahedron
+x zonohedra, such as rhombic enneacontahedron
     x see https://www.georgehart.com/virtual-polyhedra/zonohedra-info.html
-    ~ I would also like to be able to produce some "zonish polyhedra" (https://www.georgehart.com/virtual-polyhedra/zonish_polyhedra.html) from other seed polyhedra
+    x I would also like to be able to produce some "zonish polyhedra" (https://www.georgehart.com/virtual-polyhedra/zonish_polyhedra.html) from other seed polyhedra
 x prisms & antiprisms
 x Goldberg (hex-based) polyhedra, beyond dodecahedron and truncated icosahedron.
         https://en.wikipedia.org/wiki/Goldberg_polyhedron
@@ -57,7 +57,7 @@ x geodesic polyhedra
     - something based on mineral crystals? https://en.wikipedia.org/wiki/Crystal_structure
     - https://web.archive.org/web/20241209225850/https://polyhedr.com/polyhedra-in-nature-part-2.html
 - Symmetohedra (https://en.wikipedia.org/wiki/Symmetrohedron)
-- Parallelohedra https://en.wikipedia.org/wiki/Parallelohedron
+x Parallelohedra https://en.wikipedia.org/wiki/Parallelohedron (a subset of zonohedra)
     - truncated octahedron in particular
 - play with Polyhedronisme!
 x generated stochastically, by randomly generating points on the surface of a sphere, then simulating

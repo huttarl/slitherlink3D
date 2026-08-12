@@ -77,6 +77,13 @@ const SOLID_PAGE_EXCEPTIONS = {
     // The tetrakis snub cube is the geodesic on an octahedron rather than an
     // icosahedron; the wiki has no article on it under that name or any other.
     'dwC': null,
+    // The two fullerenes past C60. This wiki is about polytopes, and these cages
+    // are known as molecules -- so it has the truncated icosahedron (as a solid)
+    // but nothing on C70 or C26 under any name. The reading is the 'fullerene'
+    // category link instead. Chemistry has plenty to say about both, if a per-solid
+    // link is ever wanted.
+    'C26': null,
+    'C70': null,
     'etI': null,
     // The zonish solids (util/genZonish.py). Their names are Hart's descriptions of
     // his own figures rather than established names, so there is no article to find
@@ -169,6 +176,15 @@ export const UNLINKED_CATEGORIES = [
     // to read about being miscellaneous; what such a solid actually is shows in
     // its other categories, which are linked.
     'Miscellaneous',
+    // Unlinked for want of a page that can be CHECKED, not for want of a page.
+    // This wiki has no Fullerene article and Hart's site has nothing on them
+    // either, these being molecules rather than polytopes; the good general-reader
+    // sources -- Britannica, the 1996 Nobel announcement, the IUPAC Gold Book --
+    // all refuse automated requests, so the link check gets 403 and can't vouch
+    // for them however well they read. Choosing between a link a human can follow
+    // and a link this repo can verify is a policy call, so it is left open rather
+    // than settled here.
+    'fullerene',
 ];
 
 /**
