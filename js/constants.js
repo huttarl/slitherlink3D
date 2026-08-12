@@ -93,6 +93,18 @@ export const CAMERA_FOV_DEGREES = 35;
 // of it out from behind the centred title box. Under 1 so it isn't cropped.
 export const TITLE_SCREEN_FILL = 0.85;
 
+// How far a clue digit is lifted clear of the surface it is painted on, BEYOND
+// whatever the face's own curvature demands (see findFaceRise in geometryUtils.js
+// and createTextMeshForFace in clueRenderer.js). Just enough to settle z-fighting
+// between two surfaces that would otherwise be exactly coincident on a flat face.
+//
+// It used to be the whole story, at the same value, which was enough for as long as
+// every face was flat. It is not enough for a bowed one: the fullerene cages have
+// faces curved by about 2% of the radius -- twenty times this -- and their digits
+// came out sliced in half by their own faces. The truncated icosahedron was already
+// over the line at 0.0012, just invisibly.
+export const CLUE_LIFT = 0.001;
+
 // Mouse interaction threshold (pixels moved before considering it a drag)
 export const DRAG_THRESHOLD_PIXELS = 5;
 

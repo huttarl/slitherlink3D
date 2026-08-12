@@ -11,6 +11,7 @@ import {
     findDistancePointToLine,
     findFaceMinRadius,
     findFaceNormal,
+    findFaceRise,
     medianEdgeLength,
     normalizeVertices,
     pickTolerances,
@@ -98,6 +99,63 @@ describe('findFaceNormal', () => {
         const verts = asVertices([[0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]);
         const n = findFaceNormal(verts);
         assert.ok(n.distanceTo(new THREE.Vector3(0, 0, -1)) < EPSILON);
+    });
+
+    test('a bowed face gets its MEAN plane, not its first three corners\'', () => {
+        // Why it matters: the clue digit is painted on this plane, so a normal
+        // tilted away from the face's own plane dips the digit through the surface
+        // at one side. Corners alternating either side of z=0 average to the
+        // xy-plane, but the first three alone tilt away from it.
+        const verts = asVertices([[1, 0, 0.1], [0, 1, -0.1], [-1, 0, 0.1],
+                                  [0, -1, -0.1]]);
+        const n = findFaceNormal(verts);
+        assert.ok(n.distanceTo(new THREE.Vector3(0, 0, 1)) < 1e-9,
+            `expected the mean plane's +z, got ${n.toArray()}`);
+    });
+});
+
+describe('findFaceRise', () => {
+    const UP = new THREE.Vector3(0, 0, 1);
+
+    test('a flat face rises not at all, so its digit is not lifted', () => {
+        const verts = asVertices([[1, 0, 0], [0, 1, 0], [-1, 0, 0], [0, -1, 0]]);
+        assert.strictEqual(findFaceRise(verts, UP, 1), 0);
+    });
+
+    test('a face bowed the other way also gives 0, rather than a negative lift', () => {
+        // Every corner below the mean plane: there is nothing for the digit to
+        // clear, and a negative lift would push it INTO the face.
+        const verts = asVertices([[1, 0, -0.2], [0, 1, -0.2], [-1, 0, -0.2],
+                                  [0, -1, -0.2]]);
+        assert.strictEqual(findFaceRise(verts, UP, 1), 0);
+    });
+
+    // Heights are measured from the CENTROID, so these fixtures are built with
+    // their corner heights summing to zero -- the centroid then sits at the origin
+    // and a corner's z is its height, which keeps the arithmetic below readable.
+    const BOWED = asVertices([[1, 0, 0.15], [0, 1, -0.05],
+                              [-1, 0, -0.05], [0, -1, -0.05]]);
+    // The spoke to the raised corner, whose length is how far out the digit must
+    // reach to meet the corner itself.
+    const SPAN = new THREE.Vector3(1, 0, 0.15).length();
+
+    test('a corner at height h, reached in full, rises by h', () => {
+        assert.ok(Math.abs(findFaceRise(BOWED, UP, SPAN) - 0.15) < EPSILON);
+        // And no further, however much wider the digit is told it is.
+        assert.ok(Math.abs(findFaceRise(BOWED, UP, 10) - 0.15) < EPSILON);
+    });
+
+    test('a digit covering only half the way out clears only half the height', () => {
+        // The surface climbs linearly from the centre to the corner, so a digit
+        // reaching halfway meets half the corner's height. Clearing the whole
+        // corner would float the digit for no reason.
+        assert.ok(Math.abs(findFaceRise(BOWED, UP, SPAN / 2) - 0.075) < EPSILON);
+    });
+
+    test('the tallest corner decides it', () => {
+        const verts = asVertices([[1, 0, 0], [0, 1, 0.2], [-1, 0, -0.1],
+                                  [0, -1, -0.1]]);
+        assert.ok(Math.abs(findFaceRise(verts, UP, 10) - 0.2) < EPSILON);
     });
 });
 

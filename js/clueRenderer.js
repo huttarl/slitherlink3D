@@ -7,8 +7,9 @@
  * debugging ID labels -- now lives in idLabels.js.)
  */
 import * as THREE from './three/three.module.min.js';
-import { findCentroid, findFaceMinRadius, findFaceNormal } from './geometryUtils.js';
-import { CLUE_COLORS } from './constants.js';
+import { findCentroid, findFaceMinRadius, findFaceNormal,
+         findFaceRise } from './geometryUtils.js';
+import { CLUE_COLORS, CLUE_LIFT } from './constants.js';
 import { isClueSatisfied } from './solutionChecker.js';
 
 // The largest clue any face could carry, so a full set of digit textures can be
@@ -33,7 +34,8 @@ const MAX_CLUE = 12;
  * lighten it, and a glint on a black digit is the one thing that could make a
  * clue harder to read than it already is. The digit plane sits parallel to its
  * face and a thousandth of a unit off it, so it shares the face's normal and
- * therefore its shading almost exactly.
+ * therefore its shading almost exactly. (A thousandth off a FLAT face; a bowed one
+ * needs more, or it cuts through its own digit -- see createTextMeshForFace.)
  *
  * @param {THREE.Color} color - fill and outline color for the digits
  * @param {Intl.NumberFormat} numberFormat - localized digits
@@ -181,13 +183,23 @@ function createTextMeshForFace(faceId, face, grid, material) {
     // s fits in a circle of radius r when s = r*sqrt(2), and the digit
     // glyph fills only ~70% of its canvas, so this keeps the digit inside
     // the face's inscribed circle (and thus off the edges) even on small faces.
-    const size = Math.SQRT2 * findFaceMinRadius(grid, face);
+    const reach = findFaceMinRadius(grid, face);
+    const size = Math.SQRT2 * reach;
     const planeGeometry = new THREE.PlaneGeometry(size, size);
     const textMesh = new THREE.Mesh(planeGeometry, material);
 
-    // Position the mesh slightly above the face center
+    // Lift the digit clear of the surface: past whatever the face's own curvature
+    // raises above its mean plane under the digit, and then CLUE_LIFT further to
+    // settle the z-fighting where the two are coincident. A flat face gives a rise
+    // of 0 and so behaves exactly as before.
+    //
+    // Without the rise, a bowed face cuts its own digit in half -- see findFaceRise.
+    // The digit's own half-diagonal is `reach`, so that is how far out the surface
+    // has to be cleared, and no further; clearing the whole face would float the
+    // digit above its corners for nothing.
     textMesh.position.copy(center);
-    textMesh.position.addScaledVector(normal, 0.001); // Slightly offset to avoid z-fighting
+    textMesh.position.addScaledVector(
+        normal, findFaceRise(faceVertices, normal, reach) + CLUE_LIFT);
 
     // Orient the mesh to be parallel to the face
     // First, create a quaternion that aligns the plane's normal (0,0,1) with the face normal

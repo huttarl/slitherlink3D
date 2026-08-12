@@ -191,14 +191,58 @@ export function findFaceMinRadius(grid, face) {
  * @returns { THREE.Vector3 } unit normal vector.
  */
 export function findFaceNormal(faceVertices) {
-    const v1 = faceVertices[0].position;
-    const v2 = faceVertices[1].position;
-    const v3 = faceVertices[2].position;
-    // Compute edge vectors by subtracting one vertex from another.
-    const edge1 = new THREE.Vector3().subVectors(v2, v1);
-    const edge2 = new THREE.Vector3().subVectors(v3, v1);
-    // Then cross edge vectors to find perpendicular vector, and normalize length.
-    return new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+    // Newell's method: the summed cross products of successive spokes from the
+    // centroid, which is the normal of the face's MEAN plane. The first three
+    // corners alone would do for a flat face, and that is what this used to
+    // compute -- but on a face that isn't flat their plane is tilted away from the
+    // face's own, and the clue digit painted on that plane then dips through the
+    // surface at one side. Measured on the fullerene cages, whose faces are bowed
+    // by about 2% of the radius, the tilt buried the digit four times as deep as
+    // the bow itself did. The same reasoning as face_normal in util/grid_checks.py.
+    const middle = findCentroid(faceVertices);
+    const total = new THREE.Vector3();
+    const spoke = new THREE.Vector3();
+    const next = new THREE.Vector3();
+    for (let i = 0; i < faceVertices.length; i++) {
+        spoke.subVectors(faceVertices[i].position, middle);
+        next.subVectors(
+            faceVertices[(i + 1) % faceVertices.length].position, middle);
+        total.add(spoke.cross(next));
+    }
+    return total.normalize();
+}
+
+/**
+ * How far the drawn surface of a face rises above its mean plane, within `reach`
+ * of the centre.
+ *
+ * What it is for: a clue digit is a flat square painted on the face's mean plane,
+ * and a face that isn't flat pokes through it. The face is drawn as a fan of
+ * triangles from its centroid, so along the ray to any corner the surface climbs
+ * linearly from nothing at the centre to that corner's own height -- and the digit
+ * only covers the middle of the face, so each corner's height counts only in
+ * proportion to how far along its ray the digit actually gets.
+ *
+ * Faces whose corners all sit below the mean plane give 0: there is nothing to
+ * clear, and a lift would only float the digit.
+ *
+ * @param {Object[]} faceVertices - the face's vertices, with .position
+ * @param {THREE.Vector3} normal - its unit mean-plane normal, outward
+ * @param {number} reach - how far from the centre to look, in world units
+ * @returns {number} the greatest rise, never negative
+ */
+export function findFaceRise(faceVertices, normal, reach) {
+    const middle = findCentroid(faceVertices);
+    const spoke = new THREE.Vector3();
+    let worst = 0;
+    for (const vertex of faceVertices) {
+        spoke.subVectors(vertex.position, middle);
+        const span = spoke.length();
+        if (span === 0) continue;
+        const height = spoke.dot(normal) * Math.min(1, reach / span);
+        worst = Math.max(worst, height);
+    }
+    return worst;
 }
 
 /**
