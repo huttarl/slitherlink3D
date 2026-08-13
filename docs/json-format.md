@@ -20,8 +20,8 @@ A JSON object containing the following properties:
     `--out=` says where the bytes went, and `--quiet` how much was said on the way.
     Where one run writes several files (`--all`), each file names the command that
     makes just itself, not its siblings. And where a value left at its DEFAULT decides
-    the geometry, the generator spells it out anyway — `data/ntube.json` says
-    `--belts=10` though nobody typed it, since otherwise the line would stop
+    the geometry, the generator spells it out anyway — `data/capsid.json` says
+    `--belts=5` though nobody typed it, since otherwise the line would stop
     reproducing the file the day that default moved.
   - Grids written before that rule are not all paste-able. `data/P6.json` reads
     "genPrism.py 6", while the run that made it also passed "Hexagonal prism" and
@@ -54,9 +54,11 @@ A JSON object containing the following properties:
   - Both conventions are checked by js/tests/catalogue.test.js.
 - "closed" (optional, default true): whether the surface has no boundary — whether
   every edge has a face on both sides. Almost every grid here is a closed solid, and
-  omitting this says so. `false` marks one with rims, like the open nanotube
-  (`data/ntube.json`, from `util/genNanotube.py`), which is a cylinder of hexagons
-  with nothing capping its two ends.
+  omitting this says so. `false` marks one with a boundary: the open nanotubes
+  (`data/nt55.json` and its siblings, from `util/genNanotube.py`) are cylinders of
+  hexagons with nothing capping either end, and `data/capsid.json`
+  (`util/genCapsid.py`) is a closed cage with one face missing, so it has a single
+  rim rather than two.
   - It exists because a good many expectations quietly assume closedness, and a
     script that knows better can then say something true instead of complaining:
     Euler's formula gives 0 for a cylinder rather than 2; the number of edges is not

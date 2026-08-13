@@ -78,6 +78,45 @@ def edge_degrees(faces):
     return degrees
 
 
+def boundary_edges(faces):
+    """The edges with only one face: a surface's rim, empty if it is closed."""
+    counts = {}
+    for face in faces:
+        for (first, second) in face_edges(face):
+            key = edge_key(first, second)
+            counts[key] = counts.get(key, 0) + 1
+    return [edge for (edge, count) in counts.items() if count == 1]
+
+
+def boundary_cycles(faces):
+    """The rims, each as a list of vertex ids in order round it.
+
+    How MANY there are is the useful number: a surface of genus 0 with b rims has
+    Euler characteristic 2 - b, so this is what lets a check expect 2 for a closed
+    solid, 1 for a capsid with one portal and 0 for a tube open at both ends, without
+    being told which it is looking at.
+    """
+    neighbors = {}
+    for (first, second) in boundary_edges(faces):
+        neighbors.setdefault(first, []).append(second)
+        neighbors.setdefault(second, []).append(first)
+    walked = set()
+    cycles = []
+    for start in neighbors:
+        if start in walked:
+            continue
+        cycle = [start]
+        walked.add(start)
+        while True:
+            onward = [v for v in neighbors[cycle[-1]] if v not in walked]
+            if not onward:
+                break
+            cycle.append(onward[0])
+            walked.add(onward[0])
+        cycles.append(cycle)
+    return cycles
+
+
 def face_adjacency(faces):
     """Face index -> the set of face indices sharing an edge with it.
 

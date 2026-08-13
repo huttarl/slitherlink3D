@@ -94,6 +94,10 @@ const SOLID_PAGE_EXCEPTIONS = {
     'nt55': null,
     'nt63': null,
     'nt80': null,
+    // A capsid's shape has no name in geometry -- it is a prolate triangulation with
+    // a hole, described by biology rather than catalogued by anyone. The wiki has
+    // nothing, and "capsid" would lead to virology rather than to the solid.
+    'capsid': null,
     'etI': null,
     // The zonish solids (util/genZonish.py). Their names are Hart's descriptions of
     // his own figures rather than established names, so there is no article to find

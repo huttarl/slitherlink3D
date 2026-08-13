@@ -60,7 +60,8 @@ from grid_checks import (  # noqa: E402
     centroid, direction_classes, distance, face_bow, face_skew,
     inscribed_radius, sharpest_corner, side_ratio, wound_outward,
 )
-from grid_topology import edge_degrees, edges_of, vertex_degrees  # noqa: E402
+from grid_topology import (boundary_cycles, edge_degrees, edges_of,  # noqa: E402
+                           vertex_degrees)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
 
@@ -88,12 +89,19 @@ def report(path):
     inradii = [inscribed_radius(f) for f in faces]
     # An open grid says so (see docs/json-format.md), and the two expectations that
     # depend on it are Euler's formula and what a vertex's degree means.
+    #
+    # Euler is not simply 0 for an open surface: it is 2 - (however many rims), so a
+    # closed solid wants 2, a capsid with one portal wants 1 and a tube open at both
+    # ends wants 0. Counting them rather than assuming is what tells those apart --
+    # this said "want 0" to the capsid before it counted.
     closed = grid.get('closed', True)
-    wanted_euler = 2 if closed else 0
+    rims = 0 if closed else len(boundary_cycles(F))
+    wanted_euler = 2 - rims
     print(f'{grid.get("gridName", path.stem)}  ({path.name})')
     print(f'  V={len(V)} E={len(edges)} F={len(F)}   '
           f'Euler {len(V) - len(edges) + len(F)} (want {wanted_euler}'
-          + ('' if closed else ', an open surface') + ')   faces: '
+          + ('' if closed else f', open with {rims} rim'
+                               + ('s' if rims != 1 else '')) + ')   faces: '
           + ', '.join(f'{c}x{s}' for (s, c) in sorted(sizes.items())))
     print(f'  edges     {lengths[0]:.3f} / {median:.3f} / {lengths[-1]:.3f}  '
           f'(shortest is {lengths[0] / median:.0%} of median)')
@@ -131,7 +139,9 @@ def report(path):
         tally[degree] = tally.get(degree, 0) + 1
     print(f'  degrees   '
           + ', '.join(f'{count}x{degree}' for (degree, count) in sorted(tally.items()))
-          + ('' if closed else '  (edges per vertex; a rim vertex has 2)'))
+          # No claim about what a rim vertex comes to: 2 on a tube, 5 round a capsid's
+          # portal, and whatever the next open solid brings.
+          + ('' if closed else '  (edges per vertex)'))
     crooked = [i for (i, f) in enumerate(faces) if not wound_outward(f, centre)]
     print(f'  winding   ' + ('all outward' if not crooked
                              else f'{len(crooked)} face(s) inward: {crooked[:5]}'))

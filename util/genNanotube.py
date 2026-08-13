@@ -179,38 +179,6 @@ def outward(vertices, face):
     return face if grid_checks.dot(normal, radial) > 0 else face[::-1]
 
 
-def boundary_cycles(faces):
-    """The rims: cycles of edges that have only one face.
-
-    @returns a list of cycles, each a list of vertex ids in order round the rim
-    """
-    per_edge = Counter()
-    for face in faces:
-        for (a, b) in grid_topology.face_edges(list(face)):
-            per_edge[grid_topology.edge_key(a, b)] += 1
-    rim_edges = [edge for (edge, count) in per_edge.items() if count == 1]
-
-    neighbors = {}
-    for (a, b) in rim_edges:
-        neighbors.setdefault(a, []).append(b)
-        neighbors.setdefault(b, []).append(a)
-    walked = set()
-    cycles = []
-    for start in neighbors:
-        if start in walked:
-            continue
-        cycle = [start]
-        walked.add(start)
-        while True:
-            onward = [v for v in neighbors[cycle[-1]] if v not in walked]
-            if not onward:
-                break
-            cycle.append(onward[0])
-            walked.add(onward[0])
-        cycles.append(cycle)
-    return cycles
-
-
 def check_cylinder(vertices, faces, n, m, cells):
     """The checks a tube must pass, in place of the closed-surface ones.
 
@@ -244,7 +212,7 @@ def check_cylinder(vertices, faces, n, m, cells):
         problems.append(f'Euler characteristic {euler}, but a cylinder wants 0 '
                         f'({len(vertices)} - {len(edges)} + {len(faces)})')
 
-    rims = boundary_cycles(faces)
+    rims = grid_topology.boundary_cycles([list(face) for face in faces])
     if len(rims) != 2:
         problems.append(f'{len(rims)} rim(s), expected 2 '
                         f'(lengths {[len(rim) for rim in rims]})')
@@ -282,7 +250,8 @@ def describe(vertices, faces, n, m):
     """One line about the tube, for the log."""
     edges = grid_topology.edges_of([list(face) for face in faces])
     lengths = [grid_checks.distance(vertices[a], vertices[b]) for (a, b) in edges]
-    on_a_rim = sum(len(rim) for rim in boundary_cycles(faces))
+    on_a_rim = sum(len(rim) for rim in
+                   grid_topology.boundary_cycles([list(face) for face in faces]))
     heights = [v[1] for v in vertices]
     width = 2 * max(math.hypot(v[0], v[2]) for v in vertices)
     bow = max(grid_checks.face_bow(grid_checks.corners_of(vertices, list(face)))

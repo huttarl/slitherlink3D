@@ -682,6 +682,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "capsid",
+      "gridId": "capsid",
+      "gridName": "Prolate capsid with portal",
+      "categories": ["Miscellaneous"],
+      "faces": 105,
+      "edges": 160,
+      "vertices": 56,
+      "numPuzzles": 3
+    },
+    {
       "file": "C110",
       "gridId": "C110",
       "gridName": "C110 capped nanotube",
