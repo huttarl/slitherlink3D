@@ -44,14 +44,14 @@ x Goldberg (hex-based) polyhedra, beyond dodecahedron and truncated icosahedron.
         See https://en.wikipedia.org/wiki/Chamfer_(geometry)#Relation_to_Goldberg_polyhedra
     x Class I, II, III? I don't understand this system.
 x geodesic polyhedra
-- fullerenes
+~ fullerenes
     - carbon nanotube - the ends could be 20-gons, but maybe smaller is better. 8-gon ends?
         The animation on Wikipedia shows a nanotube with each ring having 8 hexagons.
         What to do at the ends though, to make a closed shape? If we put 8-gons at the ends, we need
         little obtuse triangles to close the gaps. Or we do something more aesthetic with those gaps, but
         that would seem to change the character of a nanotube.
-    - C70 (extended & twisted halves)
-    - C26? https://en.wikipedia.org/wiki/Fullerene#Topology
+    x C70 (extended & twisted halves)
+    x C26? https://en.wikipedia.org/wiki/Fullerene#Topology
 - biomimetic shapes?
     - maybe something based on a (short) helical capsid? https://en.wikipedia.org/wiki/Capsid#Helical
     - something based on mineral crystals? https://en.wikipedia.org/wiki/Crystal_structure

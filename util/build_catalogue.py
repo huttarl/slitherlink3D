@@ -22,6 +22,7 @@ import json
 import sys
 from pathlib import Path
 
+import grid_topology
 import json_format
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -29,12 +30,14 @@ CATALOGUE_PATH = DATA_DIR / "grids.json"
 
 
 def count_edges(faces):
-    """Each edge is shared by exactly two faces on a closed mesh, so the
-    edge count is half the total number of face sides."""
-    total_sides = sum(len(face) for face in faces)
-    if total_sides % 2 != 0:
-        raise ValueError("Total face sides is odd; mesh is not closed.")
-    return total_sides // 2
+    """How many distinct edges the grid has.
+
+    Counted from the edges themselves rather than as half the face sides. Halving
+    is right only where every edge has two faces, and the open nanotube
+    (util/genNanotube.py) has 40 rim edges with one face each -- which halving
+    reported as 20, putting its edge count 20 short and mis-sorting it in a
+    catalogue ordered by size."""
+    return len(grid_topology.edges_of(faces))
 
 
 def build_entry(grid_path):

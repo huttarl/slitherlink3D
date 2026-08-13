@@ -86,7 +86,7 @@ RECIPES = {
     # among the dual's 15 points, which come as 5 rings of 3.
     'C26': {'atoms': 26, 'name': 'C26 fullerene',
             'rings': {'fold': 3, 'offsets': [0, 0.5, 0, 0.5, 0], 'poles': False},
-            'isolated_pentagons': False},
+            'relax': True, 'isolated_pentagons': False},
     # 12 pentagons and 25 hexagons: C60 stretched along a 5-fold axis. A pentagon
     # caps each end, so the dual has a point on the axis at each pole, and the
     # other 35 come as 7 rings of 5 -- two of those rings the remaining 10
@@ -94,7 +94,20 @@ RECIPES = {
     'C70': {'atoms': 70, 'name': 'C70 fullerene',
             'rings': {'fold': 5, 'offsets': [0, 0.5, 0, 0.5, 0, 0.5, 0],
                       'poles': True},
-            'isolated_pentagons': True},
+            'relax': True, 'isolated_pentagons': True},
+    # The same cage carried on: a capped (5,5) nanotube, which is what C70 already
+    # is with one belt of hexagons. Five belts make it plainly a tube, at about
+    # 1.8 times as long as it is wide.
+    #
+    # Nothing new is needed for it, which is the point worth keeping: a capped
+    # nanotube IS a fullerene. Each cap is half a C60 and holds six pentagons, so
+    # the twelve Euler insists on are all used up there and the tube between them
+    # is nothing but hexagons -- no other polygon has to appear, however long it
+    # gets. Two more rings of five per belt: 6 + belts rings in all.
+    'C110': {'atoms': 110, 'name': 'C110 capped nanotube',
+             'rings': {'fold': 5, 'poles': True,
+                       'offsets': [0, 0.5, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0.5, 0]},
+             'isolated_pentagons': True},
 }
 
 # Repulsion settings. The forces and damping are genRandomPolyh's own tuning, kept
@@ -105,6 +118,13 @@ RECIPES = {
 RELAX = {'radius': 1.0, 'max_iterations': 4000, 'force_strength': 0.025,
          'max_force': 0.25, 'damping': 0.75, 'max_velocity': 0.05,
          'convergence_threshold': 1e-6, 'animate': False}
+
+# How much drift is still acceptable in the canonical INTERMEDIATE, which does not
+# have to converge: regularize takes it from there and decides the final shape. A
+# thousandth of the radius is about a twentieth of a bond, well past anything a
+# player could notice, so more than that says the cage itself is suspect rather than
+# merely unfinished.
+CANONICAL_ENOUGH = 1e-3
 
 
 
@@ -160,7 +180,7 @@ def random_points(count, seed):
     return points / np.linalg.norm(points, axis=1)[:, None]
 
 
-def fullerene(atoms, rings=None, seed=None):
+def fullerene(atoms, rings=None, seed=None, relax_wanted=True):
     """Cn as (vertices, faces), scaled to a circumradius of 1.
 
     The scale matches the rest of data/: the app's camera distance and its edge
@@ -174,11 +194,25 @@ def fullerene(atoms, rings=None, seed=None):
             f'{faces_wanted} faces.')
         sys.exit(1)
 
-    # Three stages, and it matters that only the first decides STRUCTURE. The
-    # repulsion spreads the points until every degree is 5 or 6, which is what
-    # fixes which faces meet which; the two shaping passes then move vertices
-    # about without ever changing that.
-    settled = relax(start)
+    # Only the first stage decides STRUCTURE -- which faces meet which -- and the
+    # two shaping passes then move vertices about without ever changing it.
+    #
+    # A RANDOM start needs the repulsion: scattered points hull into a mess, and
+    # spreading them is what drives every degree to 5 or 6. For a long tube it is
+    # actively wrong -- repulsion spreads points evenly over a SPHERE, and the
+    # evenest arrangement of 57 points is not a tube, so it rolled the five-belt
+    # cage back up into a ball, from 1.84 times as long as wide to 0.89. The rings
+    # already ARE the structure; the shaping passes give the shape.
+    #
+    # Hence a per-recipe choice rather than one rule, and C70 and C26 keep the
+    # repulsion they were built with even though neither needs it. Not history for
+    # its own sake: the repulsion moves the points, the hull then numbers its
+    # triangles in a different order, and the cage comes out with the same shape
+    # under different vertex and face NUMBERS. Those numbers are what the stored
+    # puzzles index their clues and solutions by, so a recipe has to keep
+    # reproducing the file it produced. Dropping it here would leave C70's shape
+    # untouched to four figures and its puzzles pointing at the wrong faces.
+    settled = relax(start) if relax_wanted else start
     (_, cage_faces) = polar_dual(settled)
 
     # Canonicalizing first, as a well-behaved intermediate: it leaves the cage
@@ -186,9 +220,19 @@ def fullerene(atoms, rings=None, seed=None):
     # than the raw dual, whose edges vary by nearly a factor of two.
     (canonical, rounds, shift) = polyhedron_shape.canonicalize(
         settled, ConvexHull(settled).simplices, cage_faces)
-    log(f'Canonical after {rounds} rounds (last move {shift:.1e})'
-        if shift < polyhedron_shape.SETTLED
-        else f'Warning: still moving {shift:.1e} after {rounds} rounds')
+    # Reported, not warned about, unless it is a long way off. This pass only has to
+    # hand regularize something convex and roughly even, and regularize sets the
+    # final shape from there, so a residue of a few parts in a million never reaches
+    # the grid -- C110 stops at 7e-06 and its numbers are the same to four figures
+    # either way. A residue big enough to SEE would mean something else is wrong.
+    if shift >= CANONICAL_ENOUGH:
+        log(f'Warning: canonical form still moving {shift:.1e} after {rounds} '
+            'rounds, which is enough to see; the cage may be malformed')
+    elif shift < polyhedron_shape.SETTLED:
+        log(f'Canonical after {rounds} rounds (last move {shift:.1e})')
+    else:
+        log(f'Canonical enough after {rounds} rounds (last move {shift:.1e}, '
+            'still easing -- regularize sets the shape from here)')
     (vertices, faces) = polar_dual(canonical)
 
     # Then regularize, which is what gives a fullerene its real proportions.
@@ -201,7 +245,19 @@ def fullerene(atoms, rings=None, seed=None):
     # more: regular and flat are incompatible on a curved cage, and the molecule's
     # own hexagons are not flat either.
     vertices = polyhedron_shape.regularize(vertices, faces)
-    return (vertices, faces)
+
+    # Stand the cage up. The rings are built about z, and the app's camera sits out
+    # along z too (see CAMERA_DISTANCE in js/constants.js), so a cage left as built
+    # is seen END ON: C110 arrives looking like a ball, with the whole length of the
+    # tube hidden behind its own cap. Turning the axis to y -- which is up on screen
+    # -- shows it standing, as the pictures of nanotubes do.
+    #
+    # A rotation about x, not a swap of axes: swapping two would mirror the solid and
+    # so reverse the winding of every face, and check() insists on outward winding
+    # for good reason. Vertex ORDER is untouched either way, which is what keeps any
+    # stored puzzle valid -- clues and solutions index these lists.
+    upright = np.column_stack((vertices[:, 0], vertices[:, 2], -vertices[:, 1]))
+    return (upright, faces)
 
 
 def pentagons_isolated(faces):
@@ -281,17 +337,25 @@ def check(atoms, vertices, faces, want_isolated):
 
 
 def extent(vertices):
-    """How long the cage is along z, and how wide across it."""
-    zs = [v[2] for v in vertices]
-    widest = max(math.hypot(v[0], v[1]) for v in vertices)
-    return (max(zs) - min(zs), 2 * widest)
+    """How long the cage is along its axis, and how wide across it.
+
+    The axis is y: the cage is stood upright before this sees it (see fullerene),
+    since y is up on screen.
+    """
+    heights = [v[1] for v in vertices]
+    widest = max(math.hypot(v[0], v[2]) for v in vertices)
+    return (max(heights) - min(heights), 2 * widest)
 
 
 def build(grid_id, recipe):
     """One grid, as the dict that goes into the JSON file."""
     rings = recipe.get('rings')
     seed = recipe.get('seed')
-    (vertices, faces) = fullerene(recipe['atoms'], rings=rings, seed=seed)
+    # A random start has no choice about it; a ring start says for itself. See the
+    # note in fullerene() for why this is per recipe and not one rule.
+    relax_wanted = recipe.get('relax', seed is not None)
+    (vertices, faces) = fullerene(recipe['atoms'], rings=rings, seed=seed,
+                                 relax_wanted=relax_wanted)
     log(check(recipe['atoms'], vertices, faces,
               recipe.get('isolated_pentagons', False)))
 

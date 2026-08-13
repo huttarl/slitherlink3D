@@ -208,16 +208,19 @@ def test_fullerenes_really_are_fullerene_cages():
     assert wrong == [], '; '.join(wrong)
 
 
-def test_C70_is_the_isolated_pentagon_isomer():
-    """C70 has thousands of isomers and this is the one chemistry means: the only
-    one with no two pentagons sharing an edge.
+@pytest.mark.parametrize('grid_id', ['C70', 'C110'])
+def test_the_big_cages_isolate_their_pentagons(grid_id):
+    """Both have thousands of isomers, and no two pentagons sharing an edge is what
+    picks out the one wanted: for C70 the molecule chemistry means, and for C110 the
+    tube-shaped one rather than a lumpy ball.
 
     The property is what identifies the solid, and nothing else in the repo would
     notice its loss -- a different isomer has the same atom, bond and face counts,
     and passes every check above. See util/genFullerene.py, where a symmetric
-    starting arrangement is what reaches this isomer in the first place.
+    starting arrangement is what reaches these isomers in the first place, and where
+    the repulsion had to be dropped because it rolled the tube back into a ball.
     """
-    grid = json.loads((DATA_DIR / 'C70.json').read_text())
+    grid = json.loads((DATA_DIR / f'{grid_id}.json').read_text())
     faces = grid['faces']
     adjacency = grid_topology.face_adjacency(faces)
     pentagons = {f for (f, face) in enumerate(faces) if len(face) == 5}

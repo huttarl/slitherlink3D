@@ -50,12 +50,31 @@ def vertex_degrees(faces):
     """Vertex index -> how many faces (equivalently, edges) meet there.
 
     Every edge is shared by exactly two faces on a closed solid, so a vertex's
-    face count equals its edge count.
+    face count equals its edge count. NOT so on a surface with a boundary, where a
+    corner of a single face has two edges and one face -- see edge_degrees, which
+    counts edges either way.
     """
     degrees = {}
     for face in faces:
         for vertex in face:
             degrees[vertex] = degrees.get(vertex, 0) + 1
+    return degrees
+
+
+def edge_degrees(faces):
+    """Vertex index -> how many distinct EDGES meet there.
+
+    The same numbers as vertex_degrees on a closed solid, and deliberately separate
+    because they part company on an open one: the open nanotube's rim atoms belong to
+    one hexagon apiece and so count 1 there, while what matters for play is that they
+    have 2 edges. Which is the number a loop cares about -- it needs two edges at
+    every vertex it visits, so a vertex with only one edge has an edge that can never
+    be filled.
+    """
+    degrees = {}
+    for (first, second) in edges_of(faces):
+        degrees[first] = degrees.get(first, 0) + 1
+        degrees[second] = degrees.get(second, 0) + 1
     return degrees
 
 

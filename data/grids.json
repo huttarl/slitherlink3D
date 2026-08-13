@@ -632,6 +632,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "ntube",
+      "gridId": "ntube",
+      "gridName": "Open nanotube (40 hexagons)",
+      "categories": ["Miscellaneous"],
+      "faces": 40,
+      "edges": 140,
+      "vertices": 100,
+      "numPuzzles": 3
+    },
+    {
       "file": "dsD",
       "gridId": "dsD",
       "gridName": "Pentagonal hexecontahedron",
@@ -649,6 +659,16 @@
       "faces": 92,
       "edges": 150,
       "vertices": 60,
+      "numPuzzles": 3
+    },
+    {
+      "file": "C110",
+      "gridId": "C110",
+      "gridName": "C110 capped nanotube",
+      "categories": ["Miscellaneous", "fullerene"],
+      "faces": 57,
+      "edges": 165,
+      "vertices": 110,
       "numPuzzles": 3
     },
     {

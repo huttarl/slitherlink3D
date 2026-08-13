@@ -649,6 +649,11 @@ class RegionColoring:
             # For every edge, get the two faces it connects.
             (f1, f2) = mesh.edge_faces(ekey)
             log(f"Checking edge {ekey} (f{f1}, f{f2})...", level=2)
+            # A rim edge on an open surface has only one face, and so tells us
+            # nothing about whether either neighbourhood is boring. See
+            # is_edge_boring.
+            if f1 is None or f2 is None:
+                continue
             if (mesh.face_attribute(f1, "color") != mesh.face_attribute(f2, "color")):
                 log(f"Edge {ekey} has different colors on faces {f1} and {f2}.", level=2)
                 # Faces that have different-colored neighbors are not "boring".
@@ -699,6 +704,27 @@ class RegionColoring:
         return any(self.boundary_degree(grown, vkey) not in (0, 2)
                    for vkey in self.mesh.face_vertices(fkey))
 
+    def would_sever(self, region, fkey):
+        """True if adopting `fkey` would cut the OTHER color into separate pieces.
+
+        The same idea as would_pinch, and for the same reason: a condition that
+        region_is_usable can only detect once the growing is over is much better
+        refused one candidate at a time, so growth flows around the problem instead
+        of dying of it.
+
+        What it prevents is a region closing a RING. Once a region wraps right round
+        a solid -- around the barrel of a tube, or a band round a sphere's equator --
+        the other color is in two pieces and no further growth can mend it. On a
+        sphere random growth rarely closes such a ring, so discarding those attempts
+        was enough; on a tube five hexagons around it happened almost every time, and
+        2000 attempts died of it in a row.
+
+        Also refuses a candidate that would leave the other color EMPTY, which is the
+        degenerate end of the same test.
+        """
+        outside = set(self.mesh.faces()) - (region | {fkey})
+        return not outside or not self.faces_are_connected(outside)
+
     def grow_region(self, target):
         """A random connected set of up to `target` faces, grown one face at a
         time, always at the region's TIPS and never through a pinch.
@@ -747,7 +773,7 @@ class RegionColoring:
             fewest = min(already_inside(fkey) for fkey in available)
             pick = random.choice(sorted(fkey for fkey in available
                                         if already_inside(fkey) == fewest))
-            if self.would_pinch(region, pick):
+            if self.would_pinch(region, pick) or self.would_sever(region, pick):
                 refused.add(pick)
                 continue
 
@@ -876,7 +902,7 @@ class RegionColoring:
                     stack.append(nbr)
         return len(seen) == len(faces)
 
-    def paint_regions(self):
+    def paint_regions(self, largest=None):
         """One attempt at a usable coloring: grow a connected red region, and let
         blue be everything else.
 
@@ -900,8 +926,8 @@ class RegionColoring:
         # Aim for between a third and two thirds of the faces, which is what
         # adjust_populations used to enforce after the fact: it keeps either color
         # from being a token sliver.
-        target = random.randint(max(1, self.num_faces // 3),
-                                max(1, 2 * self.num_faces // 3))
+        ceiling = largest if largest is not None else self.num_faces
+        target = random.randint(max(1, ceiling // 3), max(1, 2 * ceiling // 3))
         region = self.grow_region(target)
         if not self.region_is_usable(region):
             return False
@@ -934,7 +960,20 @@ class RegionColoring:
         reached at all.
         """
         for attempt in range(1, COLORING_ATTEMPT_LIMIT + 1):
-            if self.paint_regions():
+            # Ask for smaller regions once big ones have failed for a while. A
+            # narrow solid may have no region of the asked-for size that would not
+            # wrap right round it, and would_sever refuses each face that would close
+            # such a ring -- so growth stalls short of the target rather than
+            # producing something usable. Asking for less is then the way out.
+            #
+            # Closed solids succeed within a few attempts and never reach this, so
+            # nothing in data/ sees a different size distribution.
+            largest = self.num_faces
+            if attempt > COLORING_ATTEMPT_LIMIT // 4:
+                largest = max(2, largest // 2)
+            if attempt > COLORING_ATTEMPT_LIMIT // 2:
+                largest = max(2, largest // 2)
+            if self.paint_regions(largest):
                 log(f"Generated regions for puzzle {i + 1} with {self.count(red)} "
                     f"red faces and {self.count(blue)} blue faces"
                     + (f", on attempt {attempt}" if attempt > 1 else "") + ".")
@@ -947,10 +986,22 @@ class RegionColoring:
 
 
 def is_edge_boring(mesh, ekey):
-    """Given an edge key, return True if the edge has two faces with the same color."""
-    # Get the two faces it connects.
-    (f1, f2) = mesh.edge_faces(ekey)
-    return (mesh.face_attribute(f1, "color") == mesh.face_attribute(f2, "color"))
+    """True if this edge is NOT on the loop -- i.e. it divides no red from any blue.
+
+    Phrased as "exactly one red face" rather than "two faces of the same color",
+    because on an open surface an edge can have one face. At the mouth of the
+    nanotube (util/genNanotube.py) a rim edge has a face on one side and nothing on
+    the other, and the loop treats that nothing as blue: the rim edge is on the loop
+    when its one face is red, and not when it is blue. Never unconditionally either
+    way, and exactly what RegionColoring.boundary_degree already computes, which is
+    the whole point -- the two must agree about what the loop is.
+
+    On a closed solid this is the old test verbatim: with two faces, "exactly one
+    red" and "the two differ" are the same statement.
+    """
+    reds = sum(1 for fkey in mesh.edge_faces(ekey)
+               if fkey is not None and mesh.face_attribute(fkey, "color") == red)
+    return reds != 1
 
 
 def boundary_edges(mesh):
@@ -1089,9 +1140,15 @@ def populate_num_walls(mesh):
         # Note that 'boring' attribute is equivalent to 'num_walls == 0'.
         # However they're updated at different times, so they may not always
         # correspond, as it now stands.
-        this_color = mesh.face_attribute(fkey, 'color')
-        num_walls = sum(1 for neighbor in mesh.face_neighbors(fkey)
-                        if mesh.face_attribute(neighbor, 'color') != this_color)
+        #
+        # Counted over the face's EDGES, with the same is_edge_boring the loop
+        # itself is read with, rather than over its NEIGHBOURS. The two agree on a
+        # closed solid, where every edge has a neighbour across it. They do not on
+        # the open nanotube: a rim face has fewer neighbours than edges, so counting
+        # neighbours would leave its rim edges out of the clue while the loop ran
+        # along them -- a clue that disagreed with its own solution.
+        num_walls = sum(1 for ekey in mesh.face_halfedges(fkey)
+                        if not is_edge_boring(mesh, ekey))
         mesh.face_attribute(fkey, 'num_walls', num_walls)
 
 

@@ -84,6 +84,10 @@ const SOLID_PAGE_EXCEPTIONS = {
     // link is ever wanted.
     'C26': null,
     'C70': null,
+    // The capped nanotube is a fullerene by construction rather than a named
+    // molecule -- C110 has many isomers and this is simply the tube-shaped one -- so
+    // there is no article about this solid anywhere to link to.
+    'C110': null,
     'etI': null,
     // The zonish solids (util/genZonish.py). Their names are Hart's descriptions of
     // his own figures rather than established names, so there is no article to find
