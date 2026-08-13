@@ -40,6 +40,13 @@ What it measures, and why each one matters:
               whose hexagons and octagons are centrally symmetric, which is the
               degenerate case where coplanar generators merge two parallelograms
               into one larger face.
+  shape       how far the solid is from having no distinguished axis: the width
+              along each of its three principal axes, longest first. One long axis
+              and two alike is PROLATE, a rugby ball; two alike and one short is
+              OBLATE, a discus. Reported because two grids shipped under each
+              other's names -- zonaD3o was the prolate one -- and a NAME has no
+              invariant to violate, so nothing caught it. Where the name claims
+              either word, this now checks it and says so when they disagree.
   degrees     how many faces meet at each vertex. Slitherlink's vertex rule says
               0 or 2 of a vertex's edges are used, so a 3-valent vertex leaves
               four possibilities and a 10-valent one forty-six: high degree means
@@ -51,13 +58,14 @@ Reporting only, and standard library only. Verification proper lives in the test
 suites and in each generator's own checks.
 """
 import json
+import math
 import statistics
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from grid_checks import (  # noqa: E402
-    centroid, direction_classes, distance, face_bow, face_skew,
+    centroid, direction_classes, distance, dot, face_bow, face_skew,
     inscribed_radius, sharpest_corner, side_ratio, wound_outward,
 )
 from grid_topology import (boundary_cycles, edge_degrees, edges_of,  # noqa: E402
@@ -71,6 +79,72 @@ DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
 # thousandths that shows up as bow, and calling those separate directions would
 # report a rhombic triacontahedron as having sixty zones instead of six.
 DIRECTION_TOLERANCE = 5e-3
+
+
+# How much longer one principal axis must be than the next before the solid counts as
+# having a distinguished one. Every polyhedron's widths differ a little just from
+# faceting -- the rhombic triacontahedron, about as round as they come, still varies by
+# 11% -- so a threshold under that would call half of data/ prolate. The three-zone
+# pair sit at 26% and 38%, and the capsid at 85%, so this separates them comfortably.
+AXIS_RATIO = 1.15
+
+
+def principal_spans(vertices):
+    """How wide the solid is along each principal axis, and what shape that makes it.
+
+    The axes come from the covariance of the vertices, which is where the solid's own
+    symmetry puts them; the widths are then measured along those axes and sorted, since
+    the widest axis is not always the one with the most variance.
+
+    Stdlib only, like the rest of this script, so the eigenvectors are found by
+    Jacobi rotations on the 3x3 covariance -- a dozen sweeps is ample at this size.
+
+    @returns (widths longest-first, 'prolate' | 'oblate' | 'no distinguished axis')
+    """
+    middle = centroid(vertices)
+    moved = [[v[axis] - middle[axis] for axis in range(3)] for v in vertices]
+    covariance = [[sum(p[i] * p[j] for p in moved) for j in range(3)]
+                  for i in range(3)]
+    axes = jacobi_axes(covariance)
+    widths = sorted((max(dot(p, axis) for p in moved) - min(dot(p, axis) for p in moved)
+                     for axis in axes), reverse=True)
+    (long, middling, short) = widths
+    # Which ratio stands out: one long axis, or one short one.
+    if max(long / middling, middling / short) < AXIS_RATIO:
+        return (widths, 'no distinguished axis')
+    return (widths, 'prolate' if long / middling > middling / short else 'oblate')
+
+
+def jacobi_axes(matrix, sweeps=12):
+    """Eigenvectors of a symmetric 3x3, as three unit vectors.
+
+    The classic Jacobi rotation: zero the largest off-diagonal entry, repeat. Written
+    out because this script imports nothing but the standard library, and numpy would
+    be the only reason to break that.
+    """
+    a = [row[:] for row in matrix]
+    axes = [[1.0 if i == j else 0.0 for j in range(3)] for i in range(3)]
+    for _ in range(sweeps):
+        (p, q) = max(((i, j) for i in range(3) for j in range(i + 1, 3)),
+                     key=lambda pair: abs(a[pair[0]][pair[1]]))
+        if abs(a[p][q]) < 1e-15:
+            break
+        theta = 0.5 * math.atan2(2 * a[p][q], a[q][q] - a[p][p])
+        (c, s) = (math.cos(theta), math.sin(theta))
+        for k in range(3):
+            (akp, akq) = (a[k][p], a[k][q])
+            a[k][p] = c * akp - s * akq
+            a[k][q] = s * akp + c * akq
+        for k in range(3):
+            (apk, aqk) = (a[p][k], a[q][k])
+            a[p][k] = c * apk - s * aqk
+            a[q][k] = s * apk + c * aqk
+        for k in range(3):
+            (kp, kq) = (axes[k][p], axes[k][q])
+            axes[k][p] = c * kp - s * kq
+            axes[k][q] = s * kp + c * kq
+    # The columns are the eigenvectors; take them as rows.
+    return [[axes[row][col] for row in range(3)] for col in range(3)]
 
 
 def report(path):
@@ -134,6 +208,16 @@ def report(path):
     # the vertex rule is about -- a loop needs 0 or 2 edges at every vertex. Reporting
     # faces on the nanotube would have said "20x1", which reads as twenty dead ends
     # when those atoms have two perfectly good edges apiece.
+    (spans, character) = principal_spans(V)
+    line = ('  shape     widths ' + ' / '.join(f'{s:.3f}' for s in spans)
+            + f' along its principal axes: {character}')
+    claimed = next((word for word in ('oblate', 'prolate')
+                    if word in grid.get('gridName', '').lower()), None)
+    if claimed and claimed != character:
+        # The check that was missing when zonaD3o and zonaD3p shipped swapped.
+        line += f'  -- BUT THE NAME SAYS {claimed.upper()}'
+    print(line)
+
     tally = {}
     for degree in (vertex_degrees(F) if closed else edge_degrees(F)).values():
         tally[degree] = tally.get(degree, 0) + 1
