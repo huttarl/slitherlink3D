@@ -26,6 +26,8 @@ first six verify the result through grid_checks before writing it.
   --geodesic, its dual GD(m,n) instead: all triangles, on the sphere.
 - genFullerene — a fullerene cage of 12 pentagons and hexagons, for the ones that
   aren't Goldberg polyhedra: built as the dual of a triangulation, then canonicalized.
+- genNanotube — an open (n,m) carbon nanotube, from a honeycomb sheet rolled into a
+  cylinder: zigzag, armchair or chiral. The only grid here that isn't a closed surface.
 - genPrism — an n-prism or n-antiprism, all faces regular.
 - genDual — the dual of an existing grid, which is how the Catalan solids are made.
 - genZonohedron — a zonohedron from a star of generating vectors, faces exactly

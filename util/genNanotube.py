@@ -2,64 +2,91 @@
 """Generate an open carbon nanotube: a cylinder of hexagons, with no ends.
 
 Usage:
-    util/genNanotube.py                 # the default tube, to stdout
-    util/genNanotube.py --belts=10      # a longer or shorter one
-    util/genNanotube.py --out=data/ntube.json
+    util/genNanotube.py 8 0                 # the zigzag (8,0), to stdout
+    util/genNanotube.py 6 3 --cells=1       # a chiral tube
+    util/genNanotube.py --all               # every recipe below, into data/
+    util/genNanotube.py 5 5 --out=data/x.json
 
 UNLIKE every other generator here, this writes a solid that is NOT CLOSED. It is a
-tube with two open rims, so grid_checks.check_closed_surface would reject it and is
-deliberately not called; what replaces it is check_cylinder below. Euler's formula
-gives 0 rather than 2, which is the honest signature of a cylinder, and the rims are
-left jagged -- the points of the outermost hexagons stick out, because nothing is cut
-off to tidy them.
+tube with two open rims, so the grid says `"closed": false` (see docs/json-format.md)
+and grid_checks.check_closed_surface is deliberately not called; check_cylinder below
+replaces it. Euler's formula gives 0 rather than 2, and the rims are left jagged --
+the points of the outermost hexagons stick out, because nothing is cut off to tidy
+them.
 
-Built by stripping a capped tube rather than by rolling a lattice, which is the
-cheaper road to the same place: genFullerene already makes a verified capped (5,5)
-tube, and every one of its twelve pentagons is in a cap. So dropping every face that
-shares an atom with a pentagon removes both caps and the ring of hexagons blending
-into them, and what remains is whole belts of the barrel. No hexagon is ever cut.
+HOW IT IS BUILT: by rolling a honeycomb sheet, which is how a nanotube is actually
+described. Hexagon centres sit on a triangular lattice, a1 = sqrt(3)(1,0) and
+a2 = sqrt(3)(1/2, sqrt(3)/2) for a bond length of 1, and each hexagon's own corners
+are at 30, 90, ... 330 degrees at radius 1 -- which is exactly what makes
+neighbouring hexagons share corners rather than merely abut.
 
-The cost of that road is waste -- two belts go with the caps, so the capped tube has
-to be built longer than the tube wanted -- and one limitation worth knowing: it can
-only make the armchair (n,n) flavour, since that is what the ring construction
-produces. A zigzag or a chiral (1,3) tube would want the lattice rolled directly.
+Rolling means identifying sheet points that differ by the CHIRAL VECTOR
+C = n*a1 + m*a2, so |C| becomes the circumference and the tube's axis runs
+perpendicular to C. That single vector is the whole classification:
+
+    (n,0)  zigzag    -- some bonds parallel to the axis
+    (n,n)  armchair  -- some bonds perpendicular to it
+    else   chiral    -- neither, so the rows of hexagons spiral
+
+and the reason a chiral tube LOOKS different is just that C points somewhere else,
+so the hexagons meet the axis at another angle. Nothing in the code special-cases
+the three; they are one construction asked three questions.
+
+Length comes in whole TRANSLATION VECTORS T, the shortest lattice vector along the
+axis, so the ends repeat the same way round the tube. Chiral tubes have long T --
+(6,3) is 42 hexagons in a single cell -- so --cells is often 1 for those and can
+afford to be more for a zigzag.
+
+This replaces an earlier construction that took a capped fullerene tube from
+genFullerene and threw its caps away. That could only ever make the armchair (5,5),
+since a fullerene cap needs six pentagons arranged 5-fold, and it wasted two belts
+of hexagons with the caps. Rolling the lattice reaches every (n,m), needs no
+fullerene, and is truer: it puts every atom on one cylinder, so the bonds come out
+within a per cent of each other where the stripped version's varied by six.
 
 WHAT AN OPEN TUBE COSTS THE PUZZLE, and what it does not:
-  - Rim edges are ORDINARY edges that the loop may use. genSliPuzzles paints one set
-    of faces red and takes the loop as what divides red from blue, counting the
-    nothing beyond a rim as blue -- so a rim edge is on the loop exactly when its one
-    face is red. The stored solutions each run along 15 or more of the 40. (An earlier
-    version of this comment claimed they could never be used. They can.)
+  - Rim edges are ORDINARY edges the loop may use. genSliPuzzles paints one set of
+    faces red and takes the loop as what divides red from blue, counting the nothing
+    beyond a rim as blue -- so a rim edge is on the loop exactly when its one face is
+    red. The stored solutions run along plenty of them.
   - slisolver's colouring deduction (apply_color_rules) reads an edge's two faces and
     skips any edge that has only one. It stays correct, but loses its strongest
-    inference at the rims, so puzzles here may want more clues or take longer to
-    whittle.
-  - Generating for one needed four fixes in genSliPuzzles, each an expectation that
-    every edge has two faces; see docs/json-format.md on the "closed" property.
+    inference at the rims, so puzzles here may want more clues or take longer.
 
-Needs numpy and scipy, through genFullerene. See docs/project-overview.md.
+Needs nothing but the standard library.
 """
+import math
 import sys
 from collections import Counter
 from pathlib import Path
 
-import numpy as np
-
-# Our local modules: the capped tube comes from the fullerene generator, and the
-# reporting and formatting are the shared ones every generator here uses.
+# Our local modules. All standard-library, like this script.
 import grid_checks
 import grid_topology
 import json_format
-from genFullerene import fullerene
 
-# How many belts of hexagons the capped tube is built with. Two are lost with the
-# caps, so this is the wanted tube's length plus two: 10 leaves 8 belts, 40 hexagons,
-# and a tube about 1.6 times as long as it is wide -- plainly a tube, and still a
-# grid of ordinary size for this catalogue.
-DEFAULT_BELTS = 10
+DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
 
-# The tube has 5-fold symmetry, being the armchair (5,5): five hexagons round.
-AROUND = 5
+USAGE = __doc__[__doc__.index('Usage:'):__doc__.index('UNLIKE')].rstrip()
+
+# The tubes we keep, one of each kind, chosen for shape as much as for chirality: a
+# grid wants 30-odd faces and to be plainly longer than wide without being a wire.
+#
+# The armchair is the (5,5) that the old cap-stripping construction produced, at the
+# same 40 hexagons and 100 atoms -- which is how we know the two agree.
+RECIPES = {
+    'nt55': {'n': 5, 'm': 5, 'cells': 4, 'kind': 'armchair'},
+    'nt80': {'n': 8, 'm': 0, 'cells': 2, 'kind': 'zigzag'},
+    'nt63': {'n': 6, 'm': 3, 'cells': 1, 'kind': 'chiral'},
+}
+
+# Decimals for welding wrapped points that have come round to the same place. Well
+# inside a bond length, and well outside the rounding of the arithmetic.
+WELD_DECIMALS = 5
+
+# A hexagon's corners, as angles about its centre. 30 degrees off the lattice's own
+# directions, which is what puts a corner where three hexagons meet.
+CORNER_ANGLES = [math.radians(30 + 60 * corner) for corner in range(6)]
 
 
 def log(*args):
@@ -67,28 +94,89 @@ def log(*args):
     print(*args, file=sys.stderr)
 
 
-def capped_tube(belts):
-    """A capped (5,5) tube with `belts` belts, from the fullerene generator."""
-    # Alternating half-step offsets, and no repulsion: see the notes in
-    # genFullerene, where relaxing a long tube rolls it back into a ball.
-    offsets = [0.5 * (i % 2) for i in range(6 + belts)]
-    return fullerene(60 + 10 * belts, relax_wanted=False,
-                     rings={'fold': AROUND, 'offsets': offsets, 'poles': True})
+def kind_of(n, m):
+    """Which of the three families an (n,m) tube belongs to."""
+    if m == 0:
+        return 'zigzag'
+    if n == m:
+        return 'armchair'
+    return 'chiral'
 
 
-def strip_caps(vertices, faces):
-    """Keep the barrel: every face that shares no atom with a pentagon.
+def rolled_tube(n, m, cells):
+    """An (n,m) tube of `cells` unit cells, as (vertices, faces).
 
-    Purely topological -- no plane, no threshold -- because the pentagons say where
-    the caps are. Renumbering keeps the atoms in their original order, so the tube's
-    own structure decides the numbering rather than the iteration order of a set.
+    Vertices are welded by position, so a hexagon that wraps round onto itself shares
+    its corners properly rather than gaining a second copy.
     """
-    in_a_cap = {v for face in faces if len(face) == 5 for v in face}
-    kept = [face for face in faces if not (set(face) & in_a_cap)]
-    used = sorted({v for face in kept for v in face})
-    renumbered = {v: i for (i, v) in enumerate(used)}
-    return ([vertices[v] for v in used],
-            [[renumbered[v] for v in face] for face in kept])
+    root3 = math.sqrt(3)
+    (a1, a2) = ((root3, 0.0), (root3 / 2, 1.5))
+
+    chiral = (n * a1[0] + m * a2[0], n * a1[1] + m * a2[1])
+    circumference = math.hypot(*chiral)
+    around = (chiral[0] / circumference, chiral[1] / circumference)
+    # The axis, across the chiral vector in the sheet. Its sign decides which way the
+    # tube is built, not what it is.
+    axis = (-around[1], around[0])
+    radius = circumference / (2 * math.pi)
+
+    # The translation vector: the shortest lattice vector along the axis, which is
+    # what makes a whole number of cells end the same way all round.
+    divisor = math.gcd(2 * m + n, 2 * n + m)
+    (t1, t2) = ((2 * m + n) // divisor, -(2 * n + m) // divisor)
+    translation = (t1 * a1[0] + t2 * a2[0], t1 * a1[1] + t2 * a2[1])
+    length = math.hypot(*translation) * cells
+
+    def roll(point):
+        """A sheet point wrapped onto the cylinder, with the axis along y.
+
+        y is up on screen (see CAMERA_HEIGHT in js/constants.js), so a tube built
+        this way stands up rather than pointing at the viewer.
+        """
+        along = point[0] * around[0] + point[1] * around[1]
+        up = point[0] * axis[0] + point[1] * axis[1]
+        angle = along / radius
+        return (radius * math.cos(angle), up, radius * math.sin(angle))
+
+    # Enumerate lattice points generously and keep the hexagons whose CENTRES fall in
+    # one tube length; welding sorts out those that wrap onto each other, and corners
+    # straying past the ends are the jagged rim.
+    reach = int(2 * (n + m + length / root3)) + 4
+    points = {}
+    faces = {}
+    for i in range(-reach, reach + 1):
+        for j in range(-reach, reach + 1):
+            centre = (i * a1[0] + j * a2[0], i * a1[1] + j * a2[1])
+            up = centre[0] * axis[0] + centre[1] * axis[1]
+            if not (-1e-9 <= up < length - 1e-9):
+                continue
+            face = []
+            for angle in CORNER_ANGLES:
+                corner = (centre[0] + math.cos(angle), centre[1] + math.sin(angle))
+                welded = tuple(round(c, WELD_DECIMALS) for c in roll(corner))
+                face.append(points.setdefault(welded, len(points)))
+            # Keyed by its corner set, so a hexagon reached twice round the tube is
+            # stored once.
+            faces[frozenset(face)] = face
+
+    vertices = [list(point) for point in points]
+    return (vertices, [outward(vertices, face) for face in faces.values()])
+
+
+def outward(vertices, face):
+    """The face wound counterclockwise seen from outside the tube.
+
+    Every face is on the barrel, so "outside" is straight out from the axis: compare
+    the face's normal with the direction from the axis to its middle. Which way the
+    sheet's corners came out wound depends on the sign chosen for the axis above, so
+    this is settled by measuring rather than by reasoning about that choice.
+    """
+    corners = [vertices[v] for v in face]
+    normal = grid_checks.face_normal(corners)
+    middle = grid_checks.centroid(corners)
+    # Radially outward at the middle: the axis is y, so ignore that component.
+    radial = [middle[0], 0.0, middle[2]]
+    return face if grid_checks.dot(normal, radial) > 0 else face[::-1]
 
 
 def boundary_cycles(faces):
@@ -123,15 +211,19 @@ def boundary_cycles(faces):
     return cycles
 
 
-def check_cylinder(vertices, faces):
+def check_cylinder(vertices, faces, n, m, cells):
     """The checks a tube must pass, in place of the closed-surface ones.
 
     A closed solid is checked by Euler = 2 and every edge having two faces. Neither
     holds here, so what is checked instead is that this is a cylinder and not some
-    other torn thing: nothing but hexagons, Euler 0, exactly two rims, and every atom
-    with two or three bonds -- two on a rim, three inside. An atom with ONE bond would
-    matter: a loop needs two edges at every vertex it visits, so that bond could never
-    be filled and would be a dead edge in the middle of the grid rather than at a rim.
+    other torn thing: nothing but hexagons, Euler 0, exactly two rims of equal
+    length, and every atom with two or three bonds -- two on a rim, three inside. An
+    atom with ONE bond would matter: a loop needs two edges at every vertex it
+    visits, so that bond could never be filled.
+
+    The face count is checked against the theory too: a unit cell holds
+    2(n^2+nm+m^2)/gcd(2m+n, 2n+m) hexagons, so a wrong lattice or a bad weld shows up
+    as a count that doesn't match rather than as a plausible-looking tube.
 
     @returns a list of problems, empty if all is well
     """
@@ -139,6 +231,12 @@ def check_cylinder(vertices, faces):
     census = Counter(len(face) for face in faces)
     if set(census) != {6}:
         problems.append(f'only hexagons expected, got {dict(sorted(census.items()))}')
+
+    divisor = math.gcd(2 * m + n, 2 * n + m)
+    expected = cells * 2 * (n * n + n * m + m * m) // divisor
+    if len(faces) != expected:
+        problems.append(f'{expected} hexagons expected for ({n},{m}) x{cells}, '
+                        f'got {len(faces)}')
 
     edges = grid_topology.edges_of([list(face) for face in faces])
     euler = len(vertices) - len(edges) + len(faces)
@@ -167,83 +265,106 @@ def check_cylinder(vertices, faces):
     return problems
 
 
-def nanotube(belts):
-    """An open tube as (vertices, faces), scaled to a circumradius of 1."""
-    (vertices, faces) = capped_tube(belts)
-    (points, tube) = strip_caps(vertices.tolist(), faces)
-    # Rescale: the barrel's own radius is well inside the capped solid's, so without
-    # this the tube would arrive smaller than every other grid and the app's camera,
-    # whose distance suits a solid of circumradius 1, would leave it small on screen.
-    points = np.array(points, dtype=float)
-    points -= points.mean(axis=0)
-    return (points / np.linalg.norm(points, axis=1).max(), tube)
+def nanotube(n, m, cells):
+    """An (n,m) tube as (vertices, faces), scaled to a circumradius of 1.
+
+    The scale matches the rest of data/: the app's camera distance and its edge and
+    vertex radii all suit a solid about that size.
+    """
+    (vertices, faces) = rolled_tube(n, m, cells)
+    middle = grid_checks.centroid(vertices)
+    centred = [[v[axis] - middle[axis] for axis in range(3)] for v in vertices]
+    furthest = max(grid_checks.norm(v) for v in centred)
+    return ([[c / furthest for c in v] for v in centred], faces)
 
 
-def describe(vertices, faces):
+def describe(vertices, faces, n, m):
     """One line about the tube, for the log."""
     edges = grid_topology.edges_of([list(face) for face in faces])
     lengths = [grid_checks.distance(vertices[a], vertices[b]) for (a, b) in edges]
-    rims = boundary_cycles(faces)
-    on_a_rim = sum(len(rim) for rim in rims)
+    on_a_rim = sum(len(rim) for rim in boundary_cycles(faces))
     heights = [v[1] for v in vertices]
-    width = 2 * max(np.hypot(v[0], v[2]) for v in vertices)
+    width = 2 * max(math.hypot(v[0], v[2]) for v in vertices)
     bow = max(grid_checks.face_bow(grid_checks.corners_of(vertices, list(face)))
               for face in faces)
-    return (f'{len(faces)} hexagons, {len(vertices)} atoms, {len(edges)} bonds '
-            f'({on_a_rim} of them on a rim, and playable like any other); '
-            f'bonds {min(lengths):.4f} to {max(lengths):.4f} '
+    return (f'({n},{m}) {kind_of(n, m)}: {len(faces)} hexagons, {len(vertices)} '
+            f'atoms, {len(edges)} bonds ({on_a_rim} on a rim, and playable like any '
+            f'other); bonds {min(lengths):.4f} to {max(lengths):.4f} '
             f'(ratio {max(lengths) / min(lengths):.3f}); '
             f'length/width {(max(heights) - min(heights)) / width:.3f}; '
             f'faces bowed {bow:.1e}')
 
 
-def main():
-    belts = DEFAULT_BELTS
-    out = None
-    for option in sys.argv[1:]:
-        if option.startswith('--belts='):
-            belts = int(option.split('=', 1)[1])
-        elif option.startswith('--out='):
-            out = Path(option.split('=', 1)[1])
-        else:
-            log(f'Error: unknown option {option}.\n'
-                f'{__doc__[__doc__.index("Usage:"):__doc__.index("UNLIKE")].rstrip()}')
-            sys.exit(1)
-    if belts < 4:
-        # Three belts leave one after the caps go, which is a ring and not a tube.
-        log(f'Error: --belts={belts} leaves {belts - 2} belt(s) after the caps go; '
-            'ask for at least 4.')
-        sys.exit(1)
-
-    (vertices, faces) = nanotube(belts)
-    rounded = [[round(float(c), 6) for c in v] for v in vertices]
-    problems = check_cylinder(rounded, faces)
+def build(grid_id, n, m, cells):
+    """One grid, as the dict that goes into the JSON file."""
+    (vertices, faces) = nanotube(n, m, cells)
+    rounded = [[round(c, 6) for c in v] for v in vertices]
+    problems = check_cylinder(rounded, faces, n, m, cells)
     if problems:
         for problem in problems:
             log(f'Error: {problem}.')
         sys.exit(1)
-    log(describe(rounded, faces))
+    log(describe(rounded, faces, n, m))
 
-    hexagons = len(faces)
-    grid = {
-        'gridId': 'ntube',
-        'gridName': f'Open nanotube ({hexagons} hexagons)',
-        # No 'fullerene': a fullerene is a closed cage, and this is open. Nor any
-        # other attribute -- what is interesting about it is that it has no ends,
-        # which the name says.
-        'categories': ['Miscellaneous'],
-        # The one grid in data/ that says this: it has two open rims, so every
-        # expectation built on "every edge has two faces" needs telling. See
-        # docs/json-format.md.
+    kind = kind_of(n, m)
+    return {
+        'gridId': grid_id,
+        'gridName': f'Nanotube ({n},{m}) {kind}',
+        # No 'fullerene': that is a closed cage, and this is open at both ends. The
+        # kind is an attribute of its own, since it is the interesting thing about
+        # having three of them.
+        'categories': ['Miscellaneous', 'nanotube'],
+        # See docs/json-format.md: the one thing in data/ that isn't a closed surface.
         'closed': False,
-        # --belts spelled out even when it was defaulted, because it decides the whole
-        # shape and argv would say nothing about it: a line reading just
-        # "genNanotube.py" would stop reproducing this file the day DEFAULT_BELTS
-        # changed. See json_format.source_line.
-        'source': json_format.source_line([f'--belts={belts}']),
+        # n, m and cells spelled out even when defaulted, since all three decide the
+        # geometry and argv would be silent about a default. See
+        # json_format.source_line.
+        'source': json_format.source_line([str(n), str(m), f'--cells={cells}']),
         'vertices': rounded,
         'faces': faces,
     }
+
+
+def main():
+    options = [arg for arg in sys.argv[1:] if arg.startswith('--')]
+    argv = [arg for arg in sys.argv[1:] if not arg.startswith('--')]
+    cells = None
+    out = None
+    write_all = False
+    for option in options:
+        if option == '--all':
+            write_all = True
+        elif option.startswith('--cells='):
+            cells = int(option.split('=', 1)[1])
+        elif option.startswith('--out='):
+            out = Path(option.split('=', 1)[1])
+        else:
+            log(f'Error: unknown option {option}.\n{USAGE}')
+            sys.exit(1)
+
+    if write_all:
+        for (grid_id, recipe) in RECIPES.items():
+            grid = build(grid_id, recipe['n'], recipe['m'],
+                         cells or recipe['cells'])
+            path = DATA_DIR / f'{grid_id}.json'
+            with open(path, 'w') as handle:
+                json_format.write_json(grid, handle)
+            log(f'Wrote {path}')
+        return
+
+    if len(argv) != 2:
+        log(f'{USAGE}\n\nNamed recipes: '
+            + ', '.join(f'{k} = ({r["n"]},{r["m"]}) {r["kind"]}'
+                        for (k, r) in RECIPES.items()))
+        sys.exit(1)
+    (n, m) = (int(argv[0]), int(argv[1]))
+    if n < 1 or m < 0 or m > n:
+        # m > n is the mirror image of m < n, the same tube wound the other way, so
+        # the convention is to name it with n first.
+        log(f'Error: ({n},{m}) is not a tube; wants n >= 1 and 0 <= m <= n.')
+        sys.exit(1)
+
+    grid = build(f'nt{n}{m}', n, m, cells or 1)
     if out:
         with open(out, 'w') as handle:
             json_format.write_json(grid, handle)

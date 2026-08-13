@@ -88,6 +88,12 @@ const SOLID_PAGE_EXCEPTIONS = {
     // molecule -- C110 has many isomers and this is simply the tube-shaped one -- so
     // there is no article about this solid anywhere to link to.
     'C110': null,
+    // The open tubes (util/genNanotube.py). Their names say exactly what they are --
+    // an (n,m) pair and a chirality -- and no encyclopedia has an article about one
+    // particular short tube. The 'nanotube' category is where the reading would go.
+    'nt55': null,
+    'nt63': null,
+    'nt80': null,
     'etI': null,
     // The zonish solids (util/genZonish.py). Their names are Hart's descriptions of
     // his own figures rather than established names, so there is no article to find
@@ -189,6 +195,9 @@ export const UNLINKED_CATEGORIES = [
     // and a link this repo can verify is a policy call, so it is left open rather
     // than settled here.
     'fullerene',
+    // Same story, and a shame: the (n,m) classification is the one thing a player
+    // would most want to read about, since it is why our three tubes look different.
+    'nanotube',
 ];
 
 /**

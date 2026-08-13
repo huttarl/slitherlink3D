@@ -562,6 +562,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "nt80",
+      "gridId": "nt80",
+      "gridName": "Nanotube (8,0) zigzag",
+      "categories": ["Miscellaneous", "nanotube"],
+      "faces": 32,
+      "edges": 112,
+      "vertices": 80,
+      "numPuzzles": 3
+    },
+    {
       "file": "cD",
       "gridId": "cD",
       "gridName": "Chamfered dodecahedron",
@@ -632,13 +642,23 @@
       "numPuzzles": 3
     },
     {
-      "file": "ntube",
-      "gridId": "ntube",
-      "gridName": "Open nanotube (40 hexagons)",
-      "categories": ["Miscellaneous"],
+      "file": "nt55",
+      "gridId": "nt55",
+      "gridName": "Nanotube (5,5) armchair",
+      "categories": ["Miscellaneous", "nanotube"],
       "faces": 40,
       "edges": 140,
       "vertices": 100,
+      "numPuzzles": 3
+    },
+    {
+      "file": "nt63",
+      "gridId": "nt63",
+      "gridName": "Nanotube (6,3) chiral",
+      "categories": ["Miscellaneous", "nanotube"],
+      "faces": 42,
+      "edges": 144,
+      "vertices": 102,
       "numPuzzles": 3
     },
     {
@@ -665,7 +685,7 @@
       "file": "C110",
       "gridId": "C110",
       "gridName": "C110 capped nanotube",
-      "categories": ["Miscellaneous", "fullerene"],
+      "categories": ["Miscellaneous", "fullerene", "nanotube"],
       "faces": 57,
       "edges": 165,
       "vertices": 110,

@@ -107,7 +107,7 @@ RECIPES = {
     'C110': {'atoms': 110, 'name': 'C110 capped nanotube',
              'rings': {'fold': 5, 'poles': True,
                        'offsets': [0, 0.5, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0.5, 0]},
-             'isolated_pentagons': True},
+             'categories': ['nanotube'], 'isolated_pentagons': True},
 }
 
 # Repulsion settings. The forces and damping are genRandomPolyh's own tuning, kept
@@ -364,8 +364,14 @@ def build(grid_id, recipe):
     # the narrower word for the icosahedral fullerenes, and where one category
     # implies another data/ lists only the narrowest (see docs/json-format.md), so
     # a Goldberg polyhedron says so and stops rather than also saying 'fullerene'.
+    #
+    # A recipe may add to that: C110 is a capped nanotube as well as a cage, and
+    # carries 'nanotube' so it can be found beside the open tubes of
+    # util/genNanotube.py. The two overlap rather than nest -- a capped tube is both,
+    # an open one only a nanotube -- so neither implies the other and both are listed.
     grid = {'gridId': grid_id, 'gridName': recipe['name'],
-            'categories': ['Miscellaneous', 'fullerene']}
+            'categories': ['Miscellaneous', 'fullerene']
+                          + recipe.get('categories', [])}
     # So the file says where it came from, and can be made again exactly. A named
     # recipe reproduces from its name; an ad-hoc cage needs its seed, since that
     # is the only thing deciding which isomer turned up.

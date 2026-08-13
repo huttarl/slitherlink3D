@@ -41,7 +41,7 @@ A JSON object containing the following properties:
     groups by family, and a solid can only be filed under one heading.
     The rest are cross-cutting properties: "deltahedron", "quasiregular", "zonohedron",
     "zonish", "parallelohedron", "chiral", "self-dual", "Goldberg", "geodesic",
-    "fullerene", "prism", "antiprism".
+    "fullerene", "nanotube", "prism", "antiprism".
   - Some of those attributes catch a classical solid too, which is the point of their
     being cross-cutting: the cube is a "prism" as well as Platonic, and the octahedron
     an "antiprism".
