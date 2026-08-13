@@ -104,7 +104,61 @@ def triangulation(belts):
     # way round its simplices come.
     faces = [orient_outward(points, list(simplex))
              for simplex in ConvexHull(points).simplices]
+
+    # Two shaping passes with two different jobs. Regularizing decides the
+    # PROPORTIONS -- asking for equilateral triangles is what elongates it, exactly as
+    # it elongates a fullerene cage -- and projecting onto a capsule then decides the
+    # SURFACE.
+    #
+    # The projection is not a nicety. Equilateral triangles put 6 x 60 = 360 degrees
+    # round a six-fold vertex, which is FLAT, so no curvature can live in the
+    # hexagonal regions and all of it collects at the twelve five-fold vertices: the
+    # solid comes out as an icosahedron with flat facets, twelve points sticking out
+    # and troughs between them. Measured on the first version: 15 of its 56 vertices
+    # sank inside their own convex hull, and angle sums reached 362 degrees, past flat
+    # and into saddle. A real geodesic spreads the deficit over every vertex instead --
+    # gd20 has 18 degrees at each -- which is what makes it smoothly round.
+    # The projection itself happens in capsid(), after the solid has been stood up:
+    # it is written about the y axis, and here the rings are still built about z.
     return (polyhedron_shape.regularize(points, faces), faces)
+
+
+def project_onto_capsule(points):
+    """Move every vertex onto a capsule: a cylinder with a hemisphere at each end.
+
+    Which is the shape a phage head is, and the shape the linked review's figures
+    show: convex, and curved everywhere rather than only at twelve points.
+
+    The capsule is FITTED to what it is given, so the proportions still come from the
+    regularizing that went before -- radius from how wide the solid is, and the
+    cylinder taking up whatever length is left once the two caps have their share.
+    Vertices in the middle move straight out to the cylinder; those past the shoulders
+    move onto the nearer cap.
+
+    Smoothing the mesh tangentially afterwards was tried and is a trap: averaging each
+    vertex onto its neighbours drifts them along the axis as well as across it, so the
+    solid slides towards its own equator -- 25 rounds took the length-to-width ratio
+    from 1.6 to 0.9 and the edge spread to a factor of ten. Projection alone leaves the
+    edges within about 17%, which is what a geodesic looks like anyway (gd20 is 13%).
+    """
+    radius = float(np.max(np.hypot(points[:, 0], points[:, 2])))
+    half_length = max(0.0, (points[:, 1].max() - points[:, 1].min()) / 2 - radius)
+    middle = (points[:, 1].max() + points[:, 1].min()) / 2
+
+    moved = np.empty_like(points)
+    for (i, point) in enumerate(points):
+        height = point[1] - middle
+        if abs(height) <= half_length:
+            # On the cylinder: straight out from the axis, height unchanged.
+            across = math.hypot(point[0], point[2]) or 1.0
+            moved[i] = (point[0] * radius / across, point[1],
+                        point[2] * radius / across)
+        else:
+            # On a cap: out from that hemisphere's centre.
+            centre = np.array([0.0, middle + math.copysign(half_length, height), 0.0])
+            spoke = point - centre
+            moved[i] = centre + spoke * (radius / np.linalg.norm(spoke))
+    return moved
 
 
 def pierce(vertices, faces):
@@ -192,6 +246,25 @@ def check(vertices, faces, belts, pierced):
         problems.append(f'{wanted_fivefold} five-fold vertices expected, '
                         f'got {fivefold}')
 
+    # CONVEX, which the first version of this script was not: asking for equilateral
+    # triangles flattens the six-fold vertices and cones the five-fold ones, and 15 of
+    # 56 vertices ended up sunk inside their own hull, with troughs between the twelve
+    # points. A capsid is not a faceted thing, so this is worth insisting on.
+    #
+    # Measured as distance from the hull's SURFACE, not as membership of its corner
+    # list. A capsule has flat cylindrical regions, so three vertices can sit on one
+    # vertical line and the middle one is then on the hull without being a corner of
+    # it -- flat, not dented, and corner membership called five such vertices dents.
+    # QHull's facet equations are negative inside, so a vertex on the surface scores
+    # about zero and a dented one scores clearly negative.
+    hull = ConvexHull(vertices)
+    corner = np.asarray(vertices) @ hull.equations[:, :3].T + hull.equations[:, 3]
+    depth = corner.max(axis=1)
+    sunken = [int(v) for v in np.flatnonzero(depth < -1e-6)]
+    if sunken:
+        problems.append(f'{len(sunken)} vertex/vertices dented inwards, up to '
+                        f'{-depth.min():.1e} inside the hull: {sunken[:6]}')
+
     problems += grid_checks.check_flat_faces(vertices, faces, 1e-9)
     problems += grid_checks.check_outward_winding(vertices, faces)
     if not pierced:
@@ -216,7 +289,11 @@ def check(vertices, faces, belts, pierced):
 def capsid(belts, pierced):
     """A capsid as (vertices, faces), scaled to a circumradius of 1."""
     (vertices, faces) = triangulation(belts)
-    vertices = upright(np.asarray(vertices)).tolist()
+    # Stand it up first, then project: the capsule is written about the y axis, which
+    # is the axis only once the solid is upright. Projecting before the rotation fits a
+    # capsule across the solid instead of along it -- which came out with edges varying
+    # by a factor of two and no elongation left at all.
+    vertices = project_onto_capsule(upright(np.asarray(vertices))).tolist()
     if pierced:
         (vertices, faces, removed) = pierce(vertices, faces)
         log(f'Portal: removed the top vertex and {removed} triangles at it')
