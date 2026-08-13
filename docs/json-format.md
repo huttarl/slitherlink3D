@@ -43,6 +43,20 @@ A JSON object containing the following properties:
     and family by the time these are read. One named after a person keeps its capital. Each is linked
     to an explanation where there's a good one; see js/polyhedronLinks.js.
   - Both conventions are checked by js/tests/catalogue.test.js.
+- "closed" (optional, default true): whether the surface has no boundary — whether
+  every edge has a face on both sides. Almost every grid here is a closed solid, and
+  omitting this says so. `false` marks one with rims, like the open nanotube
+  (`data/ntube.json`, from `util/genNanotube.py`), which is a cylinder of hexagons
+  with nothing capping its two ends.
+  - It exists because a good many expectations quietly assume closedness, and a
+    script that knows better can then say something true instead of complaining:
+    Euler's formula gives 0 for a cylinder rather than 2; the number of edges is not
+    half the number of face sides, since a rim edge has one face rather than two; and
+    a vertex's face count stops equalling its edge count, so what matters for play —
+    how many edges meet there — has to be counted from the edges (see `edge_degrees`
+    in `util/grid_topology.py`).
+  - It changes nothing about how the puzzle is played. A rim edge is an ordinary edge
+    the loop may use; the stored nanotube solutions each run along 15 or more of them.
 - "vertices": array of 3-number arrays. Each sub-array is a vertex, and each number is
     a coordinate (X, Y, Z). E.g. [ [0, 0, 1], [-0.3, 0.577, 0.745], ...]
 - "faces": array of arrays of numbers. Each sub-array is a face, and each number is a zero-based

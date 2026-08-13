@@ -60,7 +60,7 @@ from grid_checks import (  # noqa: E402
     centroid, direction_classes, distance, face_bow, face_skew,
     inscribed_radius, sharpest_corner, side_ratio, wound_outward,
 )
-from grid_topology import edges_of, vertex_degrees  # noqa: E402
+from grid_topology import edge_degrees, edges_of, vertex_degrees  # noqa: E402
 
 DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
 
@@ -86,9 +86,14 @@ def report(path):
         sizes[len(face)] = sizes.get(len(face), 0) + 1
 
     inradii = [inscribed_radius(f) for f in faces]
+    # An open grid says so (see docs/json-format.md), and the two expectations that
+    # depend on it are Euler's formula and what a vertex's degree means.
+    closed = grid.get('closed', True)
+    wanted_euler = 2 if closed else 0
     print(f'{grid.get("gridName", path.stem)}  ({path.name})')
     print(f'  V={len(V)} E={len(edges)} F={len(F)}   '
-          f'Euler {len(V) - len(edges) + len(F)} (want 2)   faces: '
+          f'Euler {len(V) - len(edges) + len(F)} (want {wanted_euler}'
+          + ('' if closed else ', an open surface') + ')   faces: '
           + ', '.join(f'{c}x{s}' for (s, c) in sorted(sizes.items())))
     print(f'  edges     {lengths[0]:.3f} / {median:.3f} / {lengths[-1]:.3f}  '
           f'(shortest is {lengths[0] / median:.0%} of median)')
@@ -116,11 +121,17 @@ def report(path):
         # itself (a cube's edges run three ways).
         print(f'  zones     {zones} edge directions '
               f'(an odd-sided face, so no zonohedron)')
+    # Faces per vertex on a closed grid, edges per vertex on an open one. The two are
+    # the same number wherever every edge has two faces, and the EDGE count is the one
+    # the vertex rule is about -- a loop needs 0 or 2 edges at every vertex. Reporting
+    # faces on the nanotube would have said "20x1", which reads as twenty dead ends
+    # when those atoms have two perfectly good edges apiece.
     tally = {}
-    for degree in vertex_degrees(F).values():
+    for degree in (vertex_degrees(F) if closed else edge_degrees(F)).values():
         tally[degree] = tally.get(degree, 0) + 1
     print(f'  degrees   '
-          + ', '.join(f'{count}x{degree}' for (degree, count) in sorted(tally.items())))
+          + ', '.join(f'{count}x{degree}' for (degree, count) in sorted(tally.items()))
+          + ('' if closed else '  (edges per vertex; a rim vertex has 2)'))
     crooked = [i for (i, f) in enumerate(faces) if not wound_outward(f, centre)]
     print(f'  winding   ' + ('all outward' if not crooked
                              else f'{len(crooked)} face(s) inward: {crooked[:5]}'))
