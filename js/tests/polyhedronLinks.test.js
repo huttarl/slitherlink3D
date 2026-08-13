@@ -86,15 +86,29 @@ describe('solidLink', () => {
     });
 
     test('every grid in the catalogue yields a well-formed URL', () => {
-        // The guard on the derivation rule: a title of word characters and
+        // The guard on the DERIVATION rule: a title of word characters and
         // hyphens, so a name the rule mishandles (a stray bracket, an unencoded
         // space) shows up here rather than as a 404 for a player.
-        const bad = catalogue.grids
-            .map(grid => [grid.gridName, solidLink(grid.gridId, grid.gridName)])
-            .filter(([, url]) => url !== null)   // covered by the next test
-            .filter(([, url]) =>
-                !/^https:\/\/polytope\.miraheze\.org\/wiki\/[\w-]+$/.test(url));
-        assert.deepStrictEqual(bad, []);
+        const WIKI = 'https://polytope.miraheze.org/wiki/';
+        const links = catalogue.grids
+            .map(grid => [grid.gridId, grid.gridName,
+                          solidLink(grid.gridId, grid.gridName)])
+            .filter(([, , url]) => url !== null);   // covered by the next test
+        const mangled = links
+            .filter(([, , url]) => url.startsWith(WIKI))
+            .filter(([, , url]) => !new RegExp(`^${WIKI}[\\w-]+$`).test(url));
+        assert.deepStrictEqual(mangled.map(([, name, url]) => [name, url]), []);
+
+        // An exception may instead be a whole URL somewhere else -- the capsid's
+        // reading is a virology review. Nothing derived it, so there is no name to
+        // have mangled; what matters is that it parses and that it was a decision
+        // rather than an accident of the rule.
+        for (const [gridId, name, url] of links) {
+            if (url.startsWith(WIKI)) continue;
+            assert.ok(SOLID_PAGE_EXCEPTION_IDS.includes(gridId),
+                `${name} links to ${url}, which no exception asked for`);
+            assert.doesNotThrow(() => new URL(url), `${name}: ${url} is not a URL`);
+        }
     });
 
     test('only the solids we chose to leave unlinked have no URL', () => {

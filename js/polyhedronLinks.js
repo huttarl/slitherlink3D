@@ -94,10 +94,14 @@ const SOLID_PAGE_EXCEPTIONS = {
     'nt55': null,
     'nt63': null,
     'nt80': null,
-    // A capsid's shape has no name in geometry -- it is a prolate triangulation with
-    // a hole, described by biology rather than catalogued by anyone. The wiki has
-    // nothing, and "capsid" would lead to virology rather than to the solid.
-    'capsid': null,
+    // The capsid's reading is virology, since its shape has no name in geometry -- a
+    // prolate triangulation with a hole, described by biology rather than catalogued
+    // by anyone. This review of the phage T4 head is the solid we built, in its own
+    // terms: elongated along a fivefold axis, "11 of the 12 vertices occupied by
+    // pentamers", and the twelfth "a unique portal vertex through which the genome
+    // enters". Which is exactly what the generator does -- delete one five-fold
+    // vertex of twelve and the triangles at it. Free full text, with figures.
+    'capsid': 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9958956/',
     'etI': null,
     // The zonish solids (util/genZonish.py). Their names are Hart's descriptions of
     // his own figures rather than established names, so there is no article to find
@@ -178,6 +182,24 @@ const CATEGORY_PAGES = {
     'parallelohedron': POLYTOPE_WIKI + 'Parallelohedron',
     'self-dual': POLYTOPE_WIKI + 'Self-dual_polytope',
     'geodesic': 'https://geometryofthinking.com/2024/02/01/geodesics/',
+    // Chemistry rather than geometry for these two, which is where the interest is --
+    // and both explain the very structure the grids are built on.
+    //
+    // Fullerenes: an open-access university textbook, which reaches the geometric
+    // heart of it -- Euler's theorem is why there are always exactly twelve
+    // pentagons, however many hexagons -- and then the isolated-pentagon rule, with
+    // C60 as a football and C70 as a rugby ball. Two commercial pages were rejected
+    // first: one read as generated filler, the other sold the substances it described.
+    'fullerene': 'https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/'
+                 + 'Chemistry_of_the_Main_Group_Elements_(Barron)/07:_Group_14/'
+                 + '7.03:_Carbon_Nanomaterials',
+    // Nanotubes: a research group's own account of chirality, and the best short
+    // statement of what util/genNanotube.py actually does -- the chiral vector
+    // C = n*a1 + m*a2 as the vector between the CENTRES of two hexagons that the
+    // rolling brings together, which is exactly how the generator identifies them. It
+    // does not use the words zigzag and armchair; the grid names supply those, and
+    // this supplies the vector that decides them.
+    'nanotube': 'https://katogroup.riken.jp/en/nanotubechirality.html',
     // Hart again, and the rare case where the page that explains a category is also
     // the page these solids came from: util/genZonish.py reproduces its figures.
     'zonish': VIRTUAL_POLYHEDRA + 'zonish_polyhedra.html',
@@ -190,18 +212,6 @@ export const UNLINKED_CATEGORIES = [
     // to read about being miscellaneous; what such a solid actually is shows in
     // its other categories, which are linked.
     'Miscellaneous',
-    // Unlinked for want of a page that can be CHECKED, not for want of a page.
-    // This wiki has no Fullerene article and Hart's site has nothing on them
-    // either, these being molecules rather than polytopes; the good general-reader
-    // sources -- Britannica, the 1996 Nobel announcement, the IUPAC Gold Book --
-    // all refuse automated requests, so the link check gets 403 and can't vouch
-    // for them however well they read. Choosing between a link a human can follow
-    // and a link this repo can verify is a policy call, so it is left open rather
-    // than settled here.
-    'fullerene',
-    // Same story, and a shame: the (n,m) classification is the one thing a player
-    // would most want to read about, since it is why our three tubes look different.
-    'nanotube',
 ];
 
 /**
@@ -219,6 +229,10 @@ export function solidLink(gridId, gridName) {
     }
     const title = SOLID_PAGE_EXCEPTIONS[gridId]
         || (gridName ? deriveArticleTitle(gridName) : null);
+    // An exception may be a whole URL instead of a wiki page title, for a solid whose
+    // best reading is somewhere else entirely: the capsid's is a virology review, no
+    // encyclopedia of polyhedra having anything to say about a phage head.
+    if (title && /^https?:/.test(title)) return title;
     return title ? POLYTOPE_WIKI + title : null;
 }
 

@@ -235,7 +235,7 @@ def build(belts, pierced):
 
     grid = {
         'gridId': 'capsid',
-        'gridName': ('Prolate capsid with portal' if pierced
+        'gridName': ('Prolate capsid with DNA portal' if pierced
                      else 'Prolate capsid'),
         # No 'geodesic': that word is for the round triangulations with an (m,n),
         # which this deliberately is not -- see the docstring.
