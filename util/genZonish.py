@@ -55,8 +55,12 @@ The distinction is combinatorial rather than angular: as unsigned axes every pai
 five-fold axes is inclined at the same 63.4 degrees, so the angles cannot tell them
 apart. What separates them is whether the three can be signed to point into a common
 direction, which happens exactly when they surround a common triangle of the seed.
-See surrounds_triangle, and --pick=oblate3 / --pick=prolate3, which search for such
-a triple rather than trusting a hard-coded index.
+
+Those three CLUSTER about that common direction, so summing segments along them
+stretches the solid along it: one long axis, which is PROLATE. The other triple points
+every which way and spreads the solid instead, into two long axes and one short, which
+is OBLATE. See surrounds_triangle, and --pick=oblate3 / --pick=prolate3, which search
+for such a triple rather than trusting a hard-coded index.
 
 WHY A HULL HERE, when genZonohedron.py writes its faces down in closed form: there
 the faces come in one kind, indexed by pairs of generators, while here they come in
@@ -192,9 +196,10 @@ def surrounds_triangle(zones):
     """Whether these axes can be signed to point into a common direction.
 
     Which is what "surrounding a common triangle of the seed" means, and the
-    difference between Hart's oblate and prolate three-zone figures. As unsigned
-    axes, any two five-fold axes are inclined at the same angle, so the angles say
-    nothing; this does. Brute force over the sign patterns, of which there are few
+    difference between Hart's oblate and prolate three-zone figures: true for the
+    PROLATE triple, since axes that cluster about one direction stretch the solid
+    along it. As unsigned axes, any two five-fold axes are inclined at the same angle,
+    so the angles say nothing; this does. Brute force over the sign patterns, of which there are few
     and only 2^(n-1) that differ (negating every vector changes nothing).
     """
     for signs in product((1, -1), repeat=len(zones) - 1):
@@ -215,7 +220,14 @@ def pick_zones(directions, spec):
     if spec == 'all':
         return list(range(len(directions)))
     if spec in ('oblate3', 'prolate3'):
-        want = (spec == 'oblate3')
+        # PROLATE is the triple that surrounds a triangle. Signing those three axes
+        # into a common direction is what says they cluster about it, and summing
+        # segments along a cluster stretches the solid that way -- one long axis. The
+        # other triple spreads instead, giving two long axes and one short: oblate.
+        # This mapping was the wrong way round at first, and the two solids shipped
+        # with each other's names; the shapes now say which is which (see the
+        # principal spans in the report below).
+        want = (spec == 'prolate3')
         for triple in combinations(range(len(directions)), 3):
             if surrounds_triangle([directions[i] for i in triple]) == want:
                 return list(triple)
@@ -353,8 +365,10 @@ def check(seed_faces, zones, vertices, faces, silhouettes):
               and grid_checks.face_skew(grid_checks.corners_of(vertices, face))
               > 1e-6]
 
-    shape = ('oblate' if n == 3 and surrounds_triangle(zones)
-             else 'prolate' if n == 3 else '')
+    # Surrounding a triangle means the axes cluster, which stretches: prolate. This
+    # said the opposite, as pick_zones did.
+    shape = ('prolate' if n == 3 and surrounds_triangle(zones)
+             else 'oblate' if n == 3 else '')
     report = (f'{n} zone(s){", " + shape if shape else ""}: {len(vertices)} '
               f'vertices, {len(grid_topology.edges_of(faces))} edges, '
               f'{len(faces)} faces ({grid_checks.census_text(faces)}); '

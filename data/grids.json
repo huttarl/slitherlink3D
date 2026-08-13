@@ -684,7 +684,7 @@
     {
       "file": "capsid",
       "gridId": "capsid",
-      "gridName": "Prolate capsid with portal",
+      "gridName": "Prolate capsid with DNA portal",
       "categories": ["Miscellaneous"],
       "faces": 105,
       "edges": 160,
