@@ -58,6 +58,8 @@ first six verify the result through grid_checks before writing it.
   lengths, sharpest corners, inscribed radii, bow, vertex degrees, winding.
 - sweep_grids — generates a throwaway puzzle for every grid and scores it against
   what's stored. The regression test for changes to the generator.
+- trace_report — summarizes a saved Chrome Performance trace: frame pacing, JS self
+  time, GC pauses, heap churn. For diagnosing jank in the browser UI.
 
 ## Plumbing
 - build_catalogue — writes data/grids.json, the manifest the app reads because it
