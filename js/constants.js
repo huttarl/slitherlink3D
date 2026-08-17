@@ -271,15 +271,43 @@ export const PAIR_RELATIONS = ['none', 'exactlyOne', 'bothOrNeither'];
 // white edge states -- so a saturated hue no other element uses.
 export const PAIR_MARK_COLOR = new THREE.Color(0x1a86a8);
 // How far from the corner the arc sits, as a fraction of the SHORTER of its two
-// edges. A fraction of the edges rather than of the face, so the arc's two ends
-// always land ON both edges however oddly shaped the face is -- which is what makes
-// it read as joining those two and not some other pair.
-export const PAIR_ARC_RADIUS = 0.22;
-// The stroke's width, and the gap out to the second arc, as fractions of that
-// radius. Kept small enough that even a two-arc mark stays inside the corner:
-// 1 + PAIR_ARC_GAP + PAIR_ARC_WIDTH / 2 of the radius, so about a third of an edge.
-export const PAIR_ARC_WIDTH = 0.22;
-export const PAIR_ARC_GAP = 0.30;
+// edges -- a fraction of the EDGES rather than of the face, so the arc's ends always
+// land on both of them however oddly shaped the face is, which is what makes it read
+// as joining those two and not some other pair.
+//
+// TWO radii, chosen by the corner's ANGLE and interpolated between, because one
+// radius cannot serve both ends of the range. An arc of angular span t at radius r
+// draws a line of length r*t, so at a single radius a 30-degree corner shows barely a
+// quarter the ink of a 120-degree one: the sharp corners were too small to read while
+// the obtuse ones sprawled over most of the face.
+//
+// Holding the arc LENGTH constant instead is the tidier idea and over-corrects badly:
+// matched to 0.32 at 30 degrees it wants 0.107 at 90, which lands the arc almost on
+// the vertex sphere. This ramp is the partial correction that measurement and the eye
+// agreed on -- it leaves 90-degree corners at 0.227, near the 0.22 that looked right
+// before any of this, and only pulls the genuinely wide ones in.
+//
+// Angles outside the two named ones are clamped, not extrapolated: 34.6 degrees
+// (data/spiral10.json's sharpest) and 120 (a hexagon of data/tI.json) are close to
+// the real range, and a 150-degree corner wanting a still smaller arc is not a case
+// worth guessing at.
+export const PAIR_ARC_RADIUS_SHARP = 0.32;
+export const PAIR_ARC_SHARP_DEGREES = 30;
+export const PAIR_ARC_RADIUS_WIDE = 0.18;
+export const PAIR_ARC_WIDE_DEGREES = 120;
+
+// The stroke's width, and the gap out to the second arc. Fractions of the shorter
+// edge, NOT of the radius above: now that the radius varies with the angle, a
+// stroke defined against it would thin out on exactly the wide corners where the
+// radius is smallest. A pen doesn't change width with the size of the arc.
+//
+// Both are deliberately finer than the first attempt, which set them against the
+// radius at 0.22 and 0.30 -- 0.048 and 0.066 of an edge as drawn. They stay legible
+// smaller, and every bit saved here is headroom for the radius: two corners at the
+// ends of one edge collide when 2 * (radius + gap + width / 2) passes 1, which these
+// put at a radius of 0.46 rather than the 0.355 of the version before.
+export const PAIR_ARC_WIDTH = 0.032;
+export const PAIR_ARC_GAP = 0.048;
 
 // Clue digit colors. A clue whose walls are all accounted for goes gray, leaving
 // the black digits as the list of what is still to do.

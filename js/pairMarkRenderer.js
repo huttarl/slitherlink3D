@@ -24,7 +24,8 @@
  * geometry, so the depth buffer occludes the far side for free.
  */
 import * as THREE from './three/three.module.min.js';
-import {CLUE_LIFT, PAIR_ARC_GAP, PAIR_ARC_RADIUS, PAIR_ARC_WIDTH,
+import {CLUE_LIFT, PAIR_ARC_GAP, PAIR_ARC_RADIUS_SHARP, PAIR_ARC_RADIUS_WIDE,
+        PAIR_ARC_SHARP_DEGREES, PAIR_ARC_WIDE_DEGREES, PAIR_ARC_WIDTH,
         PAIR_MARK_COLOR} from './constants.js';
 import {findCentroid, findFaceNormal, findFaceRise,
         freezeTransform} from './geometryUtils.js';
@@ -34,6 +35,24 @@ import {debug} from './debug.js';
 // Segments along an arc. A corner spans at most ~150 degrees on anything we ship,
 // so 24 keeps the curve smooth without making a mark cost real geometry.
 const ARC_SEGMENTS = 24;
+
+/**
+ * How far out to put the arc, given how wide the corner is: further on a sharp
+ * corner, nearer on a wide one. See the note on PAIR_ARC_RADIUS_SHARP for why one
+ * radius cannot serve both.
+ *
+ * @param {number} angle - the corner's angle, in radians
+ * @returns {number} the radius, as a fraction of the corner's shorter edge
+ */
+function radiusForAngle(angle) {
+    const degrees = THREE.MathUtils.radToDeg(angle);
+    // Clamped, so a corner outside the named range gets the nearer endpoint's
+    // radius rather than an extrapolation.
+    const howWide = THREE.MathUtils.clamp(
+        (degrees - PAIR_ARC_SHARP_DEGREES)
+            / (PAIR_ARC_WIDE_DEGREES - PAIR_ARC_SHARP_DEGREES), 0, 1);
+    return THREE.MathUtils.lerp(PAIR_ARC_RADIUS_SHARP, PAIR_ARC_RADIUS_WIDE, howWide);
+}
 
 /**
  * Creates the (initially empty) group the marks live in.
@@ -95,8 +114,9 @@ function cornerFrame(grid, edgeA, edgeB) {
 
     let alongA = new THREE.Vector3().subVectors(endOf(a), here);
     let alongB = new THREE.Vector3().subVectors(endOf(b), here);
-    // Sized from the SHORTER edge, so both ends of the arc land on an edge.
-    const radius = PAIR_ARC_RADIUS * Math.min(alongA.length(), alongB.length());
+    // Everything is sized from the SHORTER edge, so both ends of the arc land on an
+    // edge whichever of the two is stubbier.
+    const shorterEdge = Math.min(alongA.length(), alongB.length());
     alongA.normalize();
     alongB.normalize();
     // A RingGeometry sweeps from its +X toward its +Y, so alongA has to be the
@@ -107,12 +127,17 @@ function cornerFrame(grid, edgeA, edgeB) {
         [alongA, alongB] = [alongB, alongA];
     }
 
+    const angle = alongA.angleTo(alongB);
     return {
         here,
         normal,
         alongA,
-        angle: alongA.angleTo(alongB),
-        radius,
+        angle,
+        // The radius answers to the ANGLE, the stroke and the spacing don't: see the
+        // notes on PAIR_ARC_RADIUS_SHARP and PAIR_ARC_WIDTH for both halves of that.
+        radius: radiusForAngle(angle) * shorterEdge,
+        width: PAIR_ARC_WIDTH * shorterEdge,
+        gap: PAIR_ARC_GAP * shorterEdge,
         // Clear of the surface, as the clue digits are: past whatever this face's
         // curvature raises under the arc, then CLUE_LIFT to settle the z-fighting.
         // A flat face gives a rise of 0.
@@ -126,12 +151,12 @@ function cornerFrame(grid, edgeA, edgeB) {
  *
  * @param {Object} frame - from cornerFrame
  * @param {THREE.Material} material
- * @param {number} spacing - 1 for the inner arc, more for the outer one
+ * @param {number} ring - 0 for the inner arc, 1 for the outer one
  * @returns {THREE.Mesh}
  */
-function arcMesh(frame, material, spacing) {
-    const middle = frame.radius * spacing;
-    const half = frame.radius * PAIR_ARC_WIDTH / 2;
+function arcMesh(frame, material, ring) {
+    const middle = frame.radius + ring * frame.gap;
+    const half = frame.width / 2;
     const mesh = new THREE.Mesh(
         new THREE.RingGeometry(middle - half, middle + half, ARC_SEGMENTS, 1,
                                0, frame.angle),
@@ -186,7 +211,7 @@ export function updatePairMark(gameState, pairKey, relation) {
     // order and not some other.
     const mark = new THREE.Group();
     for (let arc = 0; arc < relation; arc++) {
-        mark.add(arcMesh(frame, group.userData.material, 1 + arc * PAIR_ARC_GAP));
+        mark.add(arcMesh(frame, group.userData.material, arc));
     }
     freezeTransform(mark);
     group.add(mark);
