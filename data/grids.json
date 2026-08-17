@@ -372,6 +372,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "spiral6",
+      "gridId": "spiral6",
+      "gridName": "Six-zone rhombic spiral",
+      "categories": ["Miscellaneous", "zonohedron"],
+      "faces": 30,
+      "edges": 60,
+      "vertices": 32,
+      "numPuzzles": 3
+    },
+    {
       "file": "aD",
       "gridId": "aD",
       "gridName": "Icosidodecahedron",

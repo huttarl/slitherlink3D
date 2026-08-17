@@ -69,14 +69,23 @@ angle classes means few face shapes. Measured off the shipped grid files:
 | `zico5` rhombic icosahedron | 20 | 63.4 | 63.4 | **1** | 20.0 |
 | `daD` rhombic triacontahedron | 30 | 63.4 | 63.4 | **1** | 30.0 |
 | `jtI` rhombic enneacontahedron | 90 | 41.8 | 70.5 | **2** | 45.0 |
+| `spiral6` | 30 | 48.7 | 87.2 | **11** | 2.7 |
 | `spiral7` | 42 | 45.0 | 87.1 | **13** | 3.2 |
 | `spiral8` | 56 | 42.1 | 89.7 | **13** | 4.3 |
 | `spiral9` | 72 | 37.2 | 88.3 | **11** | 6.5 |
 | `spiral10` | 90 | 34.6 | 89.3 | **9** | 10.0 |
 
 `daD`'s six generators are all 63.43° apart, so all thirty faces are the same
-golden rhombus. That reads as crystalline because it is. The sharpest comparison is
-`spiral10` against `jtI`: the same 90 rhombic faces, 9 shapes against 2.
+golden rhombus. That reads as crystalline because it is.
+
+Two comparisons make the point exactly, since each pair is the same size:
+
+  * `spiral10` against `jtI` — the same 90 rhombic faces, 9 shapes against 2.
+  * `spiral6` against `daD` — the same V=32, E=60, F=30, the same six zones, both
+    entirely rhombic, and 11 shapes against 1. They are not even the same
+    combinatorial type: daD's vertices are 20 of degree 3 and 12 of degree 5, where
+    `spiral6`'s are 14, 12 and 6 of degrees 3, 4 and 5. So the star's arrangement,
+    not just how many vectors it has, decides the solid's structure.
 
 **How the spirals differ from the zonohedra already in data/, in one line:** same
 construction, same all-rhombic faces, same n-zones-of-parallel-edges structure —
@@ -148,8 +157,8 @@ latter is a smoke-test wrapper and saves nothing.
 
 ## Untried
 
-- **n=6**: 30 faces with 11 shapes at 48.7° sharpest — the same face count as
-  `daD` with the opposite character. Measured but not built.
+- **n=5**: 20 faces, the same size as `zico5`. Not measured. The floor is n=3,
+  which gives a rhombohedron (6 faces) and is too small for a puzzle.
 - **Unequal generator lengths**: gives general parallelograms rather than rhombi.
   Further from Penrose, but opens up the shape space.
 - **A non-centrally-symmetric all-rhombic solid**, if such a thing exists outside

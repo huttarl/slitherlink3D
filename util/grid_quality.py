@@ -21,9 +21,29 @@ What it measures, and why each one matters:
               range of clue digit sizes.
   bow         how far a face's corners stray from flat, in units where the
               solid's circumradius is 1. Exactly 0 for a solid built from exact
-              coordinates; small values are invisible, and note that
-              util/obj2json.py rounds coordinates to 3 decimals, which alone
-              costs a few thousandths.
+              coordinates. util/obj2json.py trims to 6 decimals, which costs
+              around 1e-6; a converted grid showing far more than that was
+              rounded harder somewhere earlier -- data/tI.json sat at 3 decimals
+              until it was reconverted, which cost it 5e-4 and was enough to put
+              vertices measurably outside their neighbours' face planes.
+  flattest    the smallest angle between the outward normals of two faces sharing
+              an edge -- so 0 would mean the two are coplanar and read as one
+              larger, faintly creased face.
+
+              AESTHETIC, not a matter of correctness or of legibility. A solid may
+              be perfectly convex with a dihedral angle of exactly 180 degrees: it
+              loses STRICT convexity, not convexity. And the boundary stays plain
+              to see whatever the angle, since edges are drawn as their own shaded
+              cylinders rather than being left to the shading of the faces either
+              side. What suffers is only the look: on a solid whose whole appeal
+              is that its rhombi are all different, a pair that reads as one
+              flattish blob is a wasted face.
+
+              Reported because it was missed by eye on the wrong grid:
+              data/spiral8.json had six edges under a degree while the complaint
+              was made about spiral6, whose flattest is 5.7. For scale, the
+              symmetric rhombic zonohedra are nowhere near -- daD 36 degrees,
+              jtI 15.5 -- since a symmetry group keeps their faces apart.
   zones       how many directions the edges run in, and -- when every face has an
               even number of sides -- how far the worst face is from being
               centrally symmetric, plus (for quadrilaterals) its longest side over
@@ -65,9 +85,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from grid_checks import (  # noqa: E402
-    centroid, direction_classes, distance, dot, face_bow, face_skew,
-    inscribed_radius, sharpest_corner, side_ratio, wound_outward,
+    centroid, direction_classes, distance, dot, face_bow, face_normal,
+    face_skew, inscribed_radius, sharpest_corner, side_ratio, subtract,
+    wound_outward,
 )
+import grid_topology  # noqa: E402
 from grid_topology import (boundary_cycles, edge_degrees, edges_of,  # noqa: E402
                            vertex_degrees)
 
@@ -87,6 +109,51 @@ DIRECTION_TOLERANCE = 5e-3
 # 11% -- so a threshold under that would call half of data/ prolate. The three-zone
 # pair sit at 26% and 38%, and the capsid at 85%, so this separates them comfortably.
 AXIS_RATIO = 1.15
+
+# Below this, two faces sharing an edge are near enough to coplanar that the pair
+# reads as one face on screen. A degree is generous: the symmetric rhombic
+# zonohedra sit at 15 to 36 degrees, and the asymmetric spirals that raised the
+# question at 1.6 to 2.1, so anything under a degree is in a class of its own.
+FLAT_EDGE_DEGREES = 1.0
+
+
+def flattest_edge(vertices, faces):
+    """The smallest angle between the outward normals of two faces sharing an edge.
+
+    @returns (that angle in degrees, how many shared edges are under
+        FLAT_EDGE_DEGREES). 180 and 0 for a grid with no shared edges at all.
+    """
+    middle = centroid(vertices)
+    normals = []
+    for face in faces:
+        corners = [vertices[i] for i in face]
+        normal = face_normal(corners)
+        length = math.sqrt(dot(normal, normal))
+        normal = [component / length for component in normal]
+        # Orient outward. Safe here in a way it would not be on a torus: every
+        # grid this measures encloses the origin. See ideas/genus-1-objects.md.
+        if dot(normal, subtract(centroid(corners), middle)) < 0:
+            normal = [-component for component in normal]
+        normals.append(normal)
+
+    owners = {}
+    for (index, face) in enumerate(faces):
+        for ekey in grid_topology.face_edges(face):
+            owners.setdefault(ekey, []).append(index)
+
+    flattest = 180.0
+    flat_count = 0
+    for sharers in owners.values():
+        if len(sharers) != 2:
+            continue        # a rim edge has one face; nothing to compare
+        (a, b) = sharers
+        # Clamp: a dot product of 1.0000000002 is a domain error in acos.
+        cosine = max(-1.0, min(1.0, dot(normals[a], normals[b])))
+        angle = math.degrees(math.acos(cosine))
+        flattest = min(flattest, angle)
+        if angle < FLAT_EDGE_DEGREES:
+            flat_count += 1
+    return (flattest, flat_count)
 
 
 def principal_spans(vertices):
@@ -183,6 +250,10 @@ def report(path):
     print(f'  inradius  {min(inradii):.3f} to {max(inradii):.3f}  '
           f'(x{max(inradii) / min(inradii):.1f})')
     print(f'  bow       {max(face_bow(f) for f in faces):.1e}')
+    (flattest, flat_count) = flattest_edge(V, F)
+    print(f'  flattest  {flattest:.2f} degrees between adjacent faces'
+          + (f'  -- {flat_count} EDGE(S) UNDER {FLAT_EDGE_DEGREES:.0f} DEGREE, '
+             'so those pairs look like one face' if flat_count else ''))
     zones = len(direction_classes(V, F, DIRECTION_TOLERANCE))
     if all(len(face) % 2 == 0 for face in F):
         # Even-sided throughout, so central symmetry is testable face by face --

@@ -115,18 +115,37 @@ def golden_spiral_star(n, first=0.7):
     only 7 visually distinct rhombi against this star's 11 spread smoothly from 37
     to 88. Evenness tends toward symmetry, which is the thing being avoided.
 
-    TWO NUMBERS decide a star here, and they pull against each other: the SHARPEST
-    face corner, which is the smallest angle between any two generators (a slim
-    rhombus has little room for its clue digit), and how many distinct rhombus
-    SHAPES result, which is the whole point. `first`, the offset of the first z
-    step, trades one for the other. Swept over 0.1 to 0.9:
+    THREE NUMBERS decide a star here, and they pull against each other:
 
-        n   faces   best `first`   sharpest   shapes
-        6      30       0.8          48.7     11 of 15
-        7      42       0.8          45.0     13 of 21
-        8      56       0.8          42.1     13 of 28
-        9      72       0.7          37.2     11 of 36
-        10     90       0.8          34.6      9 of 45
+      SHARPEST  the smallest angle between any two generators, which is the
+                sharpest face corner. A slim rhombus has little room for its clue
+                digit.
+      SHAPES    how many distinct rhombi result. The whole point of the exercise.
+      FLATTEST  the smallest angle between the normals of two ADJACENT faces. Near
+                zero and the pair reads on screen as one face -- the player cannot
+                see where one ends, may attribute a clue to the wrong one, and has
+                a nearly invisible edge to click. Measured on the built solid by
+                grid_quality's `flattest` line.
+
+    Flattest was added last, after data/spiral8.json shipped with six edges under a
+    degree, and it is the one that cannot be traded away: a slim face is merely
+    awkward, while an invisible face boundary misleads. A generator-triple
+    "coplanarity" proxy was tried first and does NOT predict it -- it ranked n=10's
+    0.7 worse than its 0.8, and the direct measurement says the reverse. Sweeping
+    `first` from 0.05 to 0.95 in steps of 0.05:
+
+        n   faces   `first`   sharpest   shapes     flattest
+        6      30     0.35      45.2     11 of 15     5.70
+        7      42     0.8       45.0     13 of 21     1.17
+        8      56     0.2       34.4     12 of 28     2.10
+        9      72     0.7       37.2     11 of 36     1.63
+        10     90     0.8       34.6      9 of 45     1.86
+
+    n=8 is the family's weak member: EVERY offset that avoids a sub-degree edge
+    costs it 5 to 8 degrees of sharpest corner, so it drops from 42.1 (blunter than
+    jtI) to 34.4 (as sharp as n=10). Taken anyway, for the reason above. n=6 got
+    the happy version of the same trade -- 0.35 keeps all 11 shapes and multiplies
+    the flattest angle by 3.6, for 3.5 degrees of sharpness.
 
     Both numbers improve as n FALLS, which was not what I expected: fewer lines
     through one origin can spread further apart, so the corners are blunter, and
@@ -137,10 +156,14 @@ def golden_spiral_star(n, first=0.7):
 
     At n=9, first=0.8 would give 38.5 degrees but only 8 shapes, so 0.7 is chosen
     there for the variety; everywhere else 0.8 wins on both counts. For scale,
-    data/jtI.json (the rhombic enneacontahedron, 90 faces) ships at 41.8 degrees,
-    and n=6 is worth noting for having the same 30 faces as the rhombic
-    triacontahedron (data/daD.json) while using 11 different rhombi where that uses
-    one -- the same solid size, the opposite character.
+    data/jtI.json (the rhombic enneacontahedron, 90 faces) ships at 41.8 degrees.
+
+    n=6 is the instructive one to compare. It lands on the same V=32, E=60, F=30 as
+    the rhombic triacontahedron (data/daD.json) with the same six zones, and both
+    are entirely rhombic -- but it uses 11 different rhombi where daD uses one, and
+    the two are not even the same combinatorial type: daD's vertices are 20 of
+    degree 3 and 12 of degree 5, this one's are 14, 12 and 6 of degrees 3, 4 and 5.
+    Same size, same counts, opposite character.
 
     @param n - how many generators, giving n(n-1) faces
     @param first - offset of the first z step; see the table above
@@ -186,8 +209,9 @@ STARS = {
                                 [PHI, 0.0, 1 / PHI], [PHI, 0.0, -1 / PHI]]),
     # Not solids' diagonals, and the only stars here with no symmetry at all; see
     # golden_spiral_star for what they are, why, and where each offset comes from.
+    'spiral6': golden_spiral_star(6, 0.35),     # 30 rhombi
     'spiral7': golden_spiral_star(7, 0.8),      # 42 rhombi
-    'spiral8': golden_spiral_star(8, 0.8),      # 56 rhombi
+    'spiral8': golden_spiral_star(8, 0.2),      # 56 rhombi
     'spiral9': golden_spiral_star(9, 0.7),      # 72 rhombi
     'spiral10': golden_spiral_star(10, 0.8),    # 90 rhombi
 }
@@ -215,6 +239,7 @@ NAMES = {
     ('icosahedron', 0): 'Rhombic triacontahedron',
     ('icosahedron', 1): 'Rhombic icosahedron',
     ('dodecahedron', 0): 'Rhombic enneacontahedron',
+    ('spiral6', 0): 'Six-zone rhombic spiral',
     ('spiral7', 0): 'Seven-zone rhombic spiral',
     ('spiral8', 0): 'Eight-zone rhombic spiral',
     ('spiral9', 0): 'Nine-zone rhombic spiral',

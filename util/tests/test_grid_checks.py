@@ -193,8 +193,10 @@ class TestChecksPassOnStoredGrids:
 
     @pytest.mark.parametrize('stem', STEMS)
     def test_faces_are_flat_enough_to_draw_on(self, stem):
-        """obj2json.py rounds coordinates to 3 decimals, so a face imported that
-        way bows by a few thousandths; exactly generated ones are at 1e-16."""
+        """A face bows by however far its coordinates were rounded. obj2json.py
+        trims to 6 decimals now, worth about 1e-6, but grids imported before that
+        change still sit at 3 and so bow by a few thousandths; exactly generated
+        ones are at 1e-16. Hence a tolerance loose enough for the worst of them."""
         grid = load_grid(DATA_DIR / f'{stem}.json')
         assert check_flat_faces(grid['vertices'], grid['faces'], 1e-2) == []
 

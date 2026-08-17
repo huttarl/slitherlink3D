@@ -173,8 +173,10 @@ def direction_classes(vertices, faces, tolerance):
 
     @param tolerance: how far apart two unit vectors may be and still count as one
         direction. Worth choosing deliberately: an exactly-built solid wants
-        something near floating-point noise, while a file whose coordinates were
-        rounded to three decimals cannot do better than a few thousandths.
+        something near floating-point noise, while a converted file cannot do
+        better than its coordinates were written to -- obj2json trims to 6
+        decimals now, but the grids it imported before that change (and so still
+        carries) sit at 3, which costs a few thousandths.
     @returns list of lists of (a, b) vertex-index pairs, largest class first
     """
     classes = []                # [[representative unit vector, [edges]], ...]

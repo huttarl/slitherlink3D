@@ -95,6 +95,9 @@ def output(options):
         "gridName": options["name"] or name,
         "categories": options["categories"],
         }
+    # recipe before source, which is the order the other grid files use.
+    if options["recipe"]:
+        grid["recipe"] = options["recipe"]
     if options["source"]:
         grid["source"] = options["source"]
     # Compact enough to load quickly, but a line per vertex and per face so a
@@ -119,13 +122,18 @@ def usage():
     print('  --name="Snub disphenoid (J84)"    gridName, else the group line',
           file=sys.stderr)
     print('  --categories="Johnson solid,deltahedron"', file=sys.stderr)
+    print('  --recipe=dkdI                Conway notation, to link the solid to',
+          file=sys.stderr)
+    print('                               polyHedronisme in the About card',
+          file=sys.stderr)
     print('  --source=https://...         where the model came from',
           file=sys.stderr)
     sys.exit(1)
 
 def parse_options(arguments):
     """Split the command line into the OBJ filename and the metadata options."""
-    options = {"id": None, "name": None, "categories": [], "source": None}
+    options = {"id": None, "name": None, "categories": [], "recipe": None,
+               "source": None}
     filename = None
     for argument in arguments:
         if argument in ("-h", "--help"):
