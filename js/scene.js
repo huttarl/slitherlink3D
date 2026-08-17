@@ -3,7 +3,7 @@ import { addSkybox } from "./skybox.js";
 import { createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
 import {DEFAULT_GRID, EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
-import { radiusScale } from "./geometryUtils.js";
+import { freezeTransform, radiusScale } from "./geometryUtils.js";
 import {createClueTexts} from "./clueRenderer.js";
 import {createEdgeLabels, createFaceLabels, createVertexLabels} from "./idLabels.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
@@ -160,12 +160,21 @@ function createVertexGroup(grid, material) {
     // that dominate a crowded solid.
     const vertexRadius = VERTEX_RADIUS * radiusScale(grid);
 
+    // ONE geometry for every vertex sphere. They are all the same ball in
+    // different places, and a place is a matrix, not a mesh: building one
+    // SphereGeometry per vertex made 180 identical copies of 512 triangles on the
+    // 182-face solid, each with its own GPU buffers for the renderer to bind. The
+    // material was already shared, for the same reason.
+    const sphereGeometry = new THREE.SphereGeometry(vertexRadius, 16, 16);
+
     for (const [_vertexId, vertex] of grid.vertices) {
-        const vGeom = new THREE.SphereGeometry(vertexRadius, 16, 16);
-        const vMesh = new THREE.Mesh(vGeom, material);
+        const vMesh = new THREE.Mesh(sphereGeometry, material);
         vMesh.position.copy(vertex.position);
+        // A vertex never moves; see freezeTransform.
+        freezeTransform(vMesh);
         vertexGroup.add(vMesh);
     }
-    
+    freezeTransform(vertexGroup);
+
     return vertexGroup;
 }

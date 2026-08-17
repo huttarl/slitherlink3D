@@ -276,3 +276,30 @@ export function normalizeVertices(vertices) {
         console.error("Vertices are all lumped together! This polyhedron won't work well.");
     }
 }
+
+/**
+ * Declares that an object has been placed for good: composes its local matrix
+ * once, then stops THREE recomputing it on every frame.
+ *
+ * The solid never moves -- only the camera turns around it -- but THREE has no
+ * way to know that. By default it recomposes each object's matrix from its
+ * position, quaternion and scale and multiplies that by its parent's, for every
+ * object in the scene, every frame. On the 182-face solid that is over 700
+ * objects, and a Chrome profile of a 13-second drag put 205ms (15% of all the
+ * JS in the recording) in updateMatrixWorld, multiplyMatrices and applyMatrix4 --
+ * almost all of it recomputing matrices that had not changed since startup.
+ *
+ * Call AFTER the object is in its final place. Anything that moves it later must
+ * call updateMatrix() itself, which sets matrixWorldNeedsUpdate and so gets
+ * picked up on the next frame. The celebration is the one such caller here: it
+ * swells the loop's cylinders, and it does exactly that.
+ *
+ * NOT for the clue digits. Those really are re-oriented every frame, so they
+ * must keep updating themselves -- see updateTextVisibility in clueRenderer.js.
+ *
+ * @param {THREE.Object3D} object - already positioned, oriented and scaled
+ */
+export function freezeTransform(object) {
+    object.updateMatrix();
+    object.matrixAutoUpdate = false;
+}

@@ -7,6 +7,7 @@ import {CAMERA_DISTANCE, CAMERA_FOV_DEGREES, CAMERA_HEIGHT,
         TRACKBALL_DAMPING, TRACKBALL_ROTATE_SPEED,
         TUMBLE_DEGREES_PER_SEC} from "./constants.js";
 import {debug} from "./debug.js";
+import {freezeTransform} from "./geometryUtils.js";
 import {prefersReducedMotion} from "./motion.js";
 
 // The direction levelCamera() restores as "up", and the reference the tumble
@@ -513,6 +514,8 @@ export class SceneManager {
         this.geometry = geometry;
         this.polyhedronMaterial = material;
         this.polyhedronMesh = new THREE.Mesh(geometry, material);
+        // The solid sits at the origin and stays there; see freezeTransform.
+        freezeTransform(this.polyhedronMesh);
         this.scene.add(this.polyhedronMesh);
         return this.polyhedronMesh;
     }
@@ -525,6 +528,7 @@ export class SceneManager {
         // this.edgeMeshes = edgeMeshes;   // see the constructor: nothing reads it
         const edgeGroup = new THREE.Group();
         edgeMeshes.forEach(mesh => edgeGroup.add(mesh));
+        freezeTransform(edgeGroup);
         this.scene.add(edgeGroup);
         return edgeGroup;
     }

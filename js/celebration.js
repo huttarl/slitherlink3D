@@ -168,6 +168,9 @@ export function stopCelebration(gameState) {
     if (!running) return;
     for (const mesh of running.loop) {
         mesh.scale.set(1, 1, 1);
+        // Edge meshes have matrixAutoUpdate off (see freezeTransform), so a
+        // scale only takes effect once the matrix is recomposed.
+        mesh.updateMatrix();
         mesh.material.emissiveIntensity = 0;
         mesh.material.emissive = new THREE.Color(0x000000);
     }
@@ -259,6 +262,10 @@ export function updateCelebration(gameState, delta) {
         // edge, so X and Z are the thickness and Y must stay 1 or the edge would
         // grow past its vertices.
         mesh.scale.set(thickness, 1, thickness);
+        // Edge meshes have matrixAutoUpdate off (see freezeTransform), so this
+        // is what makes the swell visible; without it the scale is set and
+        // silently ignored.
+        mesh.updateMatrix();
     }
 
     // Beat 2: the whole surface fades from its near-white to the two partition

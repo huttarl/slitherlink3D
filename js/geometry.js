@@ -14,7 +14,8 @@ import * as THREE from './three/three.module.min.js';
 import { Grid } from './Grid.js';
 import { EDGE_RADIUS, EDGE_COLORS, FACE_COLORS,
          EDGE_STATES } from './constants.js';
-import { findCentroid, normalizeVertices, radiusScale } from './geometryUtils.js';
+import { findCentroid, freezeTransform, normalizeVertices,
+         radiusScale } from './geometryUtils.js';
 
 /**
  * Creates a 3D polyhedron geometry with associated grid topology.
@@ -203,6 +204,9 @@ export function createEdgeGeometry(grid) {
         mesh.position.copy(center);
         mesh.lookAt(v2.position);
         mesh.rotateX(Math.PI / 2);
+        // Placed for good; see freezeTransform. The celebration's swell is the
+        // one thing that moves an edge afterwards, and it updates its own matrix.
+        freezeTransform(mesh);
         mesh.userData = { edgeId, grid };
         edgeMeshes.push(mesh);
         // And a link from edge to mesh, for coloring.
@@ -242,5 +246,9 @@ function makeEdgePickLines(positions, pickEdgeIds) {
         new THREE.Float32BufferAttribute(positions, 3));
     const pickLines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial());
     pickLines.visible = false;
+    // Never rendered, but the raycaster reads its world matrix, and it sits at
+    // the origin forever. (Invisible is not the same as absent: see the note
+    // above about why picking works at all.)
+    freezeTransform(pickLines);
     return {pickLines, pickEdgeIds};
 }
