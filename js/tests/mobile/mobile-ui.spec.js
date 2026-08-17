@@ -753,6 +753,189 @@ test.describe('the celebration overlay', () => {
     });
 });
 
+test.describe('marking a pair of edges', () => {
+    // The gesture is: tap a vertex, then tap one of the faces around it. A corner is
+    // a (vertex, face) pair and both are big targets, where the corner itself and the
+    // two thin edges are not. Alt+click on a face corner is the desktop shortcut past
+    // the two taps. See docs/edge-pair-constraints.md.
+
+    /** Loads a board with the view held still, and returns helpers into the page. */
+    async function board(page, grid = 'cube') {
+        await page.goto(`/main.html?grid=${grid}`);
+        await waitForScene(page);
+        await stopTumbling(page);
+        await page.evaluate(async () => {
+            const {GameState} = await import('/js/GameState.js');
+            GameState.getInstance().getSceneManager().stopIntroZoom();
+        });
+    }
+
+    /** Where a vertex, or a face's centre, lands on screen in CSS pixels. */
+    function screenPointOf(page, what, id) {
+        return page.evaluate(async ({what, id}) => {
+            const {GameState} = await import('/js/GameState.js');
+            const THREE = await import('/js/three/three.module.min.js');
+            const gs = GameState.getInstance();
+            const grid = gs.getPuzzleGrid();
+            const camera = gs.getSceneManager().camera;
+            let point;
+            if (what === 'vertex') {
+                point = grid.vertices.get(id).position.clone();
+            } else {
+                point = new THREE.Vector3();
+                const pts = grid.getFaceVertices(grid.faces.get(id));
+                pts.forEach(v => point.add(v.position));
+                point.multiplyScalar(1 / pts.length);
+            }
+            const p = point.project(camera);
+            return {x: Math.round((p.x + 1) / 2 * window.innerWidth),
+                    y: Math.round((1 - p.y) / 2 * window.innerHeight)};
+        }, {what, id});
+    }
+
+    /** A vertex facing the camera, with one of its faces, so taps can reach both. */
+    function visibleCorner(page) {
+        return page.evaluate(async () => {
+            const {GameState} = await import('/js/GameState.js');
+            const gs = GameState.getInstance();
+            const grid = gs.getPuzzleGrid();
+            const camera = gs.getSceneManager().camera;
+            const towards = camera.position.clone().normalize();
+            let best = null;
+            for (const [vertexId, vertex] of grid.vertices) {
+                const facing = vertex.position.clone().normalize().dot(towards);
+                if (!best || facing > best.facing) {
+                    best = {vertexId, facing, faceId: [...vertex.faceIDs][0]};
+                }
+            }
+            return {vertexId: best.vertexId, faceId: best.faceId,
+                    edges: grid.cornerPair(best.faceId, best.vertexId)};
+        });
+    }
+
+    /**
+     * A screen point on `faceId` that is unambiguously nearest to `vertexId`.
+     *
+     * Two thirds of the way from the face's centre to that corner. Aiming at the
+     * centre instead is what a first version of these tests did, and it fails for a
+     * reason worth recording: on a square face every corner is equidistant from the
+     * centre, so "nearest corner" picks an arbitrary one and the assertion watches
+     * the wrong pair.
+     */
+    function pointNearCorner(page, faceId, vertexId) {
+        return page.evaluate(async ({faceId, vertexId}) => {
+            const {GameState} = await import('/js/GameState.js');
+            const THREE = await import('/js/three/three.module.min.js');
+            const gs = GameState.getInstance();
+            const grid = gs.getPuzzleGrid();
+            const camera = gs.getSceneManager().camera;
+            const centre = new THREE.Vector3();
+            const pts = grid.getFaceVertices(grid.faces.get(faceId));
+            pts.forEach(v => centre.add(v.position));
+            centre.multiplyScalar(1 / pts.length);
+            const aim = centre.lerp(grid.vertices.get(vertexId).position, 0.66);
+            const p = aim.project(camera);
+            return {x: Math.round((p.x + 1) / 2 * window.innerWidth),
+                    y: Math.round((1 - p.y) / 2 * window.innerHeight)};
+        }, {faceId, vertexId});
+    }
+
+    const marksOn = (page, edges) => page.evaluate(async pair => {
+        const {GameState} = await import('/js/GameState.js');
+        return GameState.getInstance().getPuzzleGrid().getPairMark(pair[0], pair[1]);
+    }, edges);
+
+    const armedCorners = page => page.evaluate(async () => {
+        const {GameState} = await import('/js/GameState.js');
+        const group = GameState.getInstance().getSceneManager().pairMarkGroup;
+        return group.userData.candidates
+            ? group.userData.candidates.children.length : 0;
+    });
+
+    test('tapping a vertex then a face marks that corner', async ({page}) => {
+        await board(page);
+        const corner = await visibleCorner(page);
+        expect(await marksOn(page, corner.edges)).toBe(0);
+
+        const at = await screenPointOf(page, 'vertex', corner.vertexId);
+        await page.mouse.click(at.x, at.y);
+        expect(await armedCorners(page),
+            'no corners were offered after tapping the vertex')
+            .toBeGreaterThan(0);
+
+        const onFace = await screenPointOf(page, 'face', corner.faceId);
+        await page.mouse.click(onFace.x, onFace.y);
+        expect(await marksOn(page, corner.edges),
+            'the second tap did not mark the corner').toBe(1);
+        expect(await armedCorners(page),
+            'the corner suggestions outlived the gesture').toBe(0);
+    });
+
+    test('tapping the same vertex again puts it away', async ({page}) => {
+        await board(page);
+        const corner = await visibleCorner(page);
+        const at = await screenPointOf(page, 'vertex', corner.vertexId);
+        await page.mouse.click(at.x, at.y);
+        expect(await armedCorners(page)).toBeGreaterThan(0);
+        await page.mouse.click(at.x, at.y);
+        expect(await armedCorners(page),
+            'a second tap on the armed vertex should disarm it').toBe(0);
+    });
+
+    test('a vertex tap does not disturb the board', async ({page}) => {
+        // The one real risk in giving vertices their own pick target: every edge at a
+        // vertex passes through it, so an over-generous vertex would start eating
+        // edge clicks.
+        await board(page);
+        const corner = await visibleCorner(page);
+        const at = await screenPointOf(page, 'vertex', corner.vertexId);
+        await page.mouse.click(at.x, at.y);
+        const marked = await page.evaluate(async () => {
+            const {GameState} = await import('/js/GameState.js');
+            const grid = GameState.getInstance().getPuzzleGrid();
+            return {edges: [...grid.edges.values()]
+                        .filter(e => e.metadata.userGuess !== 0).length,
+                    history: grid.undoStack.length};
+        });
+        expect(marked, 'tapping a vertex changed an edge or the history')
+            .toEqual({edges: 0, history: 0});
+    });
+
+    test('alt+click on a face corner marks it in one go', async ({page}) => {
+        await board(page);
+        const corner = await visibleCorner(page);
+        const near = await pointNearCorner(page, corner.faceId, corner.vertexId);
+        await page.keyboard.down('Alt');
+        await page.mouse.click(near.x, near.y);
+        await page.keyboard.up('Alt');
+        expect(await marksOn(page, corner.edges),
+            'alt+click did not mark the nearest corner').toBe(1);
+    });
+
+    test('alt+click cycles, and alt+shift+click steps back', async ({page}) => {
+        await board(page);
+        const corner = await visibleCorner(page);
+        const at = await screenPointOf(page, 'vertex', corner.vertexId);
+        // Reach the corner by the two-tap route, then cycle it with alt+click.
+        await page.mouse.click(at.x, at.y);
+        const onFace = await screenPointOf(page, 'face', corner.faceId);
+        await page.mouse.click(onFace.x, onFace.y);
+        expect(await marksOn(page, corner.edges)).toBe(1);
+
+        const near = await pointNearCorner(page, corner.faceId, corner.vertexId);
+        await page.keyboard.down('Alt');
+        await page.mouse.click(near.x, near.y);
+        const after = await marksOn(page, corner.edges);
+        await page.keyboard.down('Shift');
+        await page.mouse.click(near.x, near.y);
+        const back = await marksOn(page, corner.edges);
+        await page.keyboard.up('Shift');
+        await page.keyboard.up('Alt');
+        expect(after, 'alt+click should have stepped the mark on').not.toBe(1);
+        expect(back, 'alt+shift+click should have stepped it back').toBe(after - 1);
+    });
+});
+
 test.describe('leaving the page', () => {
     /**
      * Stops everything that would move the camera between working out where an

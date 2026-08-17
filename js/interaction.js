@@ -6,6 +6,7 @@
 
 import * as THREE from './three/three.module.min.js';
 import { findCentroid, findFaceNormal } from './geometryUtils.js';
+import { showCornerCandidates } from './pairMarkRenderer.js';
 import { debug } from './debug.js';
 import { DRAG_THRESHOLD_PIXELS, FACE_COLORS, EDGE_STATES,
          LONG_PRESS_MS, TOUCH_DRAG_THRESHOLD_PIXELS } from './constants.js';
@@ -30,10 +31,19 @@ export function makeInteraction(gameState) {
     // Per grid, on the same scale as the drawn edge radius, so the target stays
     // the same multiple of what the player can see; a solid whose edges are a
     // quarter the length gets proportionately less slack. See pickTolerances.
-    const {pickRadius, pickDepthTolerance} = pickTolerances(puzzleGrid);
+    const {pickRadius, pickDepthTolerance, vertexPickRadius} =
+        pickTolerances(puzzleGrid);
     const pickLines = sceneManager.pickLines;
     const pickEdgeIds = sceneManager.pickEdgeIds;
     const fallbackEdgeMeshes = pickLines ? null : puzzleGrid.getAllEdgeMeshes();
+    const pickPoints = sceneManager.pickPoints;
+    const pickVertexIds = sceneManager.pickVertexIds;
+
+    // The vertex waiting for its second tap, or null. Naming a pair takes two taps --
+    // a vertex, then one of the faces around it -- because a corner IS a (vertex,
+    // face) pair and both of those are big targets, where the corner itself and the
+    // two edges are not. See docs/edge-pair-constraints.md.
+    let armedVertex = null;
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -218,6 +228,49 @@ export function makeInteraction(gameState) {
         return false;
     }
 
+    /** Which corner of a face a point on it is nearest to.
+     * @private
+     * @param {number} faceId
+     * @param {THREE.Vector3} point - where the ray met the face
+     * @returns {number|null} that corner's vertex id
+     */
+    function nearestCornerTo(faceId, point) {
+        const face = puzzleGrid.faces.get(faceId);
+        if (!face) return null;
+        let nearest = null;
+        let closest = Infinity;
+        for (const vertexId of face.vertexIDs) {
+            const span = puzzleGrid.vertices.get(vertexId).position.distanceTo(point);
+            if (span < closest) {
+                closest = span;
+                nearest = vertexId;
+            }
+        }
+        return nearest;
+    }
+
+    /** Arms a vertex (or disarms, with null), showing the corners on offer.
+     * @private
+     * @param {number|null} vertexId
+     */
+    function armVertex(vertexId) {
+        armedVertex = vertexId;
+        showCornerCandidates(gameState, vertexId);
+    }
+
+    /** Steps the mark on one corner, named by the armed vertex and a tapped face.
+     * @private
+     * @param {number} faceId
+     * @param {boolean} reverseDirection
+     * @returns {boolean} whether that face has the armed vertex as a corner
+     */
+    function markCornerOfFace(faceId, reverseDirection) {
+        const pair = puzzleGrid.cornerPair(faceId, armedVertex);
+        if (!pair) return false;
+        puzzleGrid.cyclePairMark(pair[0], pair[1], reverseDirection);
+        return true;
+    }
+
     /** Picks whatever is under the given screen position and acts on it.
      *
      * Shared by tapping/clicking and by the long press, which differ only in
@@ -226,10 +279,12 @@ export function makeInteraction(gameState) {
      * @private
      * @param {number} clientX
      * @param {number} clientY
-     * @param {boolean} reverseDirection - Cycle an edge's state backwards.
+     * @param {boolean} reverseDirection - Cycle an edge's or a pair's state backwards.
+     * @param {boolean} [wantCorner=false] - Alt was held: read a click on a face as
+     *     naming that face's nearest corner, rather than picking an edge.
      * @returns {boolean} Whether an edge was hit.
      */
-    function pickAt(clientX, clientY, reverseDirection) {
+    function pickAt(clientX, clientY, reverseDirection, wantCorner = false) {
         mouse.x = (clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, sceneManager.camera);
@@ -259,10 +314,34 @@ export function makeInteraction(gameState) {
         //
         // far is state on a shared raycaster, hence the finally: leaving it set
         // would silently clip every later pick.
+        // A VERTEX first, and only within the ball the player can see -- see
+        // VERTEX_PICK_FACTOR for why this beats the edges rather than the other way
+        // round, and why the target is kept tight. Not while Alt is held, which asks
+        // for a corner by a different route entirely.
+        if (!wantCorner && pickPoints) {
+            try {
+                raycaster.far = surfaceDistance + pickDepthTolerance;
+                raycaster.params.Points.threshold = vertexPickRadius;
+                const hit = raycaster.intersectObject(pickPoints, false)[0];
+                if (hit) {
+                    const vertexId = pickVertexIds[hit.index];
+                    // Tapping the armed vertex again puts it away, so the gesture
+                    // can be abandoned where it started.
+                    armVertex(vertexId === armedVertex ? null : vertexId);
+                    return false;
+                }
+            } finally {
+                raycaster.far = Infinity;
+            }
+        }
+
         let edgeId;
         try {
             raycaster.far = surfaceDistance + pickDepthTolerance;
-            if (pickLines) {
+            if (wantCorner) {
+                // Alt+click: skip edges altogether. Nothing to search -- the corner
+                // comes from the face hit below.
+            } else if (pickLines) {
                 raycaster.params.Line.threshold = pickRadius;
                 // Nearest hit that's on the camera's side of the solid. Hits
                 // come back sorted, so this is the nearest pickable edge.
@@ -281,20 +360,51 @@ export function makeInteraction(gameState) {
             raycaster.far = Infinity;
         }
         if (edgeId !== undefined) {
+            // Marking an edge is a different job, so it drops any pending gesture.
+            armVertex(null);
             // Act on the DRAWN mesh: that's what gets recoloured, and
             // highlighted red on a rule violation.
             handleEdgeClick(puzzleGrid.getEdgeMesh(edgeId), reverseDirection);
             return true;
         }
 
-        // No edge under the pointer: treat it as a click on the face behind it.
+        // No edge under the pointer, so whatever face is behind it has the click.
         if (faceIntersects.length > 0) {
             const faceIndex = faceIntersects[0].faceIndex * 3;
             const faceId = puzzleGrid.faceMap.get(faceIndex);
             if (faceId !== undefined) {
+                // Alt+click names a corner of this face directly -- the desktop
+                // shortcut past the two-tap gesture. NEAREST corner to where the ray
+                // actually landed, with no threshold to tune: the corners partition
+                // the face between them, so there is always exactly one nearest, and
+                // demanding the click be "close enough" would only add a way to miss.
+                if (wantCorner) {
+                    const vertexId = nearestCornerTo(faceId, faceIntersects[0].point);
+                    const pair = vertexId === null
+                        ? null : puzzleGrid.cornerPair(faceId, vertexId);
+                    if (pair) {
+                        puzzleGrid.cyclePairMark(pair[0], pair[1], reverseDirection);
+                        // Any armed vertex is stale now; this was a different route
+                        // to the same kind of mark.
+                        armVertex(null);
+                        return false;
+                    }
+                }
+                // The second tap of the two-tap gesture, if this face has the armed
+                // vertex as a corner. Consumes the tap, so it doesn't also highlight
+                // the face, and puts the vertex away afterwards.
+                if (armedVertex !== null
+                        && markCornerOfFace(faceId, reverseDirection)) {
+                    armVertex(null);
+                    return false;
+                }
                 handleFaceClick(faceId);
             }
         }
+        // Anything else cancels a pending gesture: a tap that named no corner is
+        // either a change of mind or a miss, and leaving the vertex armed would have
+        // the next unrelated tap on a face make a mark nobody asked for.
+        armVertex(null);
         return false;
     }
 
@@ -321,7 +431,9 @@ export function makeInteraction(gameState) {
         // gesture to count as a drag (i.e. a camera rotation).
         if (maxPointerMovement > dragThreshold) return;
 
-        pickAt(event.clientX, event.clientY, event.shiftKey);
+        // Alt asks for a corner instead of an edge; shift still reverses the cycle,
+        // so alt+shift steps a pair mark backwards.
+        pickAt(event.clientX, event.clientY, event.shiftKey, event.altKey);
     }
 
     /**
@@ -473,6 +585,9 @@ export function makeInteraction(gameState) {
         // Remove all event listeners when the interaction handler is no longer needed.
         dispose: () => {
             cancelLongPress();
+            // Drop any half-made pair gesture, so its corner suggestions don't
+            // outlive the handler that could act on them.
+            armVertex(null);
             window.removeEventListener('click', onMouseClick);
             window.removeEventListener('pointerdown', onPointerDown);
             window.removeEventListener('pointermove', onPointerMove);

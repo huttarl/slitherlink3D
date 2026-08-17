@@ -264,12 +264,35 @@ export const EDGE_STATES = ['unknown', 'filledIn', 'ruledOut'];
 // inventing glyphs, which is a decision to postpone rather than guess at.
 export const PAIR_RELATIONS = ['none', 'exactlyOne', 'bothOrNeither'];
 
+// How much of a target a VERTEX is, as a multiple of the drawn sphere's radius.
+// Tapping one arms it for a pair mark (see interaction.js).
+//
+// TIGHTER than the edges' factor of 2, and that asymmetry is the point. Every edge
+// at a vertex passes through it, so the two targets overlap and one has to win; the
+// vertex only wins where the player has clicked the ball they can plainly see. Set
+// looser and ordinary edge clicks near a junction would start arming vertices
+// instead of marking edges, which is the common action.
+//
+// It resolves a zone that was already unreliable rather than taking one that worked:
+// picks right at a vertex used to land on whichever of the converging edges happened
+// to be nearest the ray, which is why the note on PICK_RADIUS calls them
+// unpredictable. And the two mistakes are not equally costly -- an accidental arming
+// is undone by tapping anywhere else, while an accidental edge toggle leaves a mark
+// on the board.
+export const VERTEX_PICK_FACTOR = 1.2;
+
 // The arcs that draw a pair mark across a face corner (see js/pairMarkRenderer.js).
 //
 // Teal: it has to be told apart at a glance from everything else already on a face
 // -- the near-white surface, the black and gray clue digits, and the gray, blue and
 // white edge states -- so a saturated hue no other element uses.
 export const PAIR_MARK_COLOR = new THREE.Color(0x1a86a8);
+
+// The corners offered while a vertex is armed, waiting for the second tap. Warmer
+// than the marks themselves and half transparent, so a suggestion never looks like
+// something already recorded.
+export const PAIR_CANDIDATE_COLOR = new THREE.Color(0xffb020);
+export const PAIR_CANDIDATE_OPACITY = 0.55;
 // How far from the corner the arc sits, as a fraction of the SHORTER of its two
 // edges -- a fraction of the EDGES rather than of the face, so the arc's ends always
 // land on both of them however oddly shaped the face is, which is what makes it read

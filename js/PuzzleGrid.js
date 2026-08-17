@@ -365,6 +365,53 @@ export class PuzzleGrid extends Grid {
         return null;
     }
 
+    /**
+     * The two edges meeting at one corner of a face: the pair a mark drawn there
+     * would be about.
+     *
+     * This is the (face, vertex) -> (two edges) direction of the correspondence
+     * docs/edge-pair-constraints.md describes, and it is what lets the player name
+     * a pair by tapping a vertex and then a face -- two large targets -- rather
+     * than having to hit two thin edges or a small corner.
+     *
+     * @param {number} faceId
+     * @param {number} vertexId - must be a corner of that face
+     * @returns {number[]|null} [edgeA, edgeB], or null if the vertex isn't on the
+     *     face (which is how the interaction tells a valid second tap from a stray
+     *     one, so it returns null rather than throwing)
+     */
+    cornerPair(faceId, vertexId) {
+        const face = this.faces.get(faceId);
+        if (!face) return null;
+        const vids = face.vertexIDs;
+        const at = vids.indexOf(vertexId);
+        if (at < 0) return null;
+        const before = vids[(at - 1 + vids.length) % vids.length];
+        const after = vids[(at + 1) % vids.length];
+        const edgeA = this.findEdgeByVertices(before, vertexId);
+        const edgeB = this.findEdgeByVertices(vertexId, after);
+        if (edgeA == null || edgeB == null) return null;
+        return [edgeA, edgeB];
+    }
+
+    /**
+     * Every corner that meets at one vertex -- one per face around it, which is
+     * also one per markable pair of its edges (see cornerPair).
+     *
+     * @param {number} vertexId
+     * @returns {{faceId: number, edges: number[]}[]}
+     */
+    cornersAtVertex(vertexId) {
+        const vertex = this.vertices.get(vertexId);
+        if (!vertex) return [];
+        const corners = [];
+        for (const faceId of vertex.faceIDs) {
+            const edges = this.cornerPair(faceId, vertexId);
+            if (edges) corners.push({faceId, edges});
+        }
+        return corners;
+    }
+
     /** The relation currently marked on a pair, as an index into PAIR_RELATIONS.
      * 0 for an unmarked pair, which is what an absent entry means.
      * @param {number} edgeA

@@ -222,6 +222,39 @@ export function createEdgeGeometry(grid) {
 }
 
 /**
+ * The invisible Points object that vertex picking aims at, and the vertex id of
+ * each point.
+ *
+ * The same trick as makeEdgePickLines, for the same reason and with the same payoff:
+ * Raycaster gives a Points object a tolerance for free via params.Points.threshold,
+ * treating each point as a sphere of that radius. Aiming at the DRAWN vertex spheres
+ * instead would mean exact triangle intersection against a ball whose radius is
+ * VERTEX_RADIUS scaled down on the crowded grids -- a target of a few pixels, when
+ * the whole reason for picking a vertex is that it should be an easy one.
+ *
+ * One object for every vertex, rather than one per vertex, and invisible: invisible
+ * objects are still raycast, only rendering skips them.
+ *
+ * @param {Grid} grid
+ * @returns {{pickPoints: THREE.Points, pickVertexIds: number[]}}
+ */
+export function makeVertexPickPoints(grid) {
+    const positions = [];
+    const pickVertexIds = [];
+    for (const [vertexId, vertex] of grid.vertices) {
+        positions.push(vertex.position.x, vertex.position.y, vertex.position.z);
+        pickVertexIds.push(vertexId);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position',
+        new THREE.Float32BufferAttribute(positions, 3));
+    const pickPoints = new THREE.Points(geometry, new THREE.PointsMaterial());
+    pickPoints.visible = false;
+    freezeTransform(pickPoints);
+    return {pickPoints, pickVertexIds};
+}
+
+/**
  * Builds the invisible LineSegments that picking actually aims at.
  *
  * Picking wants tolerance -- the drawn cylinders are thin, and a click that

@@ -1,6 +1,7 @@
 import * as THREE from './three/three.module.min.js';
 import { addSkybox } from "./skybox.js";
-import { createEdgeGeometry, loadPolyhedronFromJSON } from "./geometry.js";
+import { createEdgeGeometry, loadPolyhedronFromJSON,
+         makeVertexPickPoints } from "./geometry.js";
 import { loadPuzzleData } from "./puzzleLoader.js";
 import {DEFAULT_GRID, EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
 import { freezeTransform, radiusScale } from "./geometryUtils.js";
@@ -127,6 +128,12 @@ export async function createGameState() {
     // Create vertex group
     const vertexGroup = createVertexGroup(gameState.getPuzzleGrid(), materials.vertex);
     gameState.setupVertices(vertexGroup);
+
+    // And the invisible points that vertex picking aims at, so a tap on a vertex can
+    // arm it for a pair mark (see makeVertexPickPoints and interaction.js).
+    const {pickPoints, pickVertexIds} =
+        makeVertexPickPoints(gameState.getPuzzleGrid());
+    sceneManager.addVertexPickPoints(pickPoints, pickVertexIds);
 
     // The (empty) home for pair-mark arcs. Created here so the observer in ui.js
     // always has somewhere to draw into, however early the first mark arrives.

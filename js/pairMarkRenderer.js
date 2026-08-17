@@ -26,6 +26,7 @@
 import * as THREE from './three/three.module.min.js';
 import {CLUE_LIFT, PAIR_ARC_GAP, PAIR_ARC_RADIUS_SHARP, PAIR_ARC_RADIUS_WIDE,
         PAIR_ARC_SHARP_DEGREES, PAIR_ARC_WIDE_DEGREES, PAIR_ARC_WIDTH,
+        PAIR_CANDIDATE_COLOR, PAIR_CANDIDATE_OPACITY,
         PAIR_MARK_COLOR} from './constants.js';
 import {findCentroid, findFaceNormal, findFaceRise,
         freezeTransform} from './geometryUtils.js';
@@ -87,8 +88,24 @@ export function createPairMarkGroup() {
         color: PAIR_MARK_COLOR,
         side: THREE.DoubleSide,
     });
+    // A second material for the corners offered while a vertex is armed. Basic, not
+    // Lambert: this one is a transient piece of UI rather than something painted on
+    // the solid, so it should stay equally visible on a face turned away from the
+    // light. Transparent, so it reads as a suggestion and not as a mark already made.
+    group.userData.candidateMaterial = new THREE.MeshBasicMaterial({
+        color: PAIR_CANDIDATE_COLOR,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: PAIR_CANDIDATE_OPACITY,
+        // Transparent things can draw over what should hide them, and these sit on a
+        // solid whose far side is right behind. depthWrite off keeps them from
+        // occluding each other; the depth TEST still hides the far side.
+        depthWrite: false,
+    });
     // pairKey -> the Object3D drawn for it, so a change can find and replace it.
     group.userData.drawn = new Map();
+    // The armed vertex's corner suggestions, all replaced together.
+    group.userData.candidates = null;
     freezeTransform(group);
     return group;
 }
@@ -230,6 +247,46 @@ export function updatePairMark(gameState, pairKey, relation) {
     group.userData.drawn.set(pairKey, mark);
     debug(`pair mark ${pairKey}: ${relation} arc(s) at radius `
           + `${frame.radius.toFixed(3)}, corner ${THREE.MathUtils.radToDeg(frame.angle).toFixed(1)} deg`);
+}
+
+/**
+ * Shows which corners a tap could mark, while a vertex is armed -- one faint arc per
+ * face around it. Pass null to clear them.
+ *
+ * This is what makes the two-tap gesture legible: after the first tap the player can
+ * see the corners on offer, so the second tap has something to aim at rather than
+ * being a guess about what the game is waiting for.
+ *
+ * Cheap because the marks came first: a candidate is the same corner geometry as a
+ * real arc, in a different material.
+ *
+ * @param {GameState} gameState
+ * @param {number|null} vertexId - the armed vertex, or null to clear
+ */
+export function showCornerCandidates(gameState, vertexId) {
+    const group = gameState.sceneManager.pairMarkGroup;
+    if (!group) return;
+
+    if (group.userData.candidates) {
+        group.remove(group.userData.candidates);
+        group.userData.candidates.traverse(item => {
+            if (item.geometry) item.geometry.dispose();
+        });
+        group.userData.candidates = null;
+    }
+    if (vertexId === null || vertexId === undefined) return;
+
+    const grid = gameState.getPuzzleGrid();
+    const holder = new THREE.Group();
+    for (const {edges} of grid.cornersAtVertex(vertexId)) {
+        const frame = cornerFrame(grid, edges[0], edges[1]);
+        if (!frame) continue;
+        holder.add(arcMesh(frame, group.userData.candidateMaterial, OUTERMOST_SLOT));
+    }
+    freezeTransform(holder);
+    group.add(holder);
+    group.userData.candidates = holder;
+    debug(`armed vertex ${vertexId}: ${holder.children.length} corner(s) offered`);
 }
 
 /**

@@ -75,6 +75,10 @@ export class SceneManager {
         // Set by addEdgePickLines.
         this.pickLines = null;
         this.pickEdgeIds = [];
+        // The same arrangement for vertices, which picking aims at so that tapping
+        // one can arm it for a pair mark. See makeVertexPickPoints.
+        this.pickPoints = null;
+        this.pickVertexIds = [];
         // Handles on the edge cylinders and the group of vertex spheres. Kept
         // commented out, along with the assignments in addEdgeMeshes and
         // addVertexGroup, because nothing reads them: edge picking goes through
@@ -552,6 +556,20 @@ export class SceneManager {
         this.pickEdgeIds = pickEdgeIds;
         if (pickLines) this.scene.add(pickLines);
         return pickLines;
+    }
+
+    /**
+     * Registers the invisible points that vertex picking aims at, and adds them to
+     * the scene so their world matrix is maintained. They never render.
+     *
+     * @param {THREE.Points|null} pickPoints
+     * @param {number[]} pickVertexIds - vertex id of each point, by point index
+     */
+    addVertexPickPoints(pickPoints, pickVertexIds = []) {
+        this.pickPoints = pickPoints;
+        this.pickVertexIds = pickVertexIds;
+        if (pickPoints) this.scene.add(pickPoints);
+        return pickPoints;
     }
 
     /**

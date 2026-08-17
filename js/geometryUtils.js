@@ -13,7 +13,8 @@
  */
 import * as THREE from './three/three.module.min.js';
 import {COARSE_POINTER_RADIUS_FACTOR, PICK_RADIUS, RADIUS_LENGTH_EXPONENT,
-        RADIUS_REFERENCE_EDGE} from './constants.js';
+        RADIUS_REFERENCE_EDGE, VERTEX_PICK_FACTOR,
+        VERTEX_RADIUS} from './constants.js';
 import {debug} from './debug.js';
 import {hasCoarsePointer} from './pointer.js';
 
@@ -122,7 +123,15 @@ export function pickTolerances(grid) {
     // pick reports the depth where the ray passes closest to the edge's centre
     // line, which can fall a little beyond the face beside it, and how far beyond
     // is proportional to how much slack was allowed.
-    return {pickRadius, pickDepthTolerance: pickRadius * 2};
+    //
+    // The vertex radius is DELIBERATELY TIGHTER than the edges' -- see
+    // VERTEX_PICK_FACTOR. It follows radiusScale too, so a vertex stays the same
+    // multiple of the ball the player can see, on a crowded grid as on a sparse one.
+    return {
+        pickRadius,
+        pickDepthTolerance: pickRadius * 2,
+        vertexPickRadius: VERTEX_RADIUS * VERTEX_PICK_FACTOR * radiusScale(grid),
+    };
 }
 
 /**
