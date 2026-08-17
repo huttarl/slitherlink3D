@@ -6,6 +6,7 @@ Finished items live in ideas/TODOs-done.md.
   confirmation about leaving. If I then go "forward", it returns to the puzzle
   I was on, apparently preserving my marks, but then the puzzle is frozen and I can't
   mark it.
+  - [ ] If a puzzle is partly done, and the user tries to navigate away, ask for confirmation first.
 - [ ] If, during the celebration sequence, the user types or clicks, cancel the sequence...
   or at least skip to the end (the dialog). Don't allow multiple "Check solution" requests
   to queue up.

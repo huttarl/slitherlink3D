@@ -738,6 +738,90 @@ test.describe('the celebration overlay', () => {
     });
 });
 
+test.describe('leaving the page', () => {
+    /**
+     * Stops everything that would move the camera between working out where an
+     * edge is and tapping there.
+     */
+    async function holdTheView(page) {
+        await stopTumbling(page);
+        await page.evaluate(async () => {
+            const {GameState} = await import('/js/GameState.js');
+            GameState.getInstance().getSceneManager().stopIntroZoom();
+        });
+    }
+
+    /** Loads a board and returns a visible edge with the screen point to click. */
+    async function readyBoard(page) {
+        await page.goto('/main.html?grid=cube');
+        await waitForScene(page);
+        await holdTheView(page);
+        const edgeId = await someVisibleEdge(page);
+        return {edgeId, ...await edgeMidpointOnScreen(page, edgeId)};
+    }
+
+    // page.mouse rather than the suite's touchPress helper, which is the usual
+    // choice here: touchPress taps through page.touchscreen, and Desktop Chrome
+    // has no touch, so it would confine this to the phone project. What is being
+    // tested -- whether the interaction listeners are still attached -- has
+    // nothing to do with fingers, and pressing Back is if anything a more
+    // desktop habit, so it should run in both.
+    const clickAt = (page, x, y) => page.mouse.click(x, y);
+
+    // The regression: main.js disposed on beforeunload, and GameState.dispose()
+    // removes every one of interaction.js's listeners along with the renderer,
+    // the controls and the timer. That is the wrong thing to do to a page
+    // entering the back/forward cache, because Back-then-Forward restores THIS
+    // document -- so the player came back to a board still showing their marks
+    // with nothing on it responding. Changing grid or puzzle is a navigation, so
+    // pressing Back was an ordinary thing to do.
+    //
+    // Provoking real bfcache from a test is unreliable, so these assert the rule
+    // the fix encodes instead: a pagehide that reports the page is being CACHED
+    // must leave it alone, and one that reports it is being DISCARDED must clean
+    // up. Nothing else in the suite can see this -- the page looks perfectly
+    // normal either way, which is exactly why it went unnoticed.
+    test('a page entering the back/forward cache stays interactive',
+         async ({page}) => {
+        const {edgeId, x, y} = await readyBoard(page);
+        await clickAt(page, x, y);
+        expect(await edgeState(page, edgeId),
+            'the click missed, so this test proves nothing').not.toBe(0);
+
+        // BOTH events, and beforeunload is the one that catches a regression.
+        // Reverting to the old listener would leave a pagehide-only test passing
+        // for the wrong reason -- the old code ignored pagehide, so the board
+        // would still respond and the test would report success while the bug was
+        // back. Asserting that a beforeunload does NOT tear the page down is what
+        // actually pins the fix.
+        for (const eventName of ['beforeunload', 'pagehide']) {
+            await page.evaluate(name => window.dispatchEvent(
+                name === 'pagehide'
+                    ? new PageTransitionEvent('pagehide', {persisted: true})
+                    : new Event('beforeunload')), eventName);
+
+            const before = await edgeState(page, edgeId);
+            await clickAt(page, x, y);
+            expect(await edgeState(page, edgeId),
+                `the board stopped responding after "${eventName}", so a player `
+                + 'who navigates away and comes back gets a frozen puzzle')
+                .not.toBe(before);
+        }
+    });
+
+    test('a page that is really going away is disposed', async ({page}) => {
+        const {edgeId, x, y} = await readyBoard(page);
+        await page.evaluate(() => window.dispatchEvent(
+            new PageTransitionEvent('pagehide', {persisted: false})));
+
+        const before = await edgeState(page, edgeId);
+        await clickAt(page, x, y);
+        expect(await edgeState(page, edgeId),
+            'the board still responds after a real teardown, so dispose() is no '
+            + 'longer running at all').toBe(before);
+    });
+});
+
 test.describe('smoke', () => {
     for (const grid of ['T', 'cube', 'tI']) {
         test(`${grid} loads and renders without console errors`, async ({page}) => {

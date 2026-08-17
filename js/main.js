@@ -148,9 +148,33 @@ async function main() {
         gameState.onWindowResize();
     });
 
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', () => {
-        gameState.dispose();
+    // Cleanup when the page is really going away -- and ONLY then.
+    //
+    // pagehide with a persisted check, not beforeunload: leaving a page does not
+    // mean the page is finished with. The browser may put it in the back/forward
+    // cache instead, and Back-then-Forward restores THIS document, JavaScript
+    // state and all. Changing grid or puzzle is a navigation (see the note in
+    // scene.js), so a player who presses Back has a fair chance of coming back to
+    // a cached page rather than a fresh one.
+    //
+    // Disposing on the way out therefore handed them a board that was already
+    // torn down: GameState.dispose() removes every one of interaction.js's
+    // listeners and disposes the renderer, the controls and the timer. The marks
+    // were all still on screen, because the JS state came back intact -- and
+    // nothing responded to a click. That was the "go back, then forward, and the
+    // puzzle is frozen" bug.
+    //
+    // event.persisted is true exactly when the page is being cached rather than
+    // discarded, so this keeps a cacheable page whole and still cleans up when the
+    // document is genuinely being thrown away.
+    //
+    // Nothing needs restoring on the way back in. The one thing that could have
+    // gone stale is the clock, and THREE.Timer already handles it: connect(document)
+    // hooks the Page Visibility API, and a page entering and leaving the cache
+    // fires visibilitychange both ways, so the timer resets on return rather than
+    // reporting the whole stay as one enormous frame.
+    window.addEventListener('pagehide', (event) => {
+        if (!event.persisted) gameState.dispose();
     });
 }
 
