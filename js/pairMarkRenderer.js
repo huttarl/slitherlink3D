@@ -36,6 +36,18 @@ import {debug} from './debug.js';
 // so 24 keeps the curve smooth without making a mark cost real geometry.
 const ARC_SEGMENTS = 24;
 
+// Which rung of the radius ladder the OUTERMOST arc of a mark sits on, arcs then
+// filling inward from it. One, because the busiest relation ('both or neither')
+// draws two.
+//
+// Filling inward rather than outward is what makes the single arc of 'exactly one'
+// land exactly where the outer arc of 'both or neither' does. Outward would put it
+// where the INNER one goes -- nearer the corner, where the arc is shorter and there
+// is less room to read it, which is the wrong place for the mark that has only one.
+// It also means the two relations now differ by an arc being ADDED inside a fixed
+// one, rather than by the whole mark shifting outward.
+const OUTERMOST_SLOT = 1;
+
 /**
  * How far out to put the arc, given how wide the corner is: further on a sharp
  * corner, nearer on a wide one. See the note on PAIR_ARC_RADIUS_SHARP for why one
@@ -211,7 +223,7 @@ export function updatePairMark(gameState, pairKey, relation) {
     // order and not some other.
     const mark = new THREE.Group();
     for (let arc = 0; arc < relation; arc++) {
-        mark.add(arcMesh(frame, group.userData.material, arc));
+        mark.add(arcMesh(frame, group.userData.material, OUTERMOST_SLOT - arc));
     }
     freezeTransform(mark);
     group.add(mark);

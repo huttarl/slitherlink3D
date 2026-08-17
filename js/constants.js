@@ -291,13 +291,13 @@ export const PAIR_MARK_COLOR = new THREE.Color(0x1a86a8);
 // (data/spiral10.json's sharpest) and 120 (a hexagon of data/tI.json) are close to
 // the real range, and a 150-degree corner wanting a still smaller arc is not a case
 // worth guessing at.
-export const PAIR_ARC_RADIUS_SHARP = 0.32;
+export const PAIR_ARC_RADIUS_SHARP = 0.28;
 export const PAIR_ARC_SHARP_DEGREES = 30;
-export const PAIR_ARC_RADIUS_WIDE = 0.18;
+export const PAIR_ARC_RADIUS_WIDE = 0.12;
 export const PAIR_ARC_WIDE_DEGREES = 120;
 
-// The stroke's width, and the gap out to the second arc. Fractions of the shorter
-// edge, NOT of the radius above: now that the radius varies with the angle, a
+// The stroke's width, and the gap between the two arcs of a double. Fractions of the
+// shorter edge, NOT of the radius above: now that the radius varies with the angle, a
 // stroke defined against it would thin out on exactly the wide corners where the
 // radius is smallest. A pen doesn't change width with the size of the arc.
 //
@@ -305,7 +305,11 @@ export const PAIR_ARC_WIDE_DEGREES = 120;
 // radius at 0.22 and 0.30 -- 0.048 and 0.066 of an edge as drawn. They stay legible
 // smaller, and every bit saved here is headroom for the radius: two corners at the
 // ends of one edge collide when 2 * (radius + gap + width / 2) passes 1, which these
-// put at a radius of 0.46 rather than the 0.355 of the version before.
+// put at a radius of 0.436 rather than the 0.355 of the version before.
+//
+// Note the gap affects BOTH relations, not just the double: arcs fill inward from a
+// fixed outermost slot at radius + gap, so a single arc is drawn there too. See
+// OUTERMOST_SLOT in pairMarkRenderer.js.
 export const PAIR_ARC_WIDTH = 0.032;
 export const PAIR_ARC_GAP = 0.048;
 
