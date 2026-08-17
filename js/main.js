@@ -6,6 +6,7 @@ import {expandDrawer, initPanelLayout} from "./panelLayout.js";
 import {initTitleScreen, openHowToPlay, titleScreenCameraDistance,
         wantsTitleScreen} from "./titleScreen.js";
 import {CAMERA_DISTANCE, CAMERA_INTRO_FACTOR} from "./constants.js";
+import {perfFrameEnd, perfFrameStart} from "./perfOverlay.js";
 
 async function main() {
     // Get the panel into its right shape before anything slow: loading the grid
@@ -66,6 +67,10 @@ async function main() {
     function animate() {
         requestAnimationFrame(animate);
 
+        // Frame timing for the ?perf readout; a no-op without it. Brackets
+        // everything below, so "work" means the whole frame and not a part of it.
+        perfFrameStart();
+
         // Advance the timer once per frame; consumers then read
         // getDelta()/getElapsed() (Timer separates advancing from reading,
         // unlike the old THREE.Clock).
@@ -114,6 +119,10 @@ async function main() {
 
         // Render the scene
         gameState.render();
+
+        // After render(), which is the only moment renderer.info describes the
+        // frame just drawn -- three.js clears it at the start of the next one.
+        perfFrameEnd(sceneManager.renderer);
     }
     // Start the clock HERE, immediately before the first frame, and not a moment
     // earlier. Timer measures each delta from the previous update() -- or, until
