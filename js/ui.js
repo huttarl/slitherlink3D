@@ -51,10 +51,29 @@ export function setupUI(gameState) {
     }
 
     initCheckFeedback(puzzleGrid);
+    revealDebugPanel();
     wireSettingToggles(gameState, puzzleGrid);
     wireActionButtons(gameState, puzzleGrid);
     wireOverlay();
     wireKeyboardShortcuts(puzzleGrid);
+}
+
+/**
+ * Shows the developer controls (Show IDs, Show Solution, face details) when
+ * ?debug=1 asks for them, and leaves them hidden otherwise.
+ *
+ * The same switch as the traces and the solve-the-puzzle `s` key, rather than a
+ * second one: everything here is for whoever is working on the game, and one
+ * flag to remember beats three. It also works on a phone, which the previous
+ * arrangement did not -- the panel could only be revealed by hand from the
+ * browser console (see the comment on #debugPanel in main.html).
+ *
+ * The checkboxes inside are wired either way, by wireSettingToggles; this only
+ * decides whether the panel can be seen.
+ */
+function revealDebugPanel() {
+    if (!isDebugEnabled()) return;
+    document.getElementById('debugPanel').classList.remove('hidden');
 }
 
 /**

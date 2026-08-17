@@ -809,9 +809,12 @@
              they used to sit in the corner of every screen, including the title
              screen, which looked unfinished to a player and offered them nothing
              they wanted.
-             No way to reveal them yet -- for now, delete the "hidden" class here,
-             or run `document.getElementById('debugPanel').classList.remove('hidden')`
-             in the browser console. A proper switch is still to be chosen. -->
+             Revealed by ?debug=1 -- the same switch as the console traces and the
+             solve-the-puzzle `s` key; see revealDebugPanel in js/ui.js. That
+             replaced the only way in there used to be, deleting the "hidden" class
+             here or running
+             `document.getElementById('debugPanel').classList.remove('hidden')`
+             in the console, which was no use on a phone. -->
         <div id="debugPanel" class="debugging hidden">
             <details>
                 <summary style="cursor: pointer; color: #88ccff; margin-top: 8px;">

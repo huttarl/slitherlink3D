@@ -363,10 +363,25 @@ test.describe('the collapsed panel', () => {
     });
 
     test('the debug panel stays out of the way', async ({page}) => {
-        // Hidden on a board as well as on the title screen. There's no switch to
-        // reveal it yet; when there is, this is where to assert it works.
+        // Hidden on a board as well as on the title screen.
         const panel = await visibleWithinViewport(page, '#debugPanel');
         expect(panel.rendered, 'the debug panel is showing unasked').toBe(false);
+    });
+
+    test('?debug=1 reveals the debug panel', async ({page}) => {
+        // The other half of the test above, and the reason the switch exists:
+        // revealing the panel used to mean editing main.html or typing into the
+        // browser console, neither of which is available on a phone. Asserting
+        // both directions, since a panel that is always shown would satisfy the
+        // one above only by accident of ordering.
+        await page.goto(`/main.html?grid=${DEFAULT_GRID}&debug=1`);
+        await waitForScene(page);
+        const panel = await visibleWithinViewport(page, '#debugPanel');
+        expect(panel.rendered,
+            'the debug panel is still hidden with ?debug=1').toBe(true);
+        expect(panel.insideViewport,
+            `the debug panel is off screen: ${JSON.stringify(panel.rect)}`)
+            .toBe(true);
     });
 
     test('expanding the panel keeps it on screen', async ({page}) => {

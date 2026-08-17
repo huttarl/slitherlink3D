@@ -180,6 +180,11 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
     solve celebration can be watched repeatedly without hand-solving a 131-edge
     loop each time, and it is gated because it hands over the answer. Recorded as
     one compound move, so a single Undo puts the board back.
+  - and it **reveals the developer panel** (`#debugPanel`: Show IDs, Show
+    Solution, clicked-face details) — see `revealDebugPanel` in `ui.js`. One flag
+    for the whole developer surface rather than three, and unlike the arrangement
+    it replaced (delete the `hidden` class, or type at the browser console) it
+    works on a phone.
 
 ## Cross-reference structures (interaction critical)
 

@@ -202,7 +202,17 @@ function makeTextSprite(message, parameters)
     });
     const sprite = new THREE.Sprite(spriteMaterial);
     // Was: sprite.scale.set(imageWidth, imageHeight, 1.0);
-    sprite.scale.set(0.15, 0.15, 1.0);
+    //
+    // HEIGHT is the fixed size, and the width follows the canvas's shape. The
+    // canvas is only as wide as its text (imageWidth = textWidth + border) while
+    // its height depends on the font size alone, so it is a different shape for
+    // every digit count -- and a square scale stretched all of them to the same
+    // square. Measured on the 182-face solid: a one-digit label came out 1.42x
+    // too wide, three digits 0.73x too narrow, and only two digits, at 0.96x,
+    // happened to be about right. The circular vertex badges showed it most,
+    // being drawn as circles and displayed as ellipses.
+    const labelHeight = 0.15;
+    sprite.scale.set(labelHeight * imageWidth / imageHeight, labelHeight, 1.0);
     sprite.width = imageWidth;
     sprite.height = imageHeight;
     return sprite;
