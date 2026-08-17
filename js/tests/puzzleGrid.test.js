@@ -245,6 +245,47 @@ describe('checkUserSolution (active mode, headless)', () => {
     });
 });
 
+describe('hasAnyMarks, and the hasMarks a check reports', () => {
+    // The distinction this pins: ruling an edge out is work the player has done,
+    // and a check must answer for it. Reporting only on FILLED edges refused to
+    // -- "You haven't filled in any edges yet" -- so a player who wanted to know
+    // whether their rule-outs were right couldn't ask.
+    test('an untouched board has neither marks nor filled edges', () => {
+        const pg = makePuzzle();
+        assert.strictEqual(pg.hasAnyMarks(), false);
+        assert.strictEqual(pg.hasAnyFilledEdges(), false);
+        assert.strictEqual(pg.checkUserSolution(true).hasMarks, false);
+    });
+
+    test('a ruled-out edge is a mark, though not a filled edge', () => {
+        const pg = makePuzzle();
+        pg.setEdgeState(pg.findEdgeByVertices(4, 5), 2);    // 2 = ruled out
+        assert.strictEqual(pg.hasAnyMarks(), true);
+        // The narrower question, which isReadyToCheck still needs: a loop can't
+        // be complete without filled edges.
+        assert.strictEqual(pg.hasAnyFilledEdges(), false);
+        assert.strictEqual(pg.checkUserSolution(true).hasMarks, true);
+        assert.strictEqual(pg.isReadyToCheck(), false);
+    });
+
+    test('a wrong rule-out is reported as a mismatch', () => {
+        const pg = makePuzzle();
+        // An edge that IS in the solution, so ruling it out is a mistake -- the
+        // question the player is really asking when they check rule-outs.
+        pg.setEdgeState(pg.findEdgeByVertices(SOLUTION[0], SOLUTION[1]), 2);
+        const result = pg.checkUserSolution(true);
+        assert.strictEqual(result.hasMarks, true);
+        assert.strictEqual(result.mismatchedEdgeIds.length, 1);
+    });
+
+    test('undoing back to empty leaves no marks', () => {
+        const pg = makePuzzle();
+        pg.setEdgeState(pg.findEdgeByVertices(4, 5), 2);
+        pg.undo();
+        assert.strictEqual(pg.hasAnyMarks(), false);
+    });
+});
+
 describe('fillInSolution', () => {
     test('solves the board, and one undo puts it back', () => {
         const pg = makePuzzle();

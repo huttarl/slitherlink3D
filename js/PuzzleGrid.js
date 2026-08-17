@@ -414,12 +414,20 @@ export class PuzzleGrid extends Grid {
             clueViolations: [],
             loopCheck: null,
             mismatchedEdgeIds: null,
-            // Has the player filled in anything at all? Recorded here rather
-            // than left to the loop check (whose 'noEdges' reason says the same
-            // thing) because an early return on a rule violation skips that
-            // check -- and an untouched board violates every unsatisfied clue,
-            // so that early return is exactly the case that needs it.
-            hasFilledEdges: this.hasAnyFilledEdges(),
+            // Has the player done ANYTHING here -- filled an edge in or ruled
+            // one out? Recorded here rather than left to the loop check (whose
+            // 'noEdges' reason is about filled edges only) because an early
+            // return on a rule violation skips that check, and an untouched
+            // board violates every unsatisfied clue, so that early return is
+            // exactly the case that needs it.
+            //
+            // Marks of EITHER kind, not just filled ones: ruling edges out is
+            // real work, and a player who has only done that is asking a fair
+            // question -- were my rule-outs right? -- which the check can answer,
+            // since findSolutionMismatches flags a ruled-out edge that is in the
+            // solution. Reporting "you haven't filled in any edges yet" refused
+            // to answer it.
+            hasMarks: this.hasAnyMarks(),
         };
 
         // Things to check:
@@ -466,6 +474,24 @@ export class PuzzleGrid extends Grid {
     hasAnyFilledEdges() {
         for (const edge of this.edges.values()) {
             if (edge.metadata.userGuess === 1) return true;   // 1 = filledIn
+        }
+        return false;
+    }
+
+    /**
+     * Has the player marked any edge at all, either way?
+     *
+     * Distinct from hasAnyFilledEdges, which asks the narrower question the loop
+     * itself turns on -- isReadyToCheck wants that one, since a loop cannot be
+     * complete without filled edges. This one asks whether the player has done
+     * anything on this board, which is what decides whether a check has anything
+     * to say (see checkUserSolution).
+     *
+     * @returns {boolean}
+     */
+    hasAnyMarks() {
+        for (const edge of this.edges.values()) {
+            if (edge.metadata.userGuess !== 0) return true;   // 0 = unknown
         }
         return false;
     }

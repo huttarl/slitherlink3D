@@ -144,16 +144,25 @@ function showCheckResults(result) {
 
     // No wrong marks: report why the puzzle nevertheless isn't solved.
     let message;
-    if (!result.hasFilledEdges) {
+    if (!result.hasMarks) {
         // Checked before the clue test on purpose: an untouched board leaves
         // every nonzero clue unsatisfied, so the clue branch would otherwise
         // always answer first and "Looks good so far!" would be the response
         // to having done nothing at all.
-        message = "You haven't filled in any edges yet.";
+        //
+        // ANY mark clears this, not just a filled edge. A player who has only
+        // ruled edges out gets the ordinary reply below -- and if one of those
+        // rule-outs is wrong it is already reported above, as a mismatch count,
+        // which is the whole point of letting them check.
+        message = "You haven't marked anything yet.";
     } else if (result.clueViolations.length > 0) {
         message = 'Looks good so far! (Some clues remain unsatisfied.)';
     } else {
         const reasons = {
+            // Reachable only with marks but no filled edges -- rule-outs alone,
+            // on a board whose clues are all 0 or absent, so the clue branch
+            // above stayed silent.
+            noEdges: 'Looks good so far! (But no edges are filled in yet.)',
             incomplete: 'Looks good so far! (But the loop is not yet complete.)',
             multipleLoops: 'There is more than one loop!',
         };
