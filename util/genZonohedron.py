@@ -88,6 +88,73 @@ def normalized(vectors):
     return [[component / norm(v) for component in v] for v in vectors]
 
 
+def golden_spiral_star(n, first=0.7):
+    """n generators up a hemisphere, spaced by the golden angle in azimuth.
+
+    The one star here that is NOT the diagonals of some symmetric solid, and that
+    is the whole point of it. Every other star has a symmetry group, which fixes
+    the pairwise angles into a few classes and so makes the faces a few repeated
+    rhombi -- the rhombic triacontahedron's six axes are all 63.43 degrees apart,
+    so all thirty faces are the same golden rhombus. That reads as crystalline,
+    because it is.
+
+    Here, instead: equal-area steps in z, so the directions don't bunch toward the
+    pole, and an azimuth step of 2*pi/phi^2 -- an irrational fraction of a turn,
+    so no two generators are ever related by a rotation. (The same reasoning as
+    the tumble's irrational rate ratio in SceneManager.js: an irrational step
+    never comes back into phase, so the pattern never closes.) The result has no
+    rotational symmetry at all, only the central inversion that every zonohedron
+    has, and the pairwise angles come out spread rather than clustered.
+
+    A HEMISPHERE, not a sphere: a vector and its negative are one zone, so the
+    generators want spreading over directions-without-sign. z runs over (0, 1).
+
+    Measured at n=9 against the alternatives, since the choice is not obvious.
+    Repelling the directions apart gives a better sharpest corner (42.3 vs 37.2
+    degrees) but clumps the angles -- five faces at 51 degrees, seven near 88, and
+    only 7 visually distinct rhombi against this star's 11 spread smoothly from 37
+    to 88. Evenness tends toward symmetry, which is the thing being avoided.
+
+    TWO NUMBERS decide a star here, and they pull against each other: the SHARPEST
+    face corner, which is the smallest angle between any two generators (a slim
+    rhombus has little room for its clue digit), and how many distinct rhombus
+    SHAPES result, which is the whole point. `first`, the offset of the first z
+    step, trades one for the other. Swept over 0.1 to 0.9:
+
+        n   faces   best `first`   sharpest   shapes
+        6      30       0.8          48.7     11 of 15
+        7      42       0.8          45.0     13 of 21
+        8      56       0.8          42.1     13 of 28
+        9      72       0.7          37.2     11 of 36
+        10     90       0.8          34.6      9 of 45
+
+    Both numbers improve as n FALLS, which was not what I expected: fewer lines
+    through one origin can spread further apart, so the corners are blunter, and
+    the angles that remain are more thoroughly separated, so more of the pairs give
+    visually distinct rhombi. n=7 gets 13 shapes out of 21 possible -- 62% of them
+    distinct, against n=10's 20%. The pull the other way is simply that a bigger
+    grid is a bigger puzzle.
+
+    At n=9, first=0.8 would give 38.5 degrees but only 8 shapes, so 0.7 is chosen
+    there for the variety; everywhere else 0.8 wins on both counts. For scale,
+    data/jtI.json (the rhombic enneacontahedron, 90 faces) ships at 41.8 degrees,
+    and n=6 is worth noting for having the same 30 faces as the rhombic
+    triacontahedron (data/daD.json) while using 11 different rhombi where that uses
+    one -- the same solid size, the opposite character.
+
+    @param n - how many generators, giving n(n-1) faces
+    @param first - offset of the first z step; see the table above
+    """
+    from math import cos, sin, sqrt
+    turn = 2 * 3.141592653589793 / PHI ** 2
+    star = []
+    for k in range(n):
+        z = (k + first) / n
+        r = sqrt(max(0.0, 1 - z * z))
+        star.append([r * cos(k * turn), r * sin(k * turn), z])
+    return normalized(star)
+
+
 # The stars, named for the solid whose diagonals they are: its vertices, one taken
 # from each antipodal pair, since a vector and its negative are one zone. Every
 # preset is a set of equal-length vectors, hence rhombic faces throughout.
@@ -117,6 +184,12 @@ STARS = {
                                 [0.0, 1 / PHI, PHI], [0.0, -1 / PHI, PHI],
                                 [1 / PHI, PHI, 0.0], [-1 / PHI, PHI, 0.0],
                                 [PHI, 0.0, 1 / PHI], [PHI, 0.0, -1 / PHI]]),
+    # Not solids' diagonals, and the only stars here with no symmetry at all; see
+    # golden_spiral_star for what they are, why, and where each offset comes from.
+    'spiral7': golden_spiral_star(7, 0.8),      # 42 rhombi
+    'spiral8': golden_spiral_star(8, 0.8),      # 56 rhombi
+    'spiral9': golden_spiral_star(9, 0.7),      # 72 rhombi
+    'spiral10': golden_spiral_star(10, 0.8),    # 90 rhombi
 }
 
 # Conway notation for the ones that have it, for the optional "recipe" field (see
@@ -142,6 +215,10 @@ NAMES = {
     ('icosahedron', 0): 'Rhombic triacontahedron',
     ('icosahedron', 1): 'Rhombic icosahedron',
     ('dodecahedron', 0): 'Rhombic enneacontahedron',
+    ('spiral7', 0): 'Seven-zone rhombic spiral',
+    ('spiral8', 0): 'Eight-zone rhombic spiral',
+    ('spiral9', 0): 'Nine-zone rhombic spiral',
+    ('spiral10', 0): 'Ten-zone rhombic spiral',
 }
 
 

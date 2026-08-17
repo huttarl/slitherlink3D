@@ -462,6 +462,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "spiral7",
+      "gridId": "spiral7",
+      "gridName": "Seven-zone rhombic spiral",
+      "categories": ["Miscellaneous", "zonohedron"],
+      "faces": 42,
+      "edges": 84,
+      "vertices": 44,
+      "numPuzzles": 3
+    },
+    {
       "file": "dwC",
       "gridId": "dwC",
       "gridName": "Tetrakis snub cube",
@@ -572,6 +582,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "spiral8",
+      "gridId": "spiral8",
+      "gridName": "Eight-zone rhombic spiral",
+      "categories": ["Miscellaneous", "zonohedron"],
+      "faces": 56,
+      "edges": 112,
+      "vertices": 58,
+      "numPuzzles": 3
+    },
+    {
       "file": "cD",
       "gridId": "cD",
       "gridName": "Chamfered dodecahedron",
@@ -662,6 +682,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "spiral9",
+      "gridId": "spiral9",
+      "gridName": "Nine-zone rhombic spiral",
+      "categories": ["Miscellaneous", "zonohedron"],
+      "faces": 72,
+      "edges": 144,
+      "vertices": 74,
+      "numPuzzles": 3
+    },
+    {
       "file": "dsD",
       "gridId": "dsD",
       "gridName": "Pentagonal hexecontahedron",
@@ -715,6 +745,16 @@
       "file": "jtI",
       "gridId": "jtI",
       "gridName": "Rhombic enneacontahedron",
+      "categories": ["Miscellaneous", "zonohedron"],
+      "faces": 90,
+      "edges": 180,
+      "vertices": 92,
+      "numPuzzles": 3
+    },
+    {
+      "file": "spiral10",
+      "gridId": "spiral10",
+      "gridName": "Ten-zone rhombic spiral",
       "categories": ["Miscellaneous", "zonohedron"],
       "faces": 90,
       "edges": 180,

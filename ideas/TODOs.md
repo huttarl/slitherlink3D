@@ -2,11 +2,11 @@ Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
 
-- [x] If I accidentally press "back", it goes to the previous puzzle, without any
-  confirmation about leaving. If I then go "forward", it returns to the puzzle
-  I was on, apparently preserving my marks, but then the puzzle is frozen and I can't
-  mark it.
-  - [x] If a puzzle is partly done, and the user tries to navigate away, ask for confirmation first.
+- [ ] I keep accidentally selecting faces (turning them green) even when debug mode is off, I think. Why?
+  Especially on the phone, and it's pretty annoying.
+- [ ] The list of grids has become unwieldy. Do we need to break it down into collapsible categories?
+  - [ ] Do we need to add a separate family, since "Other" (Miscellaneous) has become so big? What would
+    be the next biggest family of existing grids?
 - [ ] If, during the celebration sequence, the user types or clicks, cancel the sequence...
   or at least skip to the end (the dialog). Don't allow multiple "Check solution" requests
   to queue up.
@@ -56,13 +56,9 @@ Finished items live in ideas/TODOs-done.md.
     Maybe a bird, a cloud, an airplane... milky way...
     - [ ] I was thinking just part of the background texture, but we could do actual 3D models,
       if they're close enough for that to matter. It's just harder to find good ones free.
-- [x] Celebration:
-    - [x] Add some "confetti" at the beginning.
-    - [x] Besides just rotating the shape, "gyrate" it, i.e. also rotate the axis of rotation (slowly) so that we get to see all sides equally well.
 - [ ] In JS code, why are we copying data from grid to puzzleGrid, instead of inheriting it?
 - [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
   - [ ] similarly createPolyhedron().
-- [x] vertex labels appear to be stretched wide for single-digit numbers.
 - [~] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
   - [~] highlight wrong guesses in red — done for clear RULE violations (self-crossings),
@@ -125,7 +121,7 @@ Finished items live in ideas/TODOs-done.md.
 - [~] display name and category of polyhedron (grid) on screen. This will add some "atmosphere."
     - [x] Is this encoded in the JSON?
     - [ ] maybe associate a scene color (scheme) with each polyhedron, and category, for more atmosphere?
-- [ ] figure out data flow for grids, puzzles and solutions
+- [x] figure out data flow for grids, puzzles and solutions
     - [x] what formats do we already have
         - [x] as example data
             - we have Stemkowski's JSON format for many polyhedra (converted from Hart)

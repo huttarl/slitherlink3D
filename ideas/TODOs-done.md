@@ -2,6 +2,17 @@ Completed items, moved out of TODOs.md (2026-08-05) to keep the live list
 readable. Text is verbatim, including the notes recording how each was settled.
 Anything still marked [~] or containing open sub-items stayed in TODOs.md.
 
+- [x] vertex labels appear to be stretched wide for single-digit numbers.
+
+- [x] Celebration:
+    - [x] Add some "confetti" at the beginning.
+    - [x] Besides just rotating the shape, "gyrate" it, i.e. also rotate the axis of rotation (slowly) so that we get to see all sides equally well.
+
+- [x] If I accidentally press "back", it goes to the previous puzzle, without any
+  confirmation about leaving. If I then go "forward", it returns to the puzzle
+  I was on, apparently preserving my marks, but then the puzzle is frozen and I can't
+  mark it.
+  - [x] If a puzzle is partly done, and the user tries to navigate away, ask for confirmation first.
 
 - [x] We could have a setting for automatically marking edges as ruledOut. E.g.
   - when there's a 0 clue, its edges are ruled out;
