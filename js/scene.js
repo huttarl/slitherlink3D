@@ -5,6 +5,7 @@ import { loadPuzzleData } from "./puzzleLoader.js";
 import {DEFAULT_GRID, EDGE_COLORS, VERTEX_RADIUS} from "./constants.js";
 import { freezeTransform, radiusScale } from "./geometryUtils.js";
 import {createClueTexts} from "./clueRenderer.js";
+import {createPairMarkGroup} from "./pairMarkRenderer.js";
 import {createEdgeLabels, createFaceLabels, createVertexLabels} from "./idLabels.js";
 import { PuzzleGrid } from "./PuzzleGrid.js";
 import { GameState } from "./GameState.js";
@@ -126,6 +127,10 @@ export async function createGameState() {
     // Create vertex group
     const vertexGroup = createVertexGroup(gameState.getPuzzleGrid(), materials.vertex);
     gameState.setupVertices(vertexGroup);
+
+    // The (empty) home for pair-mark arcs. Created here so the observer in ui.js
+    // always has somewhere to draw into, however early the first mark arrives.
+    sceneManager.addPairMarkGroup(createPairMarkGroup());
 
     // Create text elements
     const clueTexts = createClueTexts(gameState);

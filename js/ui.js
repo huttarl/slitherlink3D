@@ -12,6 +12,7 @@ import {markPuzzleSolved, setupSelectors} from "./puzzlePicker.js";
 import {isConfirmDialogOpen} from "./confirmDialog.js";
 import {initAboutSolid} from "./aboutSolid.js";
 import {updateClueColors} from "./clueRenderer.js";
+import {updatePairMark} from "./pairMarkRenderer.js";
 import {wantsTitleScreen} from "./titleScreen.js";
 import {startCelebration, stopCelebration} from "./celebration.js";
 import {CELEBRATION_TIMING} from "./constants.js";
@@ -91,6 +92,12 @@ function observePuzzleGrid(gameState, puzzleGrid) {
         // celebration, which was about a loop that may no longer be there.
         hideCheckFeedback();
         cancelCelebration(gameState);
+    };
+    // Draw, redraw or remove one arc. Fires on the player's own marks and equally
+    // on an undo or a Reset, since those go through applyPairMark too -- which is
+    // the whole reason the model reports the change rather than the UI inferring it.
+    puzzleGrid.onPairMarkChanged = (pairKey, relation) => {
+        updatePairMark(gameState, pairKey, relation);
     };
     puzzleGrid.onSolved = () => {
         markPuzzleSolved();

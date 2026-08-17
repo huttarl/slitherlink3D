@@ -84,6 +84,11 @@ export class SceneManager {
         // this.edgeMeshes = [];
         // this.vertexGroup = null;
 
+        // The group holding the player's pair-mark arcs; see pairMarkRenderer.js.
+        // Starts empty and gains a child per mark, so it is nothing until the
+        // player marks something.
+        this.pairMarkGroup = null;
+
         // Text elements
         this.clueTexts = null;
         // The vertex/edge/face ID label groups, and the function that builds
@@ -616,6 +621,16 @@ export class SceneManager {
         if (this.headlight && this.camera) {
             this.headlight.position.copy(this.camera.position);
         }
+    }
+
+    /**
+     * Adds the group that the player's pair marks are drawn into.
+     * @param {THREE.Group} group - from createPairMarkGroup
+     */
+    addPairMarkGroup(group) {
+        this.pairMarkGroup = group;
+        this.scene.add(group);
+        return group;
     }
 
     /**

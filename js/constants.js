@@ -264,6 +264,23 @@ export const EDGE_STATES = ['unknown', 'filledIn', 'ruledOut'];
 // inventing glyphs, which is a decision to postpone rather than guess at.
 export const PAIR_RELATIONS = ['none', 'exactlyOne', 'bothOrNeither'];
 
+// The arcs that draw a pair mark across a face corner (see js/pairMarkRenderer.js).
+//
+// Teal: it has to be told apart at a glance from everything else already on a face
+// -- the near-white surface, the black and gray clue digits, and the gray, blue and
+// white edge states -- so a saturated hue no other element uses.
+export const PAIR_MARK_COLOR = new THREE.Color(0x1a86a8);
+// How far from the corner the arc sits, as a fraction of the SHORTER of its two
+// edges. A fraction of the edges rather than of the face, so the arc's two ends
+// always land ON both edges however oddly shaped the face is -- which is what makes
+// it read as joining those two and not some other pair.
+export const PAIR_ARC_RADIUS = 0.22;
+// The stroke's width, and the gap out to the second arc, as fractions of that
+// radius. Kept small enough that even a two-arc mark stays inside the corner:
+// 1 + PAIR_ARC_GAP + PAIR_ARC_WIDTH / 2 of the radius, so about a third of an edge.
+export const PAIR_ARC_WIDTH = 0.22;
+export const PAIR_ARC_GAP = 0.30;
+
 // Clue digit colors. A clue whose walls are all accounted for goes gray, leaving
 // the black digits as the list of what is still to do.
 //
