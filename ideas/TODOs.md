@@ -2,11 +2,11 @@ Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
 
-- [ ] If I accidentally press "back", it goes to the previous puzzle, without any
+- [x] If I accidentally press "back", it goes to the previous puzzle, without any
   confirmation about leaving. If I then go "forward", it returns to the puzzle
   I was on, apparently preserving my marks, but then the puzzle is frozen and I can't
   mark it.
-  - [ ] If a puzzle is partly done, and the user tries to navigate away, ask for confirmation first.
+  - [x] If a puzzle is partly done, and the user tries to navigate away, ask for confirmation first.
 - [ ] If, during the celebration sequence, the user types or clicks, cancel the sequence...
   or at least skip to the end (the dialog). Don't allow multiple "Check solution" requests
   to queue up.
@@ -30,7 +30,7 @@ Finished items live in ideas/TODOs-done.md.
   - [ ] add aliases, like "buckyball" / "soccer ball" for truncated icosahedron
   - [ ] link to dual solid - linking to that solid in the game, if we have it
   - [ ] display Conway recipe, with link to polyhedronisme
-  - [ ] don't display "Miscellaneous" on an info card -- use it only as a grouping label on the selection dropdown.
+  - [x] don't display "Miscellaneous" on an info card -- use it only as a grouping label on the selection dropdown.
   - [ ] Where to fit all this stuff, without overwhelming the user? Put some of it
     under a "More" fold?
 
@@ -62,7 +62,7 @@ Finished items live in ideas/TODOs-done.md.
 - [ ] In JS code, why are we copying data from grid to puzzleGrid, instead of inheriting it?
 - [ ] try to refactor loadPolyhedronFromJSON() to not pass back so many random parameters.
   - [ ] similarly createPolyhedron().
-- [ ] vertex labels appear to be stretched wide for single-digit numbers.
+- [x] vertex labels appear to be stretched wide for single-digit numbers.
 - [~] Add a "Done" button, at which point we check the user's guesses and
     give feedback on whether they were correct.
   - [~] highlight wrong guesses in red — done for clear RULE violations (self-crossings),

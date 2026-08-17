@@ -32,6 +32,17 @@ import {categoryLink, ENDURING_ERROR_LINK, EULER_FORMULA_LINK,
 const VERTEX_TRANSITIVE_CATEGORIES = ['Platonic solid', 'Archimedean solid',
                                       'prism', 'antiprism'];
 
+// Categories that exist to group the picker's dropdown, and say nothing about
+// the solid itself. "Your solid is miscellaneous" is not a fact worth a line on
+// a card whose whole job is to be interesting; in the dropdown the same word is
+// doing real work, holding the solids that fit no classical family.
+//
+// Most of the 28 grids carrying it have a real category alongside (P6 is
+// "Miscellaneous, prism, parallelohedron"), so this usually just drops a word.
+// The four Randomsphere grids have nothing else and so name no category at all,
+// which is the honest answer.
+const GROUPING_ONLY_CATEGORIES = ['Miscellaneous'];
+
 /**
  * Builds the card and wires the drawer's ⓘ toggle. Safe to call before the
  * catalogue has loaded; it awaits it itself.
@@ -174,10 +185,17 @@ function buildAboutCard(facts) {
     const heading = [span('about-name',
                           linkOrText(facts.name,
                                      solidLink(facts.gridId, facts.name)))];
-    if (facts.categories.length > 0) {
+    // Filtered HERE, at the display, and deliberately not out of
+    // facts.categories itself: the vertex-configuration note below asks whether
+    // the solid belongs to any named family at all, which is a different
+    // question from what is worth printing, and "Miscellaneous" is a real answer
+    // to it. See GROUPING_ONLY_CATEGORIES.
+    const shownCategories = facts.categories.filter(
+        category => !GROUPING_ONLY_CATEGORIES.includes(category));
+    if (shownCategories.length > 0) {
         // Interleave the separators rather than joining, the parts being nodes.
         const categories = [];
-        for (const category of facts.categories) {
+        for (const category of shownCategories) {
             if (categories.length > 0) categories.push(' · ');
             categories.push(linkOrText(category, categoryLink(category)));
         }
