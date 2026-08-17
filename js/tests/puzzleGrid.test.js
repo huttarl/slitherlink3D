@@ -7,7 +7,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 
-import { makeCubePuzzleGrid, setEdge, loopVertexPairs } from './helpers.js';
+import { makeCubePuzzleGrid, makeSquarePyramidPuzzleGrid, setEdge,
+         loopVertexPairs } from './helpers.js';
+import { PuzzleGrid } from '../PuzzleGrid.js';
 
 // Clues for the bottom-loop puzzle: bottom face = 4, top face = 0.
 const CLUES = [4, 0, -1, -1, -1, -1];
@@ -242,6 +244,122 @@ describe('checkUserSolution (active mode, headless)', () => {
         const result = pg.checkUserSolution(true);
         assert.strictEqual(result.status, 1);
         assert.deepStrictEqual(result.vertexViolations, [0]);
+    });
+});
+
+describe('pair marks', () => {
+    // Two edges of the cube's bottom face meeting at vertex 0. Consecutive around
+    // that vertex, so they share the bottom face and can carry a mark.
+    function adjacentPair(pg) {
+        return [pg.findEdgeByVertices(0, 1), pg.findEdgeByVertices(0, 3)];
+    }
+
+    test('a key is canonical, whichever order the player taps in', () => {
+        assert.strictEqual(PuzzleGrid.pairKey(3, 7), PuzzleGrid.pairKey(7, 3));
+        assert.deepStrictEqual(PuzzleGrid.pairEdges(PuzzleGrid.pairKey(7, 3)), [3, 7]);
+    });
+
+    test('two edges sharing a face can be marked, and cycle through the relations',
+         () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        assert.strictEqual(pg.getPairMark(a, b), 0);          // none
+
+        // 1 = exactlyOne, 2 = bothOrNeither, then back to none.
+        assert.strictEqual(pg.cyclePairMark(a, b), 1);
+        assert.strictEqual(pg.cyclePairMark(a, b), 2);
+        assert.strictEqual(pg.cyclePairMark(a, b), 0);
+        // Reading it back in the other order finds the same mark.
+        pg.cyclePairMark(a, b);
+        assert.strictEqual(pg.getPairMark(b, a), 1);
+        // 'none' is not stored, so the map counts real marks only.
+        pg.setPairMark(a, b, 0);
+        assert.strictEqual(pg.pairMarks.size, 0);
+    });
+
+    test('cycling backwards is the reverse', () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        assert.strictEqual(pg.cyclePairMark(a, b, true), 2);   // none -> last
+        assert.strictEqual(pg.cyclePairMark(a, b, true), 1);
+    });
+
+    test('edges that meet but share no face are refused', () => {
+        // At a cube vertex every pair of the three edges shares a face, so this
+        // uses a square pyramid's apex instead: two OPPOSITE edges there meet at
+        // the apex and are not consecutive around it.
+        const pyramid = makeSquarePyramidPuzzleGrid();
+        const apex = 4;
+        const [e1, e2] = [pyramid.findEdgeByVertices(apex, 0),
+                          pyramid.findEdgeByVertices(apex, 2)];
+        assert.match(pyramid.pairProblem(e1, e2), /share no face/);
+        assert.throws(() => pyramid.setPairMark(e1, e2, 1), /Cannot mark this pair/);
+        // And the consecutive pair at the same vertex is fine.
+        assert.strictEqual(
+            pyramid.pairProblem(pyramid.findEdgeByVertices(apex, 0),
+                                pyramid.findEdgeByVertices(apex, 1)), null);
+    });
+
+    test('edges that never meet, and an edge with itself, are refused', () => {
+        const pg = makePuzzle();
+        const bottom = pg.findEdgeByVertices(0, 1);
+        const top = pg.findEdgeByVertices(4, 5);   // parallel, no shared vertex
+        assert.match(pg.pairProblem(bottom, top), /do not meet/);
+        assert.match(pg.pairProblem(bottom, bottom), /cannot be paired with itself/);
+        assert.match(pg.pairProblem(bottom, 999), /no such edge/);
+    });
+
+    test('undo and redo carry a pair mark, like any other move', () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setPairMark(a, b, 2);
+        assert.strictEqual(pg.undoStack.length, 1);
+        pg.undo();
+        assert.strictEqual(pg.getPairMark(a, b), 0);
+        pg.redo();
+        assert.strictEqual(pg.getPairMark(a, b), 2);
+    });
+
+    test('a move mixing an edge guess and a pair mark undoes as one', () => {
+        // What Reset produces, and the case applyDelta exists for.
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setEdgeState(a, 1);            // 1 = filled in
+        pg.setPairMark(a, b, 1);
+        pg.resetPuzzle();
+        assert.strictEqual(pg.edges.get(a).metadata.userGuess, 0);
+        assert.strictEqual(pg.getPairMark(a, b), 0);
+        pg.undo();                        // one press brings back both
+        assert.strictEqual(pg.edges.get(a).metadata.userGuess, 1);
+        assert.strictEqual(pg.getPairMark(a, b), 1);
+    });
+
+    test('setting the relation already marked records nothing', () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setPairMark(a, b, 1);
+        const depth = pg.undoStack.length;
+        pg.setPairMark(a, b, 1);
+        assert.strictEqual(pg.undoStack.length, depth);
+    });
+
+    test('the observer hears every change, including a clear', () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        const heard = [];
+        pg.onPairMarkChanged = (key, relation) => heard.push([key, relation]);
+        pg.setPairMark(a, b, 2);
+        pg.undo();
+        assert.deepStrictEqual(heard, [[PuzzleGrid.pairKey(a, b), 2],
+                                       [PuzzleGrid.pairKey(a, b), 0]]);
+    });
+
+    test('choosing another puzzle drops the marks', () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setPairMark(a, b, 1);
+        pg.setCurrentPuzzle(0);
+        assert.strictEqual(pg.pairMarks.size, 0);
     });
 });
 

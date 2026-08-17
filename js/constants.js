@@ -247,6 +247,23 @@ export const EDGE_COLORS = {
 };
 export const EDGE_STATES = ['unknown', 'filledIn', 'ruledOut'];
 
+// What a player can record about a PAIR of edges meeting at a vertex, as an index
+// into this array -- the same shape as EDGE_STATES above, and 'none' is index 0 so
+// that an unmarked pair is falsy and a cycle starts and ends there.
+//
+// The names and the logic are the solver's, not new ones: see
+// docs/edge-pair-constraints.md and EdgePairing in util/slisolver.py, which
+// already reasons with all four.
+//
+//     exactlyOne      a XOR b    the two edges disagree      -- one arc
+//     bothOrNeither   a XNOR b   the two edges agree         -- two arcs
+//
+// Only the two PARITY relations are offered. The solver's other two ('at least
+// one', 'at most one') are clauses rather than equivalences, have no established
+// notation to draw, and are the weaker deductions of the four; adding them means
+// inventing glyphs, which is a decision to postpone rather than guess at.
+export const PAIR_RELATIONS = ['none', 'exactlyOne', 'bothOrNeither'];
+
 // Clue digit colors. A clue whose walls are all accounted for goes gray, leaving
 // the black digits as the list of what is still to do.
 //

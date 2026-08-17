@@ -1,5 +1,5 @@
 import { Grid } from './Grid.js';
-import {EDGE_COLORS, EDGE_STATES} from './constants.js';
+import {EDGE_COLORS, EDGE_STATES, PAIR_RELATIONS} from './constants.js';
 import {checkSingleLoop, findClueViolations, findDeducibleRuleOuts,
         findSolutionMismatches, findVertexViolations} from './solutionChecker.js';
 import {debug} from './debug.js';
@@ -25,13 +25,32 @@ export class PuzzleGrid extends Grid {
         this.currentPuzzleIndex = 0;
         this.gridId = null;
 
-        // Undo/redo history of the user's edge-guess changes.
-        // Each move is an ARRAY of deltas {edgeId, prevState, newState}:
+        // Undo/redo history of the user's changes.
+        // Each move is an ARRAY of deltas, every one carrying {prevState, newState}:
         // a normal click produces a one-delta move; a puzzle reset produces
-        // one compound move covering every edge it cleared, so the whole
+        // one compound move covering everything it cleared, so the whole
         // reset undoes in a single step.
+        //
+        // TWO KINDS of delta, told apart by which id they carry -- `edgeId` for an
+        // edge's guess, `pairKey` for a mark on a pair of edges (see pairMarks
+        // below). applyDelta is the single place that dispatches on it, so the
+        // sites that BUILD deltas didn't have to learn about the distinction and
+        // undo/redo work on a mixed move without caring.
         this.undoStack = [];
         this.redoStack = [];
+
+        // What the player has recorded about pairs of edges: a Map from pair key
+        // (see pairKey()) to an index into PAIR_RELATIONS. A pair at 'none' is
+        // DELETED rather than stored as 0, so the map's size is the number of
+        // marks on the board and iterating it visits only real ones.
+        //
+        // These are the player's own reasoning, and deliberately not checked
+        // against the stored solution the way edge guesses are: a wrong pair mark
+        // is a wrong deduction, and reporting it would be solving for them. That
+        // also keeps solutionChecker.js out of it -- see the note in
+        // docs/edge-pair-constraints.md about the browser holding a second
+        // implementation of the rules that would have to be kept honest.
+        this.pairMarks = new Map();
 
         // Observer callbacks, registered by the UI layer (see setupUI in
         // ui.js). They stay null-safe so this class works headless, e.g. in
@@ -39,8 +58,13 @@ export class PuzzleGrid extends Grid {
         // is wired up -- are simply ignored.
         //   onHistoryChanged() - the undo/redo history changed
         //   onSolved()         - the user's guesses form a correct solution
+        //   onPairMarkChanged(pairKey, relation) - a pair mark was set, changed or
+        //       cleared, `relation` being an index into PAIR_RELATIONS. The view
+        //       layer draws the arcs; this class knows nothing about them, which is
+        //       why it can report the change but not render it.
         this.onHistoryChanged = null;
         this.onSolved = null;
+        this.onPairMarkChanged = null;
 
         // Player setting (a checkbox in the panel, wired up by ui.js):
         // whether passive checks highlight rule violations in red as the
@@ -95,9 +119,14 @@ export class PuzzleGrid extends Grid {
         
         this.currentPuzzleIndex = puzzleIndex;
 
-        // A different puzzle means a fresh undo history.
+        // A different puzzle means a fresh undo history, and pair marks go with
+        // it: they are reasoning about THIS puzzle's clues and mean nothing
+        // against the next one's. (In the app a puzzle change reloads the page
+        // anyway, so this matters to the headless callers and to whenever that
+        // reload finally goes -- see the TODO about switching puzzles in place.)
         this.undoStack.length = 0;
         this.redoStack.length = 0;
+        this.pairMarks.clear();
         this.historyChanged();
     }
 
@@ -239,13 +268,19 @@ export class PuzzleGrid extends Grid {
                 deltas.push({ edgeId, prevState: edge.metadata.userGuess, newState: 0 });
             }
         }
+        // And for every pair mark, in the SAME move: Reset means the board as the
+        // player found it, and a board still carrying their pair reasoning is not
+        // that. One Undo brings the whole lot back, marks included.
+        for (const [key, relation] of this.pairMarks) {
+            deltas.push({ pairKey: key, prevState: relation, newState: 0 });
+        }
         if (deltas.length === 0) {
             return; // Board already pristine; don't record an empty move.
         }
         this.undoStack.push(deltas);
         this.redoStack.length = 0;
         for (const delta of deltas) {
-            this.applyEdgeState(delta.edgeId, 0);
+            this.applyDelta(delta, 0);
         }
         // Remove any error highlighting left over from before the reset.
         this.clearEdgeHighlights();
@@ -266,6 +301,160 @@ export class PuzzleGrid extends Grid {
         const edgeMesh = this.getEdgeMesh(edgeId);
         if (edgeMesh) {
             edgeMesh.material.color = EDGE_COLORS[EDGE_STATES[newState]];
+        }
+    }
+
+    /**
+     * The canonical key for a pair of edges: their ids, smaller first.
+     *
+     * Canonical because the caller's order is arbitrary -- the player taps two
+     * edges in whichever order suits them, and (3, 7) and (7, 3) are one mark.
+     * The same reason EdgePairing canonicalizes in util/slisolver.py, where COMPAS
+     * spells an edge (u, v) or (v, u) interchangeably.
+     *
+     * @param {number} edgeA
+     * @param {number} edgeB
+     * @returns {string} e.g. '3,7'
+     */
+    static pairKey(edgeA, edgeB) {
+        return edgeA < edgeB ? `${edgeA},${edgeB}` : `${edgeB},${edgeA}`;
+    }
+
+    /** The two edge ids a pair key names. The inverse of pairKey.
+     * @param {string} key
+     * @returns {number[]} the two ids, smaller first
+     */
+    static pairEdges(key) {
+        return key.split(',').map(Number);
+    }
+
+    /**
+     * Can these two edges carry a pair mark -- and if not, why not?
+     *
+     * Three conditions, and the third is the interesting one:
+     *
+     *   - two DISTINCT edges, both of which exist;
+     *   - they meet at a vertex, since a relation between edges that never touch
+     *     is not something a player reads off the board;
+     *   - they share a FACE. Two edges at a vertex share a face exactly when they
+     *     are consecutive in the cyclic order around it, and that is what gives
+     *     the mark a corner to be drawn in. Non-consecutive pairs at a vertex are
+     *     perfectly meaningful -- they are the four-face parity case
+     *     docs/edge-pair-constraints.md says the edge-level store exists for --
+     *     but there is nowhere on the surface to put the arc, so the UI cannot
+     *     express them and this refuses them rather than accepting marks it
+     *     cannot show.
+     *
+     * @param {number} edgeA
+     * @param {number} edgeB
+     * @returns {string|null} why it is not allowed, or null if it is
+     */
+    pairProblem(edgeA, edgeB) {
+        if (edgeA === edgeB) return 'an edge cannot be paired with itself';
+        const a = this.edges.get(edgeA);
+        const b = this.edges.get(edgeB);
+        if (!a) return `no such edge: ${edgeA}`;
+        if (!b) return `no such edge: ${edgeB}`;
+        const sharesVertex = a.vertexIDs.some(v => b.vertexIDs.includes(v));
+        if (!sharesVertex) return `edges ${edgeA} and ${edgeB} do not meet`;
+        const sharesFace = [...a.faceIDs].some(f => b.faceIDs.has(f));
+        if (!sharesFace) {
+            return `edges ${edgeA} and ${edgeB} meet but share no face, so there `
+                 + 'is no corner to mark (see pairProblem)';
+        }
+        return null;
+    }
+
+    /** The relation currently marked on a pair, as an index into PAIR_RELATIONS.
+     * 0 for an unmarked pair, which is what an absent entry means.
+     * @param {number} edgeA
+     * @param {number} edgeB
+     * @returns {number}
+     */
+    getPairMark(edgeA, edgeB) {
+        return this.pairMarks.get(PuzzleGrid.pairKey(edgeA, edgeB)) || 0;
+    }
+
+    /**
+     * Applies a pair mark to the model, WITHOUT touching the undo history --
+     * the counterpart of applyEdgeState, and the shared low-level step. Callers
+     * making a new player move want setPairMark instead.
+     *
+     * @param {string} key - from pairKey()
+     * @param {number} relation - index into PAIR_RELATIONS; 0 clears the mark
+     */
+    applyPairMark(key, relation) {
+        if (relation === 0) {
+            this.pairMarks.delete(key);
+        } else {
+            this.pairMarks.set(key, relation);
+        }
+        if (this.onPairMarkChanged) this.onPairMarkChanged(key, relation);
+    }
+
+    /**
+     * Sets the relation marked on a pair of edges, recording it in the undo
+     * history as one move. The choke point for new pair marks, as setEdgeState is
+     * for new edge guesses.
+     *
+     * @param {number} edgeA
+     * @param {number} edgeB
+     * @param {number} relation - index into PAIR_RELATIONS; 0 clears the mark
+     * @throws {Error} if the two edges cannot carry a mark -- see pairProblem.
+     *     Thrown rather than ignored: the UI is expected to offer only pairs that
+     *     can be marked, so reaching here with a bad one is a bug worth hearing
+     *     about, not a player error to absorb.
+     */
+    setPairMark(edgeA, edgeB, relation) {
+        const problem = this.pairProblem(edgeA, edgeB);
+        if (problem) throw new Error(`Cannot mark this pair: ${problem}`);
+
+        const key = PuzzleGrid.pairKey(edgeA, edgeB);
+        const prevState = this.pairMarks.get(key) || 0;
+        if (prevState === relation) return;   // Nothing to record.
+
+        this.undoStack.push([{pairKey: key, prevState, newState: relation}]);
+        this.redoStack.length = 0;
+        this.applyPairMark(key, relation);
+        debug(`setPairMark: ${key} -> ${PAIR_RELATIONS[relation]}`);
+        this.historyChanged();
+    }
+
+    /**
+     * Steps a pair to the next relation, wrapping through 'none' -- the pair
+     * equivalent of cycleEdgeState in interaction.js.
+     *
+     * @param {number} edgeA
+     * @param {number} edgeB
+     * @param {boolean} [reverse=false] - step backwards, for shift-click and the
+     *     long press
+     * @returns {number} the relation now marked
+     */
+    cyclePairMark(edgeA, edgeB, reverse = false) {
+        const was = this.getPairMark(edgeA, edgeB);
+        // Stepping back by 1 == stepping forward by (length - 1), which avoids a
+        // negative operand to %. Same trick as cycleEdgeState.
+        const step = reverse ? PAIR_RELATIONS.length - 1 : 1;
+        const now = (was + step) % PAIR_RELATIONS.length;
+        this.setPairMark(edgeA, edgeB, now);
+        return now;
+    }
+
+    /**
+     * Applies one delta of either kind, in the given direction.
+     *
+     * The single place that knows a move can hold two kinds of delta; see the
+     * note on undoStack in the constructor. Undo passes prevState, redo passes
+     * newState, and neither has to care what it is looking at.
+     *
+     * @param {Object} delta - carries edgeId or pairKey
+     * @param {number} state - the state to put it into
+     */
+    applyDelta(delta, state) {
+        if (delta.pairKey !== undefined) {
+            this.applyPairMark(delta.pairKey, state);
+        } else {
+            this.applyEdgeState(delta.edgeId, state);
         }
     }
 
@@ -333,7 +522,7 @@ export class PuzzleGrid extends Grid {
         // Restore in reverse order, in case a compound move ever contains
         // two deltas for the same edge.
         for (let i = move.length - 1; i >= 0; i--) {
-            this.applyEdgeState(move[i].edgeId, move[i].prevState);
+            this.applyDelta(move[i], move[i].prevState);
         }
         this.refreshFeedback(move);
         this.historyChanged();
@@ -352,7 +541,7 @@ export class PuzzleGrid extends Grid {
         }
         this.undoStack.push(move);
         for (const delta of move) {
-            this.applyEdgeState(delta.edgeId, delta.newState);
+            this.applyDelta(delta, delta.newState);
         }
         this.refreshFeedback(move);
         this.historyChanged();
@@ -368,6 +557,10 @@ export class PuzzleGrid extends Grid {
     refreshFeedback(move) {
         this.clearEdgeHighlights();
         for (const delta of move) {
+            // Edge deltas only. A pair mark breaks no rule and is never checked
+            // (see pairMarks in the constructor), so there is nothing to recheck
+            // for one -- and it has no edge to hand to the check in any case.
+            if (delta.pairKey !== undefined) continue;
             const edge = this.edges.get(delta.edgeId);
             this.checkUserSolution(false, this.getEdgeMesh(delta.edgeId), edge);
         }

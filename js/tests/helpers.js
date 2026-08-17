@@ -69,13 +69,19 @@ export function makeCubePuzzleGrid(clues, solution) {
 }
 
 /** Builds a grid from a list of faces, each a list of vertex IDs, and a matching
- *  list of vertex coordinates. */
-function makeGridFromFaces(faceList, points) {
-    const grid = new Grid();
+ *  list of vertex coordinates.
+ *  @param {Grid} [grid] - the instance to fill; pass a PuzzleGrid for the tests
+ *      that need its puzzle-side methods. */
+function makeGridFromFaces(faceList, points, grid = new Grid()) {
     points.forEach((point, v) => grid.addVertex(position(...point), {}, v));
     faceList.forEach((face, i) => grid.addFace(face, { index: i, clue: -1 }, i));
     return grid;
 }
+
+// A square base and 4 triangles (Johnson solid J1); see makeSquarePyramidGrid.
+const PYRAMID_FACES = [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]];
+const PYRAMID_POINTS = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
+                        [0.5, 0.5, 0.707]];
 
 /**
  * A tetrahedron Grid: 4 vertices, 4 triangles, 6 edges. Every vertex alike
@@ -95,9 +101,23 @@ export function makeTetrahedronGrid() {
  * negative case for vertexConfiguration.
  */
 export function makeSquarePyramidGrid() {
-    return makeGridFromFaces(
-        [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
-        [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0.707]]);
+    return makeGridFromFaces(PYRAMID_FACES, PYRAMID_POINTS);
+}
+
+/**
+ * The same pyramid as a PuzzleGrid, for what a cube cannot show: its APEX has
+ * four edges, so two of them can meet there without sharing a face (the two
+ * across from each other). At a cube's 3-valent corner every pair of edges shares
+ * one of the three faces, so the cube has no such case at all.
+ *
+ * No puzzle data is loaded -- the methods this exists for don't need any.
+ */
+export function makeSquarePyramidPuzzleGrid() {
+    const pg = makeGridFromFaces(PYRAMID_FACES, PYRAMID_POINTS, new PuzzleGrid());
+    for (const [_edgeId, edge] of pg.edges) {
+        edge.metadata.userGuess = 0; // 0 = unknown
+    }
+    return pg;
 }
 
 /**

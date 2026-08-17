@@ -259,9 +259,67 @@ solver rarely gets the foothold that would start the cascade at their 8- and
 partial fact useful, so those three are the benchmark to measure this work
 against: today they are not merely slow but out of reach.
 
-## Later: the player's side
+## The player's side
 
-The same model — a pair of edges plus a relation — is what a UI hint would draw:
-two edges tied together, or marked as alternatives. Worth remembering that the
-browser has its own mirror of the rules in `js/solutionChecker.js`, so that would
-be a second implementation to keep honest rather than shared code.
+**Status.** The data model and undo integration are built: `pairMarks` in
+`js/PuzzleGrid.js`, with `PAIR_RELATIONS` in `js/constants.js`. Not yet drawn, and
+no way to make one by hand yet — see "still to build" below.
+
+The same model — a pair of edges plus a relation — is what the player marks. Four
+decisions worth recording, since each closed off an alternative:
+
+**Only the two parity relations are offered.** `exactlyOne` and `bothOrNeither`
+have the established notation (one arc across the corner, two concentric arcs) and
+are the stronger deductions. The two clauses have no standard glyph, so offering
+them means inventing one; postponed rather than guessed at.
+
+**A mark lives on a face CORNER.** At a vertex of degree *d* the edges are
+cyclically ordered, and consecutive pairs share a face — exactly *d* of them,
+matching the *d* face-corners at that vertex. So (vertex, consecutive edge pair) ↔
+(face, corner), bijectively, and the arc is drawn in the corner it belongs to.
+
+The cost is accepted deliberately: **non-consecutive pairs at a vertex cannot be
+expressed.** Those are precisely the `A⊕B = C⊕D` four-face parities that the
+section above says `EdgePairing` exists for, so the solver is strictly more
+expressive than the UI here. There is nowhere on the surface to put such an arc,
+and `pairProblem` refuses the pair rather than accepting a mark it cannot show.
+
+**Marks are NOT checked against the solution.** Edge guesses are — a ruled-out
+solution edge is reported as a mismatch — but a pair mark is a deduction the
+player has made, and reporting it as wrong would be doing the reasoning for them.
+This also sidesteps the concern this section used to raise: `js/solutionChecker.js`
+is a second implementation of the rules, and unchecked annotations need no mirror
+of anything.
+
+**Auto-rule-out must not act on them.** A `bothOrNeither` pair plus one filled
+edge *fills in* the partner, and `findDeducibleRuleOuts` only ever rules edges
+out — its docstring is explicit that the setting can never draw part of the loop.
+Wiring pair marks into it would cross that line, so it doesn't.
+
+Undo needed the one structural change. A move is an array of deltas, and there are
+now two kinds, told apart by whether they carry `edgeId` or `pairKey`;
+`applyDelta` is the single place that dispatches, so the four sites that BUILD
+deltas were left alone. `resetPuzzle` sweeps marks into the same compound move as
+the edges it clears, so one Undo restores both, and `setCurrentPuzzle` drops them,
+being reasoning about a particular puzzle's clues.
+
+### Still to build
+
+- **Drawing the arcs.** Reuse `clueRenderer`'s recipe — one shared canvas texture
+  per relation, a small plane on the face, oriented to its normal and lifted by
+  `findFaceRise(...) + CLUE_LIFT`, sized from `findFaceMinRadius` — but placed at
+  the corner, rotated to the corner's angle bisector, and NOT billboarded:
+  `updateTextVisibility` rolls clue digits toward the camera every frame, and an
+  arc is tied to two specific edges so it must stay put. It still wants that
+  function's back-face culling. Note also that each mark is another draw call, and
+  that a newly created mesh must call `updateMatrix()` (see `freezeTransform`).
+- **Making one.** Tap the vertex, then tap the face — a corner IS a (vertex, face)
+  pair, and both are large targets. Vertex taps are currently a free gesture:
+  `interaction.js` raycasts only `pickLines` and `polyhedronMesh`, so the vertex
+  spheres are drawn but never picked. Alt+click directly on the face corner as a
+  desktop synonym; `faceIntersects[0].point` already gives the exact hit, so the
+  nearest corner needs no new pick geometry. Rejected: dragging edge-to-edge
+  (collides with camera rotation, which any drag starts), and a modifier alone
+  (nothing is free on touch, where long-press is already reverse-cycle).
+- **Lighting up the corners** of an armed vertex, so the second tap has something
+  to aim at.
