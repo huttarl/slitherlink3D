@@ -114,6 +114,18 @@ const SOLID_PAGE_EXCEPTIONS = {
     'zonaD3o': null,
     'zonaD3p': null,
     'zonaD6': null,
+    // The rhombic spirals (util/genZonohedron.py, the spiralN stars). These are OURS
+    // -- zonohedra from an asymmetric golden-angle star, built to look Penrose-ish --
+    // so there is not merely no article, there is nothing for an article to be about.
+    // Their names are descriptions we made up, and the derivation would ask a wiki
+    // for "Ten-zone_rhombic_spiral" and get a 404, which is what happened until
+    // npm run test:links said so. The reading is the 'zonohedron' category, and
+    // ideas/penrose-ish.md is where the story actually lives.
+    'spiral6': null,
+    'spiral7': null,
+    'spiral8': null,
+    'spiral9': null,
+    'spiral10': null,
     'RandomsphereA': null,
     'RandomsphereC': null,
     'RandomsphereD': null,

@@ -163,6 +163,49 @@ describe('link hygiene', () => {
 
 });
 
+describe('the checked-links record', () => {
+    // OFFLINE, unlike the fetching test below: this only compares the record
+    // against what the code produces, so it belongs in the everyday suite.
+    const RECORD_PATH = join(here, 'links-checked.json');
+    const record = (() => {
+        try {
+            return JSON.parse(readFileSync(RECORD_PATH, 'utf8'));
+        } catch {
+            return {};
+        }
+    })();
+
+    test('every link we produce has been checked at some point', () => {
+        // The question worth asking routinely: have we ADDED a URL nobody has ever
+        // verified? That is when a derived title is most likely to be wrong, which
+        // is how five invented "rhombic spiral" names came to point at 404s. Asked
+        // here so it is answered even when the network test is skipped -- a run
+        // without SLI_CHECK_LINKS would otherwise say nothing at all about it.
+        const unchecked = [...new Set(allLinks())].filter(url => !record[url]);
+        assert.deepStrictEqual(unchecked, [],
+            `${unchecked.length} link(s) have never been checked. `
+            + 'Run: npm run test:links');
+    });
+
+    test('the record has no entries we no longer link to', () => {
+        // The other direction, and the reason to look: the record only ever gained
+        // entries. Rename or retire a grid and its old URL stays behind, so the file
+        // slowly fills with links to pages nothing points at -- which makes it a
+        // worse and worse answer to "what are we actually relying on".
+        //
+        // Reported rather than pruned automatically. A leftover entry is harmless,
+        // and a URL that has been verified once is worth keeping if the grid might
+        // come back; deleting on sight would also mean a rename silently discards a
+        // check that still applies.
+        const produced = new Set(allLinks());
+        const orphans = Object.keys(record).filter(url => !produced.has(url));
+        assert.deepStrictEqual(orphans, [],
+            `${orphans.length} recorded link(s) are no longer produced by any grid `
+            + 'or category. Harmless, but prune them from links-checked.json when '
+            + 'convenient.');
+    });
+});
+
 describe('the pages exist', () => {
     // Network, so opt-in: the everyday suite must run offline and fast. This is
     // the check that a derived URL is real, which is the one thing deriving
@@ -226,9 +269,22 @@ describe('the pages exist', () => {
 
             // A few at a time, not all at once: these are somebody's servers,
             // and hammering them turns a link check into a load test.
+            //
+            // MUCH gentler in audit mode, and the asymmetry is the policy rather than
+            // a tuning choice. Checking a handful of newly added links is a small,
+            // occasional courtesy cost. Re-checking all 77 is a burden we impose for
+            // our own reassurance, and nearly every one of them is the same host --
+            // so an audit goes one at a time with a pause between, which turns a
+            // 20-second burst on Polytope Wiki into a minute and a half of requests
+            // it will barely notice. Routine runs keep the old pace, having only a
+            // link or two to ask about.
+            const AT_A_TIME = all ? 1 : 4;
+            const PAUSE_MS = all ? 1000 : 0;
             const results = [];
-            const AT_A_TIME = 4;
             for (let i = 0; i < unchecked.length; i += AT_A_TIME) {
+                if (i > 0 && PAUSE_MS) {
+                    await new Promise(resume => setTimeout(resume, PAUSE_MS));
+                }
                 results.push(...await Promise.all(
                     unchecked.slice(i, i + AT_A_TIME).map(url => statusOf(url))));
             }
