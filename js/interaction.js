@@ -283,6 +283,24 @@ export function makeInteraction(gameState) {
      * @param {boolean} [wantCorner=false] - Alt was held: read a click on a face as
      *     naming that face's nearest corner, rather than picking an edge.
      * @returns {boolean} Whether an edge was hit.
+     *
+     * WHILE A VERTEX IS ARMED this is MODAL, and deliberately so. The next click can
+     * only name one of that vertex's corners or cancel: it will not mark an edge and
+     * will not highlight a face. Half-modal was the first attempt and was worse than
+     * either alternative -- the amber arcs announced that the board was waiting for
+     * something, while a click on an edge quietly did its ordinary thing, so the
+     * arcs were telling the player something untrue about what their next click
+     * would do.
+     *
+     * DRAGGING is untouched, which is the one exclusion that matters: the whole point
+     * of arming a vertex and then choosing a face is that the player may have to turn
+     * the solid round to see the face they want. A drag suppresses the click anyway
+     * (see maxPointerMovement), so the armed vertex simply survives the rotation.
+     *
+     * The mode lasts exactly one click. Keeping it alive until an explicit cancel
+     * would let several corners at one vertex be marked in a row, which is a real
+     * convenience for anyone reasoning at a busy vertex -- but it is also a mode that
+     * lingers, which is the thing being fixed here.
      */
     function pickAt(clientX, clientY, reverseDirection, wantCorner = false) {
         mouse.x = (clientX / window.innerWidth) * 2 - 1;
@@ -338,9 +356,10 @@ export function makeInteraction(gameState) {
         let edgeId;
         try {
             raycaster.far = surfaceDistance + pickDepthTolerance;
-            if (wantCorner) {
-                // Alt+click: skip edges altogether. Nothing to search -- the corner
-                // comes from the face hit below.
+            if (wantCorner || armedVertex !== null) {
+                // No edge search at all: alt+click wants a corner, and an armed
+                // vertex makes this click modal (see the note above). Either way the
+                // answer comes from the face hit below, if anywhere.
             } else if (pickLines) {
                 raycaster.params.Line.threshold = pickRadius;
                 // Nearest hit that's on the camera's side of the solid. Hits
@@ -360,10 +379,9 @@ export function makeInteraction(gameState) {
             raycaster.far = Infinity;
         }
         if (edgeId !== undefined) {
-            // Marking an edge is a different job, so it drops any pending gesture.
-            armVertex(null);
             // Act on the DRAWN mesh: that's what gets recoloured, and
-            // highlighted red on a rule violation.
+            // highlighted red on a rule violation. (No need to disarm here: an
+            // armed vertex means the edge search above didn't run.)
             handleEdgeClick(puzzleGrid.getEdgeMesh(edgeId), reverseDirection);
             return true;
         }
@@ -390,11 +408,12 @@ export function makeInteraction(gameState) {
                         return false;
                     }
                 }
-                // The second tap of the two-tap gesture, if this face has the armed
-                // vertex as a corner. Consumes the tap, so it doesn't also highlight
-                // the face, and puts the vertex away afterwards.
-                if (armedVertex !== null
-                        && markCornerOfFace(faceId, reverseDirection)) {
+                // The second tap of the two-tap gesture. Modal: it marks this face's
+                // corner at the armed vertex if there is one, and otherwise does
+                // NOTHING -- in particular it does not fall through to highlighting
+                // the face. Either way the mode ends here.
+                if (armedVertex !== null) {
+                    markCornerOfFace(faceId, reverseDirection);
                     armVertex(null);
                     return false;
                 }

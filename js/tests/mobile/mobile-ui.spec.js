@@ -901,6 +901,80 @@ test.describe('marking a pair of edges', () => {
             .toEqual({edges: 0, history: 0});
     });
 
+    test('while armed, a click on an edge does not mark the edge', async ({page}) => {
+        // The half-modal version did mark it, which made the amber arcs a lie about
+        // what the next click would do.
+        await board(page);
+        const corner = await visibleCorner(page);
+        const at = await screenPointOf(page, 'vertex', corner.vertexId);
+        await page.mouse.click(at.x, at.y);
+        expect(await armedCorners(page)).toBeGreaterThan(0);
+
+        // Aim at the midpoint of one of the armed vertex's own edges.
+        const onEdge = await page.evaluate(async edgeId => {
+            const {GameState} = await import('/js/GameState.js');
+            const gs = GameState.getInstance();
+            const grid = gs.getPuzzleGrid();
+            const camera = gs.getSceneManager().camera;
+            const edge = grid.edges.get(edgeId);
+            const [a, b] = edge.vertexIDs.map(v => grid.vertices.get(v).position);
+            const p = a.clone().add(b).multiplyScalar(0.5).project(camera);
+            return {x: Math.round((p.x + 1) / 2 * window.innerWidth),
+                    y: Math.round((1 - p.y) / 2 * window.innerHeight)};
+        }, corner.edges[0]);
+        await page.mouse.click(onEdge.x, onEdge.y);
+
+        const state = await page.evaluate(async () => {
+            const {GameState} = await import('/js/GameState.js');
+            const grid = GameState.getInstance().getPuzzleGrid();
+            return {marked: [...grid.edges.values()]
+                        .filter(e => e.metadata.userGuess !== 0).length,
+                    // Every delta recorded, by kind: 'edge' would be the bug.
+                    kinds: grid.undoStack.flat()
+                        .map(d => (d.pairKey !== undefined ? 'pair' : 'edge'))};
+        });
+        expect(state.marked, 'the click marked an edge while a vertex was armed')
+            .toBe(0);
+        // The click landed on a face that HAS the armed vertex -- both faces along
+        // one of its edges do -- so marking that face's corner is the right answer,
+        // and the point is only that no edge delta was recorded.
+        expect(state.kinds.filter(k => k === 'edge'),
+            'an edge guess was recorded while a vertex was armed').toEqual([]);
+    });
+
+    test('the mode ends after one click, whatever that click hit',
+         async ({page}) => {
+        await board(page);
+        const corner = await visibleCorner(page);
+        const at = await screenPointOf(page, 'vertex', corner.vertexId);
+        await page.mouse.click(at.x, at.y);
+        expect(await armedCorners(page)).toBeGreaterThan(0);
+        // A click on empty space beyond the solid: not a corner, not an edge.
+        await page.mouse.click(6, Math.round(page.viewportSize().height - 6));
+        expect(await armedCorners(page),
+            'the armed vertex outlived a click that hit nothing').toBe(0);
+    });
+
+    test('rotating the view keeps the vertex armed', async ({page}) => {
+        // The one interaction that must NOT be excluded: the face wanted may be round
+        // the back, so the gesture has to survive a drag.
+        await board(page);
+        const corner = await visibleCorner(page);
+        const at = await screenPointOf(page, 'vertex', corner.vertexId);
+        await page.mouse.click(at.x, at.y);
+        const before = await armedCorners(page);
+        expect(before).toBeGreaterThan(0);
+
+        const middle = {x: Math.round(page.viewportSize().width / 2),
+                        y: Math.round(page.viewportSize().height / 2)};
+        await page.mouse.move(middle.x, middle.y);
+        await page.mouse.down();
+        await page.mouse.move(middle.x + 60, middle.y + 30, {steps: 8});
+        await page.mouse.up();
+        expect(await armedCorners(page),
+            'a camera drag cancelled the pending pair gesture').toBe(before);
+    });
+
     test('alt+click on a face corner marks it in one go', async ({page}) => {
         await board(page);
         const corner = await visibleCorner(page);
