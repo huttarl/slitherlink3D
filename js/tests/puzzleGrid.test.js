@@ -363,6 +363,158 @@ describe('pair marks', () => {
     });
 });
 
+describe('retiring a pair mark the board has overtaken', () => {
+    // The line this group is really about: a mark is cleared once the player's own
+    // edge marks have SETTLED both its edges in agreement with it -- never used to
+    // decide an edge, and never cleared while it still disagrees with the board.
+    function adjacentPair(pg) {
+        return [pg.findEdgeByVertices(0, 1), pg.findEdgeByVertices(0, 3)];
+    }
+
+    test('the raw predicate: satisfied only when both edges agree with the mark',
+         () => {
+        const satisfied = PuzzleGrid.pairMarkSatisfied;
+        // 1 = filled in, 2 = ruled out, 0 = unknown.
+        // Relation 1 = exactlyOne.
+        assert.strictEqual(satisfied(1, 1, 2), true);
+        assert.strictEqual(satisfied(1, 2, 1), true);
+        assert.strictEqual(satisfied(1, 1, 1), false, 'both filled contradicts it');
+        assert.strictEqual(satisfied(1, 2, 2), false, 'as does neither');
+        // Relation 2 = bothOrNeither.
+        assert.strictEqual(satisfied(2, 1, 1), true);
+        assert.strictEqual(satisfied(2, 2, 2), true);
+        assert.strictEqual(satisfied(2, 1, 2), false);
+        // An open edge is pending, not satisfied, whatever the other one says.
+        assert.strictEqual(satisfied(1, 1, 0), false);
+        assert.strictEqual(satisfied(2, 0, 0), false);
+    });
+
+    test('one edge decided is not enough; the second one retires the mark', () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setPairMark(a, b, 1);                  // 1 = exactlyOne
+        pg.setEdgeState(a, 1);                    // one of them filled in
+        assert.strictEqual(pg.getPairMark(a, b), 1,
+            'with the partner still open the mark is pending, not spent');
+        pg.setEdgeState(b, 2);                    // 2 = ruled out
+        assert.strictEqual(pg.getPairMark(a, b), 0,
+            'exactly one filled: the mark now says nothing the board does not');
+    });
+
+    test('both-or-neither retires when both go the same way, either way', () => {
+        const filled = makePuzzle();
+        const [a, b] = adjacentPair(filled);
+        filled.setPairMark(a, b, 2);              // 2 = bothOrNeither
+        filled.setEdgeState(a, 1);
+        filled.setEdgeState(b, 1);
+        assert.strictEqual(filled.getPairMark(a, b), 0);
+
+        const neither = makePuzzle();
+        const [c, d] = adjacentPair(neither);
+        neither.setPairMark(c, d, 2);
+        neither.setEdgeState(c, 2);
+        neither.setEdgeState(d, 2);
+        assert.strictEqual(neither.getPairMark(c, d), 0);
+    });
+
+    test('a mark the board CONTRADICTS is left standing', () => {
+        // Not a case for cleanup: the player has marked a pair one way and then
+        // played it the other, and quietly removing the evidence would hide the
+        // disagreement instead of letting them see it.
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setPairMark(a, b, 1);                  // exactlyOne...
+        pg.setEdgeState(a, 1);
+        pg.setEdgeState(b, 1);                    // ...but both filled in
+        assert.strictEqual(pg.getPairMark(a, b), 1);
+
+        const other = makePuzzle();
+        const [c, d] = adjacentPair(other);
+        other.setPairMark(c, d, 2);               // bothOrNeither...
+        other.setEdgeState(c, 1);
+        other.setEdgeState(d, 2);                 // ...but split
+        assert.strictEqual(other.getPairMark(c, d), 2);
+    });
+
+    test('the clearing rides in the SAME history entry, so one undo restores both',
+         () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setPairMark(a, b, 1);
+        pg.setEdgeState(a, 1);
+        const depth = pg.undoStack.length;
+        pg.setEdgeState(b, 2);
+        assert.strictEqual(pg.undoStack.length, depth + 1,
+            'the click and the cleanup are one move, not two');
+        const move = pg.undoStack[pg.undoStack.length - 1];
+        assert.strictEqual(move.length, 2);
+        assert.deepStrictEqual(move[1],
+            {pairKey: PuzzleGrid.pairKey(a, b), prevState: 1, newState: 0});
+
+        pg.undo();
+        assert.strictEqual(pg.getPairMark(a, b), 1, 'the mark comes back');
+        assert.strictEqual(pg.edges.get(b).metadata.userGuess, 0,
+            'along with the click that retired it');
+        pg.redo();
+        assert.strictEqual(pg.getPairMark(a, b), 0);
+    });
+
+    test('an auto-ruled-out edge can be the one that settles a pair', () => {
+        // Why the sweep runs after the deductions rather than before them: here the
+        // player never touches the second edge of the pair at all.
+        const pg = makePuzzle();
+        pg.autoRuleOut = true;
+        const filled = pg.findEdgeByVertices(0, 1);
+        const deduced = pg.findEdgeByVertices(0, 4);   // ruled out by the 2nd move
+        pg.setPairMark(filled, deduced, 1);            // exactlyOne
+        pg.setEdgeState(pg.findEdgeByVertices(0, 3), 1);
+        assert.strictEqual(pg.getPairMark(filled, deduced), 1, 'still pending');
+        pg.setEdgeState(filled, 1);
+        assert.strictEqual(pg.edges.get(deduced).metadata.userGuess, 2);
+        assert.strictEqual(pg.getPairMark(filled, deduced), 0,
+            'the deduction settled the pair, so the mark is spent');
+        // And all three -- click, deduction, cleanup -- undo together.
+        pg.undo();
+        assert.strictEqual(pg.getPairMark(filled, deduced), 1);
+        assert.strictEqual(pg.edges.get(deduced).metadata.userGuess, 0);
+    });
+
+    test('marks elsewhere on the board are not disturbed', () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        // A pair at the far vertex 6, sharing the top face; nothing here touches it.
+        const [c, d] = [pg.findEdgeByVertices(6, 5), pg.findEdgeByVertices(6, 7)];
+        pg.setPairMark(a, b, 1);
+        pg.setPairMark(c, d, 1);
+        pg.setEdgeState(a, 1);
+        pg.setEdgeState(b, 2);
+        assert.strictEqual(pg.getPairMark(a, b), 0);
+        assert.strictEqual(pg.getPairMark(c, d), 1);
+    });
+
+    test('marking a pair whose edges are already decided keeps the mark', () => {
+        // Making a mark is not a move that changes an edge, so no sweep runs.
+        // Swallowing the click on the spot would look like it never registered.
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setEdgeState(a, 1);
+        pg.setEdgeState(b, 2);
+        pg.setPairMark(a, b, 1);                  // already satisfied
+        assert.strictEqual(pg.getPairMark(a, b), 1);
+    });
+
+    test('the observer hears the clearing, so the arc comes off the board', () => {
+        const pg = makePuzzle();
+        const [a, b] = adjacentPair(pg);
+        pg.setPairMark(a, b, 2);                  // bothOrNeither
+        const heard = [];
+        pg.onPairMarkChanged = (key, relation) => heard.push([key, relation]);
+        pg.setEdgeState(a, 2);
+        pg.setEdgeState(b, 2);
+        assert.deepStrictEqual(heard, [[PuzzleGrid.pairKey(a, b), 0]]);
+    });
+});
+
 describe('hasAnyMarks, and the hasMarks a check reports', () => {
     // The distinction this pins: ruling an edge out is work the player has done,
     // and a check must answer for it. Reporting only on FILLED edges refused to

@@ -296,6 +296,31 @@ edge *fills in* the partner, and `findDeducibleRuleOuts` only ever rules edges
 out — its docstring is explicit that the setting can never draw part of the loop.
 Wiring pair marks into it would cross that line, so it doesn't.
 
+**But a spent mark is swept away** (`spentPairMarks`). Playtesting found the
+missing half: a mark stays visible after the player has decided both its edges,
+so keeping the board readable meant clicking old arcs away by hand. Once both
+edges are settled *in agreement with* the mark, it is cleared as part of the same
+undo unit as the edge mark that finished it.
+
+Note which direction of inference that is, because only one of the two is off
+limits. Deducing an edge **from** a mark is playing the puzzle. Retiring a mark
+the player's own edge marks have overtaken removes nothing from the board — the
+two settled edges still say everything the mark said — and adds nothing either.
+
+Two boundaries follow from the same reasoning:
+
+- A mark the edges **contradict** is left standing. That pair is not spent, it is
+  a disagreement between the player's deduction and their play, and deleting the
+  evidence would hide it.
+- Only pairs touching an edge this move changed are swept, so marking a pair whose
+  edges are *already* decided leaves the mark alone; making a mark is not a move
+  that changes an edge. Swallowing that click on the spot would read as the mark
+  never registering.
+
+The sweep runs after any auto-rule-outs, so the deduced edge can be the one that
+settles a pair, and it runs whatever that setting says — it is cleanup, not
+deduction.
+
 Undo needed the one structural change. A move is an array of deltas, and there are
 now two kinds, told apart by whether they carry `edgeId` or `pairKey`;
 `applyDelta` is the single place that dispatches, so the four sites that BUILD
@@ -303,7 +328,14 @@ deltas were left alone. `resetPuzzle` sweeps marks into the same compound move a
 the edges it clears, so one Undo restores both, and `setCurrentPuzzle` drops them,
 being reasoning about a particular puzzle's clues.
 
-### Still to build
+### The plan for the player-facing half
+
+All three of these are now built — the arcs in `js/pairMarkRenderer.js`, the
+gesture and the lit corners in `js/interaction.js` — so what follows is the plan
+they were built from, kept for its reasoning rather than as a to-do list. One part
+was not followed: the arcs are `RingGeometry` sectors in the corner's own frame,
+not canvas textures on a plane, because an annulus sector needs no texture and
+scales cleanly with the corner angle (see `radiusForAngle`).
 
 - **Drawing the arcs.** Reuse `clueRenderer`'s recipe — one shared canvas texture
   per relation, a small plane on the face, oriented to its normal and lifted by

@@ -488,6 +488,77 @@ export class PuzzleGrid extends Grid {
     }
 
     /**
+     * Whether the two edges' current states BEAR OUT a marked relation: both
+     * edges decided, and decided the way the mark says they would be.
+     *
+     * Note what this is not. It never asks whether the mark is *true* of the
+     * puzzle -- only whether the player has since settled both edges compatibly
+     * with it, which is readable straight off the board and needs no solution.
+     * A pair still holding an unknown edge is not satisfied but merely pending;
+     * a pair whose edges CONTRADICT the mark is not satisfied either, and
+     * deliberately gets the same answer as pending, so that a mark at odds with
+     * the board is left standing for the player to see.
+     *
+     * @param {number} relation - index into PAIR_RELATIONS
+     * @param {number} stateA - index into EDGE_STATES
+     * @param {number} stateB
+     * @returns {boolean}
+     */
+    static pairMarkSatisfied(relation, stateA, stateB) {
+        // 0 = unknown, so the pair has not been settled yet either way.
+        if (stateA === 0 || stateB === 0) return false;
+        // Both are now 1 (filled in) or 2 (ruled out), so "filled in" and "not
+        // filled in" between them cover the two cases each relation talks about.
+        const filledA = stateA === 1;
+        const filledB = stateB === 1;
+        switch (PAIR_RELATIONS[relation]) {
+            case 'exactlyOne':    return filledA !== filledB;
+            case 'bothOrNeither': return filledA === filledB;
+            default:              return false;   // 'none' -- no mark to satisfy.
+        }
+    }
+
+    /**
+     * The pair marks that this move has just used up: deltas that clear every
+     * mark whose two edges the move has settled in agreement with it.
+     *
+     * Convenience, not assistance. The mark said something about two edges while
+     * at least one was open; once both are decided compatibly it says nothing the
+     * board does not already show, and leaving it there means the player must
+     * click marks away by hand to keep the board readable. Compare the note in
+     * docs/edge-pair-constraints.md on auto-rule-out, which must NOT read pair
+     * marks: deducing an edge FROM a mark would be playing the puzzle, whereas
+     * retiring a mark the player's own moves have overtaken adds no information
+     * to the board and removes none either.
+     *
+     * Only pairs touching an edge this move changed are considered, so a mark
+     * elsewhere is never disturbed -- and in particular a pair the player marks
+     * on two already-decided edges stays put, since making a mark is not a move
+     * that changes an edge. It is their deliberate click; swallowing it on the
+     * spot would look like the mark never registered.
+     *
+     * @param {Array} move - the deltas applied so far, both kinds (pair deltas
+     *     among them are ignored, having no edge whose state could have changed)
+     * @returns {Object[]} pair deltas, each clearing one mark; empty if none
+     */
+    spentPairMarks(move) {
+        if (this.pairMarks.size === 0) return [];
+        const changed = new Set(move.filter(delta => delta.pairKey === undefined)
+                                    .map(delta => delta.edgeId));
+        const spent = [];
+        for (const [key, relation] of this.pairMarks) {
+            const [edgeA, edgeB] = PuzzleGrid.pairEdges(key);
+            if (!changed.has(edgeA) && !changed.has(edgeB)) continue;
+            const stateA = this.edges.get(edgeA).metadata.userGuess;
+            const stateB = this.edges.get(edgeB).metadata.userGuess;
+            if (PuzzleGrid.pairMarkSatisfied(relation, stateA, stateB)) {
+                spent.push({pairKey: key, prevState: relation, newState: 0});
+            }
+        }
+        return spent;
+    }
+
+    /**
      * Applies one delta of either kind, in the given direction.
      *
      * The single place that knows a move can hold two kinds of delta; see the
@@ -520,6 +591,11 @@ export class PuzzleGrid extends Grid {
      * back the click together with everything it caused. Recorded separately they
      * would be several presses to unwind, in an order the player never chose.
      *
+     * The move likewise carries any pair marks the change has used up (see
+     * spentPairMarks), for the same reason and in the same entry -- and that
+     * sweep runs whatever the autoRuleOut setting says, being cleanup rather
+     * than deduction.
+     *
      * @param {number} edgeId - ID of the edge to change
      * @param {number} newState - New state, an index into EDGE_STATES
      *     (0 = unknown, 1 = filled in, 2 = ruled out)
@@ -547,6 +623,17 @@ export class PuzzleGrid extends Grid {
                 debug(`autoRuleOut: edge ${edgeId} -> ${newState} also ruled out `
                       + `${move.slice(1).map(d => d.edgeId).join(', ')}`);
             }
+        }
+
+        // Last, because an auto-ruled-out edge can be the one that settles a pair,
+        // so the sweep has to see the board as this move finally leaves it. Also
+        // into the SAME history entry, for the reason given above: one Undo takes
+        // back the click along with the marks it retired.
+        for (const delta of this.spentPairMarks(move)) {
+            move.push(delta);
+            this.applyPairMark(delta.pairKey, delta.newState);
+            debug(`spent pair mark ${delta.pairKey} `
+                  + `(${PAIR_RELATIONS[delta.prevState]}) cleared`);
         }
 
         this.undoStack.push(move);
