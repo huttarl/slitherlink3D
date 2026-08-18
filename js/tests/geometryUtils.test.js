@@ -15,6 +15,7 @@ import {
     medianEdgeLength,
     normalizeVertices,
     pickTolerances,
+    pointerRadiusFactor,
     radiusScale,
 } from '../geometryUtils.js';
 import { COARSE_POINTER_RADIUS_FACTOR, PICK_RADIUS, RADIUS_LENGTH_EXPONENT,
@@ -304,5 +305,19 @@ describe('radiusScale for a finger', () => {
         assert.ok(Math.abs(finger.pickRadius
                            - PICK_RADIUS * withFinger(() => radiusScale(grid)))
                   < 1e-12);
+    });
+
+    test('the factor is separately available, for sizes not in world units', () => {
+        // What the pair-mark arcs use: they are fractions of an edge, so they want
+        // the pointer half of radiusScale without the density clamp, which a
+        // fraction of an edge already accounts for. See pointerRadiusFactor.
+        assert.strictEqual(pointerRadiusFactor(), 1);
+        assert.strictEqual(withFinger(() => pointerRadiusFactor()),
+                           COARSE_POINTER_RADIUS_FACTOR);
+        // And it really is the factor radiusScale applies, not a second copy of it.
+        const grid = cubeWithEdgeLength(0.256);
+        assert.ok(Math.abs(withFinger(() => radiusScale(grid))
+                           - radiusScale(grid)
+                             * withFinger(() => pointerRadiusFactor())) < 1e-12);
     });
 });

@@ -289,10 +289,23 @@ export const VERTEX_PICK_FACTOR = 1.2;
 export const PAIR_MARK_COLOR = new THREE.Color(0x1a86a8);
 
 // The corners offered while a vertex is armed, waiting for the second tap. Warmer
-// than the marks themselves and half transparent, so a suggestion never looks like
-// something already recorded.
-export const PAIR_CANDIDATE_COLOR = new THREE.Color(0xffb020);
-export const PAIR_CANDIDATE_OPACITY = 0.55;
+// than the marks themselves, so a suggestion never looks like something already
+// recorded. The hue carries that distinction by itself: a PAIR_CANDIDATE_OPACITY of
+// 0.55 used to help say it, and was dropped for washing the arc out toward the pale
+// face behind it -- see the candidate material in js/pairMarkRenderer.js.
+//
+// A darker amber than the 0xffb020 it started as. That was picked to be read at 55%
+// over a near-white face, where it needed the brightness; drawn opaque, the same hue
+// deeper reads better against the same face. The material is unlit, so this value is
+// exactly what appears on screen wherever the arc sits on the solid.
+export const PAIR_CANDIDATE_COLOR = new THREE.Color(0xd6860a);
+
+// The four constants below are fractions of an edge as drawn FOR A MOUSE. A finger
+// gets them all half again as large, along with the edge tubes and vertex spheres
+// they are read against -- see pointerRadiusFactor and the note in cornerFrame. So
+// the collision arithmetic in the two comments here describes the mouse case; a
+// touch device reaches those limits at two thirds of the stated numbers.
+
 // How far from the corner the arc sits, as a fraction of the SHORTER of its two
 // edges -- a fraction of the EDGES rather than of the face, so the arc's ends always
 // land on both of them however oddly shaped the face is, which is what makes it read
@@ -335,6 +348,19 @@ export const PAIR_ARC_WIDE_DEGREES = 120;
 // OUTERMOST_SLOT in pairMarkRenderer.js.
 export const PAIR_ARC_WIDTH = 0.032;
 export const PAIR_ARC_GAP = 0.048;
+
+// How far along an edge the outermost arc's outer surface may reach, which caps the
+// radius above rather than being another slot. Just under half, so that two marks at
+// the two ends of ONE edge cannot meet in the middle of it, whatever the constants
+// above say and whichever pointer is playing.
+//
+// It is the touch case that needs this. For a mouse the sharp-corner mark reaches
+// 0.344 and the cap never binds -- the comments above are describing exactly this
+// arithmetic when they count headroom. Multiply everything by 1.5 for a finger and
+// the sharp corner reaches 0.516, over the line, so it is pulled back to 0.384: a
+// good deal further out than the mouse's 0.28, which was the point, but no longer
+// far enough to collide.
+export const PAIR_ARC_MAX_REACH = 0.48;
 
 // Clue digit colors. A clue whose walls are all accounted for goes gray, leaving
 // the black digits as the list of what is still to do.

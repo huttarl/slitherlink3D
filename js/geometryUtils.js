@@ -91,11 +91,27 @@ export function medianEdgeLength(grid) {
  *     and never above COARSE_POINTER_RADIUS_FACTOR for a finger
  */
 export function radiusScale(grid) {
-    const pointerFactor = hasCoarsePointer() ? COARSE_POINTER_RADIUS_FACTOR : 1;
     const median = medianEdgeLength(grid);
-    if (median <= 0) return pointerFactor;
+    if (median <= 0) return pointerRadiusFactor();
     return Math.min(1, Math.pow(median / RADIUS_REFERENCE_EDGE,
-                                RADIUS_LENGTH_EXPONENT)) * pointerFactor;
+                                RADIUS_LENGTH_EXPONENT)) * pointerRadiusFactor();
+}
+
+/**
+ * The half of radiusScale that is about WHO IS PLAYING rather than which grid this
+ * is: everything the player has to see and hit is drawn half again as thick for a
+ * finger. See COARSE_POINTER_RADIUS_FACTOR.
+ *
+ * Separately available because not everything sized for the pointer is sized in
+ * world units. The pair-mark arcs (js/pairMarkRenderer.js) are measured as
+ * fractions of an EDGE, which already adapts to a grid's density -- so they want
+ * this factor and would double-count the density clamp if they took all of
+ * radiusScale.
+ *
+ * @returns {number} COARSE_POINTER_RADIUS_FACTOR for a finger, 1 for a mouse
+ */
+export function pointerRadiusFactor() {
+    return hasCoarsePointer() ? COARSE_POINTER_RADIUS_FACTOR : 1;
 }
 
 /**

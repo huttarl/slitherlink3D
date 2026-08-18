@@ -24,12 +24,12 @@
  * geometry, so the depth buffer occludes the far side for free.
  */
 import * as THREE from './three/three.module.min.js';
-import {CLUE_LIFT, PAIR_ARC_GAP, PAIR_ARC_RADIUS_SHARP, PAIR_ARC_RADIUS_WIDE,
+import {CLUE_LIFT, PAIR_ARC_GAP, PAIR_ARC_MAX_REACH, PAIR_ARC_RADIUS_SHARP,
+        PAIR_ARC_RADIUS_WIDE,
         PAIR_ARC_SHARP_DEGREES, PAIR_ARC_WIDE_DEGREES, PAIR_ARC_WIDTH,
-        PAIR_CANDIDATE_COLOR, PAIR_CANDIDATE_OPACITY,
-        PAIR_MARK_COLOR} from './constants.js';
-import {findCentroid, findFaceNormal, findFaceRise,
-        freezeTransform} from './geometryUtils.js';
+        PAIR_CANDIDATE_COLOR, PAIR_MARK_COLOR} from './constants.js';
+import {findCentroid, findFaceNormal, findFaceRise, freezeTransform,
+        pointerRadiusFactor} from './geometryUtils.js';
 import {PuzzleGrid} from './PuzzleGrid.js';
 import {debug} from './debug.js';
 
@@ -91,16 +91,19 @@ export function createPairMarkGroup() {
     // A second material for the corners offered while a vertex is armed. Basic, not
     // Lambert: this one is a transient piece of UI rather than something painted on
     // the solid, so it should stay equally visible on a face turned away from the
-    // light. Transparent, so it reads as a suggestion and not as a mark already made.
+    // light.
+    //
+    // OPAQUE, though it started at PAIR_CANDIDATE_OPACITY. Translucency was meant to
+    // read as "a suggestion, not a mark", but it works by mixing the arc toward the
+    // face behind it, and a pale face plus amber at just over half strength came out
+    // barely distinguishable from the face -- worst on a phone, where the arc is
+    // small to begin with. The color already carries the distinction (amber against
+    // the marks' teal), so it can carry it alone. Opaque also drops the
+    // depthWrite: false these needed to stop the near and far sides of the solid
+    // fighting over which drew on top.
     group.userData.candidateMaterial = new THREE.MeshBasicMaterial({
         color: PAIR_CANDIDATE_COLOR,
         side: THREE.DoubleSide,
-        transparent: true,
-        opacity: PAIR_CANDIDATE_OPACITY,
-        // Transparent things can draw over what should hide them, and these sit on a
-        // solid whose far side is right behind. depthWrite off keeps them from
-        // occluding each other; the depth TEST still hides the far side.
-        depthWrite: false,
     });
     // pairKey -> the Object3D drawn for it, so a change can find and replace it.
     group.userData.drawn = new Map();
@@ -157,6 +160,24 @@ function cornerFrame(grid, edgeA, edgeB) {
     }
 
     const angle = alongA.angleTo(alongB);
+    // A finger gets a bigger mark, exactly as it gets thicker tubes and bigger
+    // vertex spheres -- and for the same reason, since the three are drawn side by
+    // side and it is the COMPARISON that has to stay readable. Without this the
+    // arcs were the only pair-mark geometry the factor missed: on a phone the tubes
+    // grew by half while a stroke of PAIR_ARC_WIDTH did not, taking the arc from
+    // about half an edge tube's width down to about a third of it. Worst at a sharp
+    // corner, where the two widened tubes merge into one wedge for some distance
+    // out from the vertex -- which is where the sharp-angle radius puts the arc.
+    //
+    // The pointer factor alone, NOT radiusScale: these are fractions of an edge, so
+    // they already answer to how dense the grid is, and the clamp would be counted
+    // twice. See pointerRadiusFactor.
+    const forPointer = pointerRadiusFactor();
+    const width = PAIR_ARC_WIDTH * forPointer;
+    const gap = PAIR_ARC_GAP * forPointer;
+    // The outermost arc sits at radius + gap (see OUTERMOST_SLOT), so this is what
+    // keeps its far surface short of halfway along the edge. See PAIR_ARC_MAX_REACH.
+    const reach = PAIR_ARC_MAX_REACH - gap - width / 2;
     return {
         here,
         normal,
@@ -164,9 +185,9 @@ function cornerFrame(grid, edgeA, edgeB) {
         angle,
         // The radius answers to the ANGLE, the stroke and the spacing don't: see the
         // notes on PAIR_ARC_RADIUS_SHARP and PAIR_ARC_WIDTH for both halves of that.
-        radius: radiusForAngle(angle) * shorterEdge,
-        width: PAIR_ARC_WIDTH * shorterEdge,
-        gap: PAIR_ARC_GAP * shorterEdge,
+        radius: Math.min(radiusForAngle(angle) * forPointer, reach) * shorterEdge,
+        width: width * shorterEdge,
+        gap: gap * shorterEdge,
         // Clear of the surface, as the clue digits are: past whatever this face's
         // curvature raises under the arc, then CLUE_LIFT to settle the z-fighting.
         // A flat face gives a rise of 0.
