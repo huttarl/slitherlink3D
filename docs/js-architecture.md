@@ -265,7 +265,8 @@ All ES6 modules; Three.js vendored under `js/three/`.
 - **Coordinate system**: right-handed with Z-up orientation.
 - **Edge interaction**: clicking an edge cycles unknown → filledIn → ruledOut →
   unknown.
-- **Face interaction**: clicking a face highlights it (a debugging feature).
+- **Face interaction**: clicking a face highlights it — a debugging feature,
+  gated behind `?debug=1` so a missed edge tap doesn't tint a face mid-game.
 - **Camera controls**: TrackballControls by default — unconstrained tumbling
   in any direction, with a "Right side up" button to undo any resulting roll.
   Loading with `?controls=orbit` switches to OrbitControls, which keeps the

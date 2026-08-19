@@ -7,7 +7,7 @@
 import * as THREE from './three/three.module.min.js';
 import { findCentroid, findFaceNormal } from './geometryUtils.js';
 import { showCornerCandidates } from './pairMarkRenderer.js';
-import { debug } from './debug.js';
+import { debug, isDebugEnabled } from './debug.js';
 import { DRAG_THRESHOLD_PIXELS, FACE_COLORS, EDGE_STATES,
          LONG_PRESS_MS, TOUCH_DRAG_THRESHOLD_PIXELS } from './constants.js';
 import { pickTolerances } from './geometryUtils.js';
@@ -417,7 +417,12 @@ export function makeInteraction(gameState) {
                     armVertex(null);
                     return false;
                 }
-                handleFaceClick(faceId);
+                // The green highlight is a debugging aid, and its readout lives
+                // in the hidden debug panel -- so without ?debug=1 all a player
+                // saw was an unexplained green face whenever a tap missed every
+                // edge, which on a phone is most face taps. Debug off means a
+                // missed tap does nothing.
+                if (isDebugEnabled()) handleFaceClick(faceId);
             }
         }
         // Anything else cancels a pending gesture: a tap that named no corner is

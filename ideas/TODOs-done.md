@@ -4,6 +4,13 @@ Anything still marked [~] or containing open sub-items stayed in TODOs.md.
 
 - [x] vertex labels appear to be stretched wide for single-digit numbers.
 
+- [x] I keep accidentally selecting faces (turning them green) even when debug mode is off, I think. Why?
+  Especially on the phone, and it's pretty annoying.
+  - The highlight was never gated: `pickAt` fell through to `handleFaceClick` for
+    any tap that missed every edge, and `?debug=1` only hid the panel that
+    *explains* the green face, not the highlight itself. Now gated behind
+    `isDebugEnabled()`, so with debug off a missed tap does nothing.
+
 - [x] Celebration:
     - [x] Add some "confetti" at the beginning.
     - [x] Besides just rotating the shape, "gyrate" it, i.e. also rotate the axis of rotation (slowly) so that we get to see all sides equally well.
