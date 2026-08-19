@@ -100,6 +100,7 @@ function scheduleNote(ctx, hz, startAt, seconds, out) {
  */
 export function stopCelebrationTune() {
     if (!currentPlay || !audio) return;
+    debug('celebration tune: faded out early');
     const now = audio.currentTime;
     // The master gain is a constant 1 (the shaping is per note), so the ramp
     // can anchor there rather than needing the current computed value.
@@ -123,6 +124,7 @@ export function playCelebrationTune() {
     // always reached through one, so this resolves immediately in practice.
     if (ctx.state === 'suspended') ctx.resume();
 
+    debug(`celebration tune: playing (context ${ctx.state})`);
     const {notes, noteSeconds, holdSeconds} = CELEBRATION_TUNE;
     // Everything routes through one master gain so the play can be faded as a
     // whole (see stopCelebrationTune). Made fresh per play and left for the
