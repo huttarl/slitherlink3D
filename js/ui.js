@@ -92,6 +92,9 @@ function observePuzzleGrid(gameState, puzzleGrid) {
         // celebration, which was about a loop that may no longer be there.
         hideCheckFeedback();
         cancelCelebration(gameState);
+        // The solve the latched time belonged to is void too; the clock (which
+        // never stopped counting) measures any re-solve afresh.
+        solvedElapsedSec = null;
     };
     // Draw, redraw or remove one arc. Fires on the player's own marks and equally
     // on an undo or a Reset, since those go through applyPairMark too -- which is
@@ -308,6 +311,13 @@ export function updateUndoRedoButtons(puzzleGrid) {
 /** Beats 3 and 4, pending while beats 1 and 2 have the stage. */
 let celebrationTimers = [];
 
+/** The solve time in seconds, latched at the first successful check, or null
+ *  while the puzzle is unsolved. Pressing Check again on the solved board
+ *  re-celebrates but must report the SAME time -- the clock stopped when the
+ *  solution was first found correct. Any board change voids the solve and
+ *  clears this, so a later re-solve is measured by the still-running clock. */
+let solvedElapsedSec = null;
+
 /**
  * Celebrates the user's success in solving the puzzle. Called via PuzzleGrid's
  * onSolved observer.
@@ -329,8 +339,13 @@ let celebrationTimers = [];
  */
 function celebrateSolved(gameState) {
     const name = gameState.getPuzzleGrid().gridName;
-    const elapsedTimeSec = Math.round(gameState.sceneManager.timer.getElapsed());
-    const min = Math.floor(elapsedTimeSec / 60), sec = elapsedTimeSec % 60;
+    // Latch the solve time on the first successful check only: getElapsed()
+    // keeps counting, so reading it again on a repeat press of Check would
+    // report a longer time for the same solve.
+    if (solvedElapsedSec === null) {
+        solvedElapsedSec = Math.round(gameState.sceneManager.timer.getElapsed());
+    }
+    const min = Math.floor(solvedElapsedSec / 60), sec = solvedElapsedSec % 60;
     // TODO: add HTML markup to body, and name of grid, time taken, etc.
     const tumble = () => gameState.sceneManager.startTumble();
     const show = () => displayOverlay("Congratulations!",

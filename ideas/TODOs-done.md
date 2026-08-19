@@ -2,6 +2,33 @@ Completed items, moved out of TODOs.md (2026-08-05) to keep the live list
 readable. Text is verbatim, including the notes recording how each was settled.
 Anything still marked [~] or containing open sub-items stayed in TODOs.md.
 
+- [x] auto-clearing of pair marks: do that only if auto-ruleout is checked.
+  - [x] And we should rename that
+  checkbox because it's going to cover more territory. Maybe call it auto-clear?
+    - Called "Auto-tidy the board" (`autoTidy`) rather than auto-clear: ruling out an
+      edge ADDS a mark, so "clear" describes only the pair-mark half.
+- [x] When the vertex-click for pair marking is "armed", clicking elsewhere, like the UI buttons,
+  should disarm it.
+
+- [x] Check solution: says "You haven't filled in any edges yet" even if you've
+  ruled out some edges. What if I just wanted to check whether my ruling-out was correct?
+
+- [x] Once the user has done "Check solution" and it's correct, stop the "solved in" clock.
+  Otherwise they might fire the button again, and now their solution time is longer.
+  - [x] and make sure the clock stops (i.e. the "solved in" time is measured) when the solution
+  is found correct, not when the dialog pops up a few seconds later.
+  - The second half was already true: celebrateSolved reads timer.getElapsed()
+    synchronously at check time, and the dialog shows a value captured then.
+    The first half is now a latch in ui.js (solvedElapsedSec): set on the first
+    successful check, reused by any repeat press of Check, and cleared by any
+    board change (onHistoryChanged), since that voids the solve and a re-solve
+    should be measured by the still-running clock.
+
+- [x] don't display "Miscellaneous" on an info card -- use it only as a grouping label on the selection dropdown.
+
+- [x] The routine tests seem to be getting really slow. Can we refine our testing
+  process to require fewer tests unless necessary? Or maybe it's just me.
+
 - [x] vertex labels appear to be stretched wide for single-digit numbers.
 
 - [x] I keep accidentally selecting faces (turning them green) even when debug mode is off, I think. Why?
