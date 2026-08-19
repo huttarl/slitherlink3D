@@ -162,6 +162,16 @@ resolves over the tumble.
 - **Any board change cancels it**, restoring the ordinary edge and face colors and
   dropping the pending tumble and dialog. A "Congratulations" arriving three
   seconds after the player has already broken their loop would be nonsense.
+  The tune is faded out too, for the same reason.
+- **Any other input skips it to the end**: until the dialog arrives on its own, a
+  fresh click, tap or keypress jumps the board to its resting colours, fades the
+  tune, and opens the dialog now (`installCelebrationSkip` in `js/ui.js`,
+  `finishCelebration` in `js/celebration.js`). The skip listens on `click`, not
+  `pointerdown`, so that a board-changing click resolves first and lands in the
+  bullet above — cancel, not a stale dialog. This is also what keeps repeat
+  presses of Check from queueing up celebrations: a re-check of the same solve
+  (the solve-time latch tells) skips to the dialog instead of restarting the
+  show, and never replays the tune.
 - **Never mutate a color from `EDGE_COLORS` in place.** `applyEdgeState` *assigns*
   those shared constants to `material.color`, so after any state change many
   edges' materials point at the same `THREE.Color` object — and the constant

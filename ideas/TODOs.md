@@ -6,10 +6,6 @@ Finished items live in ideas/TODOs-done.md.
   - [ ] Do we need to add a separate family, since "Other" (Miscellaneous) has become so big? What would
     be the next biggest family of existing grids?
 
-- [ ] If, during the celebration sequence, the user types or clicks, cancel the sequence...
-  or at least skip to the end (the dialog). Don't allow multiple "Check solution" requests
-  to queue up.
-
 - [ ] Settings: sound on / off. (Opens the door to other sounds, music.)
 
 - [~] At some point I'll need to go back and add sources to the grid files...

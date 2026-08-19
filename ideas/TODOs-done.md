@@ -24,6 +24,16 @@ Anything still marked [~] or containing open sub-items stayed in TODOs.md.
     board change (onHistoryChanged), since that voids the solve and a re-solve
     should be measured by the still-running clock.
 
+- [x] If, during the celebration sequence, the user types or clicks, cancel the sequence...
+  or at least skip to the end (the dialog). Don't allow multiple "Check solution" requests
+  to queue up.
+  - Skip-to-the-end, not cancel: a fresh click or keypress before the dialog
+    arrives jumps the board to its resting colours, fades the tune, and opens
+    the dialog at once. Board-CHANGING input still cancels outright (the skip
+    listens on click, after the game's own handlers, so cancel wins). Repeat
+    Check presses on the same solve reuse the skip instead of restarting the
+    show. See docs/celebration.md, "Constraints worth remembering".
+
 - [x] don't display "Miscellaneous" on an info card -- use it only as a grouping label on the selection dropdown.
 
 - [x] The routine tests seem to be getting really slow. Can we refine our testing

@@ -29,7 +29,7 @@ import * as THREE from './three/three.module.min.js';
 import {CELEBRATION_COLORS, CELEBRATION_TIMING, EDGE_COLORS,
         FACE_COLORS} from './constants.js';
 import {partitionFacesByLoop} from './solutionChecker.js';
-import {playCelebrationTune} from './celebrationSound.js';
+import {playCelebrationTune, stopCelebrationTune} from './celebrationSound.js';
 import {prefersReducedMotion} from './motion.js';
 import {debug} from './debug.js';
 
@@ -162,9 +162,34 @@ export function startCelebration(gameState) {
     return true;
 }
 
+/**
+ * Jumps a running celebration to the resting state beats 1 and 2 were headed
+ * for: the loop settled thin and black, the other edges faded to their
+ * near-white, both regions fully coloured. For when the player skips the
+ * sequence -- the state is exactly the one the animation would have reached, so
+ * arriving early changes nothing downstream, and stopCelebration still restores
+ * the board from it. The tune is faded out too: it was pacing a show that is no
+ * longer running. A no-op when nothing is running.
+ *
+ * @param {GameState} gameState
+ */
+export function finishCelebration(gameState) {
+    if (!running) return;
+    const timing = CELEBRATION_TIMING;
+    // Past every beat's endpoint, so one update lands on the resting state.
+    running.elapsed = Math.max(
+        timing.clearSeconds,
+        timing.swellSeconds * timing.swellCycles,
+        timing.partitionStartSeconds + timing.partitionSeconds);
+    updateCelebration(gameState, 0);
+    stopCelebrationTune();
+}
+
 /** Restores the ordinary edge and face colours. Safe to call when nothing is
- *  running. */
+ *  running -- and the tune is stopped either way, since a board change can
+ *  outlive the visuals but still make the congratulations stale. */
 export function stopCelebration(gameState) {
+    stopCelebrationTune();
     if (!running) return;
     for (const mesh of running.loop) {
         mesh.scale.set(1, 1, 1);

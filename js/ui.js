@@ -14,7 +14,7 @@ import {initAboutSolid} from "./aboutSolid.js";
 import {updateClueColors} from "./clueRenderer.js";
 import {updatePairMark} from "./pairMarkRenderer.js";
 import {wantsTitleScreen} from "./titleScreen.js";
-import {startCelebration, stopCelebration} from "./celebration.js";
+import {finishCelebration, startCelebration, stopCelebration} from "./celebration.js";
 import {CELEBRATION_TIMING} from "./constants.js";
 import {isDebugEnabled} from "./debug.js";
 
@@ -311,6 +311,68 @@ export function updateUndoRedoButtons(puzzleGrid) {
 /** Beats 3 and 4, pending while beats 1 and 2 have the stage. */
 let celebrationTimers = [];
 
+/**
+ * While the celebration is still on its way to the dialog: `skip` jumps the
+ * whole sequence to its end, `remove` uninstalls the input listeners that
+ * offer that. Null once the dialog is up or the celebration is cancelled.
+ *
+ * @type {?{skip: Function, remove: Function}}
+ */
+let celebrationSkip = null;
+
+/** Uninstalls the skip listeners, if they are installed. */
+function removeCelebrationSkip() {
+    if (celebrationSkip) {
+        celebrationSkip.remove();
+        celebrationSkip = null;
+    }
+}
+
+/**
+ * Lets the player hurry the celebration: until the dialog arrives on its own,
+ * any fresh click, tap or keypress skips straight to it -- the resting colours
+ * appear at once, the pending tumble is dropped (their input has taken the
+ * view anyway), and the dialog opens.
+ *
+ * 'click' rather than 'pointerdown', and the ordering is the point. Input that
+ * CHANGES the board must cancel the celebration, not skip to a dialog
+ * congratulating a solve the player just broke -- and it does: the game's own
+ * handlers were registered earlier, so they run first, the change fires
+ * onHistoryChanged, and cancelCelebration removes these listeners before the
+ * event reaches them. On pointerdown, which precedes the game's click handling,
+ * the stale dialog won.
+ *
+ * @param {GameState} gameState
+ * @param {Function} finish - removes these listeners and shows the dialog
+ */
+function installCelebrationSkip(gameState, finish) {
+    const installedAt = performance.now();
+    const skip = () => {
+        for (const timer of celebrationTimers) clearTimeout(timer);
+        celebrationTimers = [];
+        finishCelebration(gameState);
+        finish();
+    };
+    const onInput = (event) => {
+        // Not the gesture that ran the check itself. That event is still being
+        // dispatched while the celebration starts -- these listeners ARE
+        // consulted when it reaches window, having been added during a
+        // handler further down the tree -- so without this guard the click or
+        // Enter that solved the puzzle would skip the very sequence it started.
+        if (event.timeStamp <= installedAt) return;
+        skip();
+    };
+    window.addEventListener('click', onInput);
+    window.addEventListener('keydown', onInput);
+    celebrationSkip = {
+        skip,
+        remove: () => {
+            window.removeEventListener('click', onInput);
+            window.removeEventListener('keydown', onInput);
+        },
+    };
+}
+
 /** The solve time in seconds, latched at the first successful check, or null
  *  while the puzzle is unsolved. Pressing Check again on the solved board
  *  re-celebrates but must report the SAME time -- the clock stopped when the
@@ -342,6 +404,7 @@ function celebrateSolved(gameState) {
     // Latch the solve time on the first successful check only: getElapsed()
     // keeps counting, so reading it again on a repeat press of Check would
     // report a longer time for the same solve.
+    const alreadyCelebrated = solvedElapsedSec !== null;
     if (solvedElapsedSec === null) {
         solvedElapsedSec = Math.round(gameState.sceneManager.timer.getElapsed());
     }
@@ -351,11 +414,32 @@ function celebrateSolved(gameState) {
     const show = () => displayOverlay("Congratulations!",
         `You solved this ${name} puzzle in ${min}m ${sec}s!`);
 
+    // A repeat check of the SAME solve -- the latch is only ever set here, and
+    // any board change clears it -- must not restart the show, or repeat
+    // presses of Check would queue up overlapping celebrations. If the first
+    // run is still on its way to the dialog, jump it there; either way the
+    // player just gets the congratulations again.
+    if (alreadyCelebrated) {
+        if (celebrationSkip) {
+            celebrationSkip.skip();
+        } else {
+            show();
+        }
+        return;
+    }
+
     if (startCelebration(gameState)) {
+        const finish = () => {
+            // The dialog is the end of the sequence: stop offering to skip to
+            // it, or the clicks that dismiss and follow it would re-open it.
+            removeCelebrationSkip();
+            show();
+        };
         celebrationTimers = [
             setTimeout(tumble, CELEBRATION_TIMING.tumbleSeconds * 1000),
-            setTimeout(show, CELEBRATION_TIMING.dialogSeconds * 1000),
+            setTimeout(finish, CELEBRATION_TIMING.dialogSeconds * 1000),
         ];
+        installCelebrationSkip(gameState, finish);
     } else {
         tumble();
         show();
@@ -374,6 +458,7 @@ function celebrateSolved(gameState) {
 function cancelCelebration(gameState) {
     for (const timer of celebrationTimers) clearTimeout(timer);
     celebrationTimers = [];
+    removeCelebrationSkip();
     stopCelebration(gameState);
 }
 

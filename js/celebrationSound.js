@@ -47,6 +47,16 @@ function context() {
 }
 
 /**
+ * The gain node the current play's notes all route through, or null when no
+ * tune has been started. One node per play, so stopCelebrationTune can fade
+ * the whole phrase at once -- the notes are fire-and-forget oscillators, so
+ * there is nothing else to get hold of once they are scheduled.
+ *
+ * @type {?GainNode}
+ */
+let currentPlay = null;
+
+/**
  * Schedules one note.
  *
  * The envelope is the point of the gain node: an oscillator switched on and off
@@ -59,8 +69,9 @@ function context() {
  * @param {number} hz
  * @param {number} startAt - context time to begin
  * @param {number} seconds - how long the note lasts
+ * @param {GainNode} out - where the note plays into
  */
-function scheduleNote(ctx, hz, startAt, seconds) {
+function scheduleNote(ctx, hz, startAt, seconds, out) {
     const oscillator = ctx.createOscillator();
     oscillator.type = CELEBRATION_TUNE.waveform;
     oscillator.frequency.value = hz;
@@ -74,9 +85,27 @@ function scheduleNote(ctx, hz, startAt, seconds) {
     // is an error in some browsers.
     envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + seconds);
 
-    oscillator.connect(envelope).connect(ctx.destination);
+    oscillator.connect(envelope).connect(out);
     oscillator.start(startAt);
     oscillator.stop(startAt + seconds);
+}
+
+/**
+ * Fades the playing tune out over a moment, for when the player skips or breaks
+ * off the celebration -- a tune that plays on is the audio version of the stale
+ * "Congratulations". A short ramp rather than silence at once, which clicks
+ * (see scheduleNote on why every edge in a waveform needs an envelope). The
+ * notes' oscillators still stop themselves on their original schedule; they are
+ * merely inaudible from here on. Safe to call when nothing is playing.
+ */
+export function stopCelebrationTune() {
+    if (!currentPlay || !audio) return;
+    const now = audio.currentTime;
+    // The master gain is a constant 1 (the shaping is per note), so the ramp
+    // can anchor there rather than needing the current computed value.
+    currentPlay.gain.setValueAtTime(1, now);
+    currentPlay.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+    currentPlay = null;
 }
 
 /**
@@ -95,6 +124,14 @@ export function playCelebrationTune() {
     if (ctx.state === 'suspended') ctx.resume();
 
     const {notes, noteSeconds, holdSeconds} = CELEBRATION_TUNE;
+    // Everything routes through one master gain so the play can be faded as a
+    // whole (see stopCelebrationTune). Made fresh per play and left for the
+    // garbage collector once its notes end; only the envelopes do any shaping.
+    const master = ctx.createGain();
+    master.gain.value = 1;
+    master.connect(ctx.destination);
+    currentPlay = master;
+
     let at = ctx.currentTime;
     for (let i = 0; i < notes.length; i++) {
         const semitones = SEMITONES[notes[i]]; // number of semitones away from C
@@ -105,7 +142,8 @@ export function playCelebrationTune() {
         // The last note is held, which is what makes the phrase end rather than
         // merely stop.
         const seconds = (i === notes.length - 1) ? holdSeconds : noteSeconds;
-        scheduleNote(ctx, TONIC_HZ * Math.pow(2, semitones / 12), at, seconds);
+        scheduleNote(ctx, TONIC_HZ * Math.pow(2, semitones / 12), at, seconds,
+                     master);
         at += seconds;
     }
 }
