@@ -1,8 +1,13 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
+- [ ] auto-clearing of pair marks: do that only if auto-ruleout is checked.
+  - [ ] And we should rename that
+  checkbox because it's going to cover more territory. Maybe call it auto-clear?
+- [ ] When the vertex-click for pair marking is "armed", clicking elsewhere, like the UI buttons,
+  should disarm it.
 
-- [ ] I keep accidentally selecting faces (turning them green) even when debug mode is off, I think. Why?
+-* [ ] I keep accidentally selecting faces (turning them green) even when debug mode is off, I think. Why?
   Especially on the phone, and it's pretty annoying.
 - [ ] The list of grids has become unwieldy. Do we need to break it down into collapsible categories?
   - [ ] Do we need to add a separate family, since "Other" (Miscellaneous) has become so big? What would
@@ -26,6 +31,19 @@ Finished items live in ideas/TODOs-done.md.
 
 - [ ] The routine tests seem to be getting really slow. Can we refine our testing
   process to require fewer tests unless necessary? Or maybe it's just me.
+
+- Performance baseline, so it doesn't have to be re-derived from scratch next time the
+  app feels slow. From Chrome traces read with util/trace_report.py, on a big grid (etI):
+  - Desktop holds 59.5-59.8 fps, p99 frame interval about 17.8 ms, GC around 0.1% of the
+    time. No jank to find. The jankiness that prompted the investigation was never
+    reproduced, and was most likely other load on the machine.
+  - The phone runs at 90 fps with about 8 ms of work in an 11.1 ms budget. Thin headroom,
+    but not fill-rate bound -- which is what ruled out device pixel ratio as the culprit.
+  - Two traps in the method, both written up in util/trace_report.py: DroppedFrame is the
+    authoritative jank signal and frame-interval percentiles cannot see it, and Chrome's
+    profiler start-up costs 60-140 ms INSIDE the recording, dropping frames of its own.
+  - [ ] Re-measure rather than trusting the numbers above if the hardware or the scene
+    changes; they're a starting point, not a spec.
 - [ ] Adding more info about each polyhedron, as applicable:
   - [ ] add aliases, like "buckyball" / "soccer ball" for truncated icosahedron
   - [ ] link to dual solid - linking to that solid in the game, if we have it
@@ -92,6 +110,11 @@ Finished items live in ideas/TODOs-done.md.
     - [ ] add user-accessible settings for this
 - [ ] convert some existing .json files to the latest format spec, or move them out of the
     data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
+- [ ] 21 grids still have vertex coordinates at 3 decimals or fewer, from before obj2json.py
+    was changed to keep 6: D, I, sD, sC, etI, J37, J47, J48, J75, and the rand* family.
+    Deliberately deferred -- there's no known problem with them, so this waits for a clear
+    need rather than being a cleanup sweep. Reconverting can change vertex order, which
+    means regenerating that grid's puzzles (tI needed that).
 - [ ] terminology: how do we talk consistently about the "sides" of a face? The especially tricky distinction
   is between how many edges a face has, vs. how many of them are actually part of the loop
   that forms the solution. And how do we say the opposite?

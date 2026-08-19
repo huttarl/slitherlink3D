@@ -261,9 +261,35 @@ against: today they are not merely slow but out of reach.
 
 ## The player's side
 
-**Status.** The data model and undo integration are built: `pairMarks` in
-`js/PuzzleGrid.js`, with `PAIR_RELATIONS` in `js/constants.js`. Not yet drawn, and
-no way to make one by hand yet — see "still to build" below.
+**Status.** Built, and playtested on desktop and on a phone. The model and undo
+integration are `pairMarks` in `js/PuzzleGrid.js` with `PAIR_RELATIONS` in
+`js/constants.js`; the arcs are `js/pairMarkRenderer.js`; the gestures are in
+`js/interaction.js`.
+
+The gestures as they ship:
+
+| | desktop | touch |
+|---|---|---|
+| `exactlyOne` | Alt+click the corner | tap the vertex, then tap the face |
+| `bothOrNeither` | Alt+Shift+click the corner | tap the vertex, then LONG-PRESS the face |
+| clear | cycle round again | cycle round again |
+
+The touch route to `bothOrNeither` is not something anyone designed, and it is worth
+knowing about because it rescues an otherwise four-tap gesture. A long press is the
+reverse-cycle gesture; cycling in reverse from `none` steps to the LAST relation; and
+there are only two relations, so it lands on the double arc directly. It works
+because the reverse flag reaches `markCornerOfFace` like any other, and **no test
+covers it** — it was found by reading the code, not by writing it.
+
+Arming a vertex is MODAL. While a vertex is armed the next click is read only as a
+corner, so a click on an edge does not mark that edge; one click and the vertex
+disarms. The first version was not modal and playtested badly: lit-up corners while
+edge clicks still worked read as the game ignoring the mode.
+
+Sizing follows the pointer. Everything is a fraction of the corner's shorter EDGE, so
+it adapts to a grid's density for free, times `pointerRadiusFactor()` so a finger
+gets the same half-again the edge tubes and vertex spheres get — the three are read
+against each other, and it is the comparison that has to stay legible.
 
 The same model — a pair of edges plus a relation — is what the player marks. Four
 decisions worth recording, since each closed off an alternative:
@@ -355,3 +381,25 @@ scales cleanly with the corner angle (see `radiusForAngle`).
   (nothing is free on touch, where long-press is already reverse-cycle).
 - **Lighting up the corners** of an armed vertex, so the second tap has something
   to aim at.
+
+### Still open
+
+- **Nothing advertises the feature.** Neither the panel nor How to Play mentions pair
+  marks, so a player finds them by accident or not at all. Gating them behind a
+  settings checkbox was floated and not decided; a checkbox would at least name the
+  thing, at the cost of one more setting.
+- **The touch gesture stays clunky** even with the long-press shortcut, and may have
+  no better answer. Desktop's Alt+Shift+click is one action; touch needs two, and
+  both of the obvious one-action alternatives are already taken (a drag rotates the
+  camera, a long press on an edge reverse-cycles it).
+- **Keeping a vertex armed** past one mark, so several corners around it can be
+  marked without re-tapping the vertex. Wanted less for that than because it would
+  let repeat taps on ONE corner cycle it, which is the clunkiness above. Needs an
+  explicit way to cancel, which the one-click-and-disarm rule currently avoids.
+- **The debug `solve` button leaves marks standing.** `fillInSolution` decides every
+  edge without sweeping, so arcs linger over a completed loop. Deliberate: it is a
+  `?debug=1` path, and it is the one moment nobody is reading the board for
+  deductions.
+- **No test covers the long-press-while-armed route** to `bothOrNeither` described
+  under "The player's side", which is the gesture most likely to break silently,
+  since nothing in the code names it as a feature.

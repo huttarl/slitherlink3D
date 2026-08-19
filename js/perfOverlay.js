@@ -50,6 +50,12 @@ const REPORT_MS = 1000;
 // reporting window, because ONE bad frame a second is the complaint that a mean
 // frame rate hides completely -- 59 good frames and a 100ms stall still average
 // out near 60fps.
+//
+// FIXED AT 60Hz, so it UNDER-REPORTS on a faster display: a 90Hz phone budgets
+// 11.1ms a frame, where a 33ms frame is three intervals and a 25ms one already a
+// dropped frame this will not count. Deriving it from the observed median interval
+// would fix that; until then, read the hitch count as a floor on a 90Hz device
+// rather than a measurement.
 const HITCH_MS = 33;
 
 let readout = null;
