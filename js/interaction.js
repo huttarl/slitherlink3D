@@ -437,7 +437,14 @@ export function makeInteraction(gameState) {
         // guard, clicking a button or checkbox in the info panel would also
         // raycast, and could toggle an edge that happens to lie behind the
         // panel (visible when zoomed in).
-        if (event.target !== sceneManager.renderer.domElement) return;
+        if (event.target !== sceneManager.renderer.domElement) {
+            // It does cancel a half-made pair gesture, though. Reaching for Undo or
+            // a picker means the player has moved on, and lit corners still waiting
+            // for a second tap would then be a promise about the NEXT click on the
+            // solid that the player never made.
+            if (armedVertex !== null) armVertex(null);
+            return;
+        }
 
         // A long press already acted on this gesture; releasing still fires a
         // click, which would cycle the same edge a second time.

@@ -1,10 +1,12 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
-- [ ] auto-clearing of pair marks: do that only if auto-ruleout is checked.
-  - [ ] And we should rename that
+- [x] auto-clearing of pair marks: do that only if auto-ruleout is checked.
+  - [x] And we should rename that
   checkbox because it's going to cover more territory. Maybe call it auto-clear?
-- [ ] When the vertex-click for pair marking is "armed", clicking elsewhere, like the UI buttons,
+    - Called "Auto-tidy the board" (`autoTidy`) rather than auto-clear: ruling out an
+      edge ADDS a mark, so "clear" describes only the pair-mark half.
+- [x] When the vertex-click for pair marking is "armed", clicking elsewhere, like the UI buttons,
   should disarm it.
 
 -* [ ] I keep accidentally selecting faces (turning them green) even when debug mode is off, I think. Why?

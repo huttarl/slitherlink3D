@@ -56,19 +56,21 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
 - **PuzzleGrid extends Grid** (`js/PuzzleGrid.js`) — adds puzzle data, clue
   application, solution validation/highlighting, user-guess checking
   (`checkUserSolution`, whose pure rule/solution queries live in
-  `solutionChecker.js`), the undo/redo history (each move is an array of
-  edge-state deltas, so Reset, Clear-errors, and a move that auto-rules-out are
-  single compound moves), and `clearErrors()`. Two player settings live here as
+  `solutionChecker.js`), the undo/redo history (each move is an array of deltas —
+  an edge's guess or a pair mark, told apart by whether it carries `edgeId` or
+  `pairKey` — so Reset, Clear-errors, and a move that tidies up after itself are
+  single compound moves), the player's edge-pair marks (`pairMarks`, drawn by
+  `pairMarkRenderer.js`), and `clearErrors()`. Two player settings live here as
   plain flags that `ui.js` writes from its checkboxes: `highlightRuleViolations`
-  and `autoRuleOut`. Deliberately imports nothing from the UI/GameState
+  and `autoTidy`. Deliberately imports nothing from the UI/GameState
   layers (that once formed an import cycle): it exposes null-safe observer
   callbacks (`onHistoryChanged`, `onSolved`) that `ui.js` registers, and it
   runs headless in the JS unit tests.
 - **solutionChecker** (`js/solutionChecker.js`) — pure queries mirroring the
   Python solver's rule structure: vertex violations, clue violations, the
   single-loop check, and solution mismatches (spoiler data: report counts,
-  not locations). Also `findDeducibleRuleOuts`, the deduction behind the
-  auto-rule-out setting: the same rules read forwards, saying which edges a move
+  not locations). Also `findDeducibleRuleOuts`, the deduction behind half of the
+  `autoTidy` setting: the same rules read forwards, saying which edges a move
   has just made impossible. Local to the moved edge and one pass deep, on
   purpose — see its docstring.
 - **Vertex / Edge / Face** (`js/Vertex.js`, `Edge.js`, `Face.js`) — small data
@@ -93,6 +95,12 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   "painted" onto faces, each sized to its face's inscribed circle; plus
   per-frame culling of clues on faces turned away from the camera.
   Uses `Intl.NumberFormat(gameState.numberLocale)` for the digits.
+- `pairMarkRenderer.js` — the player's edge-pair marks: arcs across a face corner,
+  one for "exactly one" and two for "both or neither". Real `RingGeometry` sectors
+  rather than textures, since a corner's angle is whatever the solid makes it, and
+  opaque, so unlike the clue digits they need no per-frame culling and never move.
+  Also draws the faint candidate arcs while a vertex is armed. See
+  `docs/edge-pair-constraints.md`.
 - `idLabels.js` — sprite-based debugging ID labels for vertices, edges and
   faces (the "Show IDs" checkbox), one shape and color per kind: green
   ellipse, pink rectangle, yellow diamond. Built on the first toggle rather

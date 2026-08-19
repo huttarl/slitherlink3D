@@ -317,7 +317,7 @@ This also sidesteps the concern this section used to raise: `js/solutionChecker.
 is a second implementation of the rules, and unchecked annotations need no mirror
 of anything.
 
-**Auto-rule-out must not act on them.** A `bothOrNeither` pair plus one filled
+**The rule-outs must not act on them.** A `bothOrNeither` pair plus one filled
 edge *fills in* the partner, and `findDeducibleRuleOuts` only ever rules edges
 out — its docstring is explicit that the setting can never draw part of the loop.
 Wiring pair marks into it would cross that line, so it doesn't.
@@ -343,9 +343,18 @@ Two boundaries follow from the same reasoning:
   that changes an edge. Swallowing that click on the spot would read as the mark
   never registering.
 
-The sweep runs after any auto-rule-outs, so the deduced edge can be the one that
-settles a pair, and it runs whatever that setting says — it is cleanup, not
-deduction.
+The sweep runs after the rule-outs, so a deduced edge can be the one that settles a
+pair and the sweep sees the board as the move finally leaves it.
+
+**Both jobs are under one setting**, the checkbox that used to say "Auto-rule out
+impossible edges" and now says "Auto-tidy the board" (`autoTidy` in `PuzzleGrid`, no
+longer `autoRuleOut`). The sweep was unconditional at first, on the argument that it
+is cleanup rather than deduction; that was wrong about whose board it is. Neither job
+decides anything the player has not already determined, so a player who wants the
+bookkeeping done wants both, and one who wants to do it by hand wants neither —
+including keeping an arc they can see is spent. Turning the setting ON does not
+retire the marks already spent, for the same reason it does not sweep the whole board
+for rule-outs: it assists a MOVE. Make the next move and it catches up.
 
 Undo needed the one structural change. A move is an array of deltas, and there are
 now two kinds, told apart by whether they carry `edgeId` or `pairKey`;

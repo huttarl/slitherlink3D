@@ -83,10 +83,11 @@ describe('undo/redo history', () => {
     });
 });
 
-describe('the auto-rule-out setting', () => {
+describe('the auto-tidy setting: ruling out', () => {
     // What the rules deduce is solutionChecker's business (see
     // findDeducibleRuleOuts there); what matters here is that a move and its
-    // consequences travel through the history together.
+    // consequences travel through the history together. The setting's other job,
+    // retiring spent pair marks, has its own group further down.
     //
     // The position: fill the bottom edge 0-3, then 0-1. Vertex 0 then has its two
     // filled edges, so the vertical 0-4 can be ruled out -- one deduction, from the
@@ -101,7 +102,7 @@ describe('the auto-rule-out setting', () => {
         // separately, Undo would peel off the assistant's marks one at a time,
         // in an order the player never chose.
         const pg = makePuzzle();
-        pg.autoRuleOut = true;
+        pg.autoTidy = true;
         playIntoADeduction(pg);
 
         assert.strictEqual(pg.undoStack.length, 2, 'two clicks, two entries');
@@ -117,7 +118,7 @@ describe('the auto-rule-out setting', () => {
     test('one undo takes back the move and its rule-outs; one redo restores them',
         () => {
             const pg = makePuzzle();
-            pg.autoRuleOut = true;
+            pg.autoTidy = true;
             playIntoADeduction(pg);
             const guess = (v1, v2) =>
                 pg.edges.get(pg.findEdgeByVertices(v1, v2)).metadata.userGuess;
@@ -136,8 +137,8 @@ describe('the auto-rule-out setting', () => {
         });
 
     test('with the setting off, moves record exactly as they always did', () => {
-        const pg = makePuzzle();            // autoRuleOut defaults to off
-        assert.strictEqual(pg.autoRuleOut, false, 'it should be off by default');
+        const pg = makePuzzle();            // autoTidy defaults to off
+        assert.strictEqual(pg.autoTidy, false, 'it should be off by default');
         playIntoADeduction(pg);
         assert.strictEqual(pg.undoStack[1].length, 1);
         assert.strictEqual(
@@ -147,7 +148,7 @@ describe('the auto-rule-out setting', () => {
 
     test('a move that deduces nothing is still a plain one-delta move', () => {
         const pg = makePuzzle();
-        pg.autoRuleOut = true;
+        pg.autoTidy = true;
         pg.setEdgeState(pg.findEdgeByVertices(0, 3), 1);   // the first move alone
         assert.strictEqual(pg.undoStack[0].length, 1);
     });
@@ -363,12 +364,19 @@ describe('pair marks', () => {
     });
 });
 
-describe('retiring a pair mark the board has overtaken', () => {
+describe('the auto-tidy setting: retiring a pair mark the board has overtaken', () => {
     // The line this group is really about: a mark is cleared once the player's own
     // edge marks have SETTLED both its edges in agreement with it -- never used to
     // decide an edge, and never cleared while it still disagrees with the board.
     function adjacentPair(pg) {
         return [pg.findEdgeByVertices(0, 1), pg.findEdgeByVertices(0, 3)];
+    }
+
+    /** A puzzle with the tidying turned on, which is the only way it happens. */
+    function tidyPuzzle() {
+        const pg = makePuzzle();
+        pg.autoTidy = true;
+        return pg;
     }
 
     test('the raw predicate: satisfied only when both edges agree with the mark',
@@ -390,7 +398,7 @@ describe('retiring a pair mark the board has overtaken', () => {
     });
 
     test('one edge decided is not enough; the second one retires the mark', () => {
-        const pg = makePuzzle();
+        const pg = tidyPuzzle();
         const [a, b] = adjacentPair(pg);
         pg.setPairMark(a, b, 1);                  // 1 = exactlyOne
         pg.setEdgeState(a, 1);                    // one of them filled in
@@ -402,14 +410,14 @@ describe('retiring a pair mark the board has overtaken', () => {
     });
 
     test('both-or-neither retires when both go the same way, either way', () => {
-        const filled = makePuzzle();
+        const filled = tidyPuzzle();
         const [a, b] = adjacentPair(filled);
         filled.setPairMark(a, b, 2);              // 2 = bothOrNeither
         filled.setEdgeState(a, 1);
         filled.setEdgeState(b, 1);
         assert.strictEqual(filled.getPairMark(a, b), 0);
 
-        const neither = makePuzzle();
+        const neither = tidyPuzzle();
         const [c, d] = adjacentPair(neither);
         neither.setPairMark(c, d, 2);
         neither.setEdgeState(c, 2);
@@ -421,14 +429,14 @@ describe('retiring a pair mark the board has overtaken', () => {
         // Not a case for cleanup: the player has marked a pair one way and then
         // played it the other, and quietly removing the evidence would hide the
         // disagreement instead of letting them see it.
-        const pg = makePuzzle();
+        const pg = tidyPuzzle();
         const [a, b] = adjacentPair(pg);
         pg.setPairMark(a, b, 1);                  // exactlyOne...
         pg.setEdgeState(a, 1);
         pg.setEdgeState(b, 1);                    // ...but both filled in
         assert.strictEqual(pg.getPairMark(a, b), 1);
 
-        const other = makePuzzle();
+        const other = tidyPuzzle();
         const [c, d] = adjacentPair(other);
         other.setPairMark(c, d, 2);               // bothOrNeither...
         other.setEdgeState(c, 1);
@@ -438,7 +446,7 @@ describe('retiring a pair mark the board has overtaken', () => {
 
     test('the clearing rides in the SAME history entry, so one undo restores both',
          () => {
-        const pg = makePuzzle();
+        const pg = tidyPuzzle();
         const [a, b] = adjacentPair(pg);
         pg.setPairMark(a, b, 1);
         pg.setEdgeState(a, 1);
@@ -462,8 +470,7 @@ describe('retiring a pair mark the board has overtaken', () => {
     test('an auto-ruled-out edge can be the one that settles a pair', () => {
         // Why the sweep runs after the deductions rather than before them: here the
         // player never touches the second edge of the pair at all.
-        const pg = makePuzzle();
-        pg.autoRuleOut = true;
+        const pg = tidyPuzzle();
         const filled = pg.findEdgeByVertices(0, 1);
         const deduced = pg.findEdgeByVertices(0, 4);   // ruled out by the 2nd move
         pg.setPairMark(filled, deduced, 1);            // exactlyOne
@@ -480,7 +487,7 @@ describe('retiring a pair mark the board has overtaken', () => {
     });
 
     test('marks elsewhere on the board are not disturbed', () => {
-        const pg = makePuzzle();
+        const pg = tidyPuzzle();
         const [a, b] = adjacentPair(pg);
         // A pair at the far vertex 6, sharing the top face; nothing here touches it.
         const [c, d] = [pg.findEdgeByVertices(6, 5), pg.findEdgeByVertices(6, 7)];
@@ -495,7 +502,7 @@ describe('retiring a pair mark the board has overtaken', () => {
     test('marking a pair whose edges are already decided keeps the mark', () => {
         // Making a mark is not a move that changes an edge, so no sweep runs.
         // Swallowing the click on the spot would look like it never registered.
-        const pg = makePuzzle();
+        const pg = tidyPuzzle();
         const [a, b] = adjacentPair(pg);
         pg.setEdgeState(a, 1);
         pg.setEdgeState(b, 2);
@@ -504,7 +511,7 @@ describe('retiring a pair mark the board has overtaken', () => {
     });
 
     test('the observer hears the clearing, so the arc comes off the board', () => {
-        const pg = makePuzzle();
+        const pg = tidyPuzzle();
         const [a, b] = adjacentPair(pg);
         pg.setPairMark(a, b, 2);                  // bothOrNeither
         const heard = [];
@@ -512,6 +519,20 @@ describe('retiring a pair mark the board has overtaken', () => {
         pg.setEdgeState(a, 2);
         pg.setEdgeState(b, 2);
         assert.deepStrictEqual(heard, [[PuzzleGrid.pairKey(a, b), 0]]);
+    });
+
+    test('with the setting off, a spent mark stays until the player clears it', () => {
+        // The whole group above depends on tidyPuzzle turning this on. A player who
+        // does their own bookkeeping keeps their own arcs.
+        const pg = makePuzzle();
+        assert.strictEqual(pg.autoTidy, false);
+        const [a, b] = adjacentPair(pg);
+        pg.setPairMark(a, b, 1);
+        pg.setEdgeState(a, 1);
+        pg.setEdgeState(b, 2);                    // spent, by the other group's test
+        assert.strictEqual(pg.getPairMark(a, b), 1);
+        assert.strictEqual(pg.undoStack[pg.undoStack.length - 1].length, 1,
+            'and the move carries nothing but the click');
     });
 });
 

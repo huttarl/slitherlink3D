@@ -732,9 +732,9 @@
                     Auto-highlight mistakes</label>
             </div>
             <div style="margin-top: 1ex; font-size: 14px">
-                <label title="After each move, rule out the edges it has just made impossible: the rest of a clue you have finished, and the edges the loop can no longer use at a corner. Undo takes back a move and its rule-outs together.">
-                    <input type="checkbox" id="autoRuleOut">
-                    Auto-rule out impossible edges</label>
+                <label title="After each move, do the bookkeeping it has made obvious: rule out the edges the move has just made impossible (the rest of a clue you have finished, and the edges the loop can no longer use at a corner), and remove any edge-pair arc whose two edges you have now decided. Undo takes back a move and its tidying together.">
+                    <input type="checkbox" id="autoTidy">
+                    Auto-tidy the board</label>
             </div>
             <div id="checkFeedback" style="margin-top: 1ex; font-size: 14px" class="hidden">
                 <span id="checkStatus"></span>

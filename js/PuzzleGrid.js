@@ -71,16 +71,22 @@ export class PuzzleGrid extends Grid {
         // player clicks. Explicit "Check solution" requests always highlight.
         this.highlightRuleViolations = true;
 
-        // Player setting, likewise: whether each move also rules out the edges
-        // it has just made impossible (see findDeducibleRuleOuts, and
-        // setEdgeState, which is where it happens).
+        // Player setting, likewise: whether each move also does the bookkeeping it
+        // has just made obvious. TWO jobs now, both in setEdgeState -- ruling out
+        // the edges the move has made impossible (findDeducibleRuleOuts), and
+        // retiring the pair marks it has used up (spentPairMarks) -- which is why
+        // this is no longer called autoRuleOut.
+        //
+        // Neither job decides anything the player has not already determined, so
+        // they belong under one switch: a player who wants the board kept tidy wants
+        // both, and one who wants to do all the bookkeeping by hand wants neither.
         //
         // Off by default, unlike the highlighting above, because the two are
         // different in kind: highlighting only REPORTS on the player's marks,
         // while this one makes marks of its own. An assistant that starts
         // uninvited would also make the game look, to a first-time player,
         // like it was playing itself.
-        this.autoRuleOut = false;
+        this.autoTidy = false;
     }
 
     /** Notify the UI layer (if any) that the undo/redo history changed. */
@@ -526,10 +532,15 @@ export class PuzzleGrid extends Grid {
      * at least one was open; once both are decided compatibly it says nothing the
      * board does not already show, and leaving it there means the player must
      * click marks away by hand to keep the board readable. Compare the note in
-     * docs/edge-pair-constraints.md on auto-rule-out, which must NOT read pair
+     * docs/edge-pair-constraints.md on the rule-outs, which must NOT read pair
      * marks: deducing an edge FROM a mark would be playing the puzzle, whereas
      * retiring a mark the player's own moves have overtaken adds no information
      * to the board and removes none either.
+     *
+     * Offered under the autoTidy setting all the same, and only there. It is the
+     * player's board to keep as they like, and someone who has turned the
+     * bookkeeping off means the arcs too -- a mark the game removed is one they
+     * cannot decide for themselves to leave standing.
      *
      * Only pairs touching an edge this move changed are considered, so a mark
      * elsewhere is never disturbed -- and in particular a pair the player marks
@@ -584,17 +595,14 @@ export class PuzzleGrid extends Grid {
      * through here (or record them yourself, like resetPuzzle) so the undo
      * history stays complete.
      *
-     * With the autoRuleOut setting on, the move also carries whatever the change
-     * has just made impossible (see findDeducibleRuleOuts). Those go into the SAME
-     * history entry, which is the whole reason this can be one function rather than
-     * two: undo already restores a compound move in reverse, so one press takes
-     * back the click together with everything it caused. Recorded separately they
-     * would be several presses to unwind, in an order the player never chose.
-     *
-     * The move likewise carries any pair marks the change has used up (see
-     * spentPairMarks), for the same reason and in the same entry -- and that
-     * sweep runs whatever the autoRuleOut setting says, being cleanup rather
-     * than deduction.
+     * With the autoTidy setting on, the move also carries the bookkeeping it has
+     * made obvious: whatever the change has just made impossible (see
+     * findDeducibleRuleOuts), and whatever pair marks it has used up (see
+     * spentPairMarks). Those go into the SAME history entry, which is the whole
+     * reason this can be one function rather than three: undo already restores a
+     * compound move in reverse, so one press takes back the click together with
+     * everything it caused. Recorded separately they would be several presses to
+     * unwind, in an order the player never chose.
      *
      * @param {number} edgeId - ID of the edge to change
      * @param {number} newState - New state, an index into EDGE_STATES
@@ -608,7 +616,7 @@ export class PuzzleGrid extends Grid {
         // to see what it rules out.
         this.applyEdgeState(edgeId, newState);
 
-        if (this.autoRuleOut) {
+        if (this.autoTidy) {
             for (const deducedId of findDeducibleRuleOuts(this, edgeId)) {
                 const deduced = this.edges.get(deducedId);
                 // prevState is read rather than assumed to be unknown, so that a
@@ -620,20 +628,20 @@ export class PuzzleGrid extends Grid {
                 this.applyEdgeState(deducedId, 2);
             }
             if (move.length > 1) {
-                debug(`autoRuleOut: edge ${edgeId} -> ${newState} also ruled out `
+                debug(`autoTidy: edge ${edgeId} -> ${newState} also ruled out `
                       + `${move.slice(1).map(d => d.edgeId).join(', ')}`);
             }
-        }
 
-        // Last, because an auto-ruled-out edge can be the one that settles a pair,
-        // so the sweep has to see the board as this move finally leaves it. Also
-        // into the SAME history entry, for the reason given above: one Undo takes
-        // back the click along with the marks it retired.
-        for (const delta of this.spentPairMarks(move)) {
-            move.push(delta);
-            this.applyPairMark(delta.pairKey, delta.newState);
-            debug(`spent pair mark ${delta.pairKey} `
-                  + `(${PAIR_RELATIONS[delta.prevState]}) cleared`);
+            // Last, because an auto-ruled-out edge can be the one that settles a
+            // pair, so the sweep has to see the board as this move finally leaves
+            // it. Also into the SAME history entry, for the reason given above: one
+            // Undo takes back the click along with the marks it retired.
+            for (const delta of this.spentPairMarks(move)) {
+                move.push(delta);
+                this.applyPairMark(delta.pairKey, delta.newState);
+                debug(`autoTidy: spent pair mark ${delta.pairKey} `
+                      + `(${PAIR_RELATIONS[delta.prevState]}) cleared`);
+            }
         }
 
         this.undoStack.push(move);

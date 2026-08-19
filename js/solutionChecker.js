@@ -130,8 +130,9 @@ export function isClueSatisfied(grid, face) {
 /**
  * Which edges beside a just-changed one are now certainly NOT in the loop.
  *
- * The optional assistant behind the "Auto-rule-out" setting (see autoRuleOut in
- * PuzzleGrid). Two deductions, both of them the ones a player makes by eye:
+ * Half of the optional assistant behind the "Auto-tidy the board" setting (see
+ * autoTidy in PuzzleGrid, which also retires spent pair marks under it). Two
+ * deductions, both of them the ones a player makes by eye:
  *
  *   1. a clue with as many filled edges as it asks for wants no more, so the rest
  *      of that face is out. A 0 clue is this rule with nothing filled, not a rule
