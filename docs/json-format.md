@@ -138,3 +138,27 @@ Puzzles (and their solutions) will appear in a separate JSON file, with the foll
     "displayPuzzles": [ { "clues": [-1, 3, 1], "solution": [0, 1, 2] } ]
   }
 ```
+
+The lore registry: data/solids-meta.json
+- One more file lives in `data/`, and it is the odd one out: **hand-edited**, where
+  everything else there is tool-written. It holds durable lore about the solids —
+  facts that must survive regeneration of the grid files, which rebuild their
+  metadata from the generator's own knowledge and command line and would silently
+  drop anything added by hand (the `source` discussion above records how that
+  went with P6).
+- Structure: a `"solids"` dictionary keyed by gridId, each value a dictionary of
+  that solid's attributes (currently `"aliases"`, a list of strings), and a
+  `"duals"` list of gridId pairs. A pair is listed ONCE, unordered — symmetry by
+  construction — and only when both solids are in `data/`; self-dual solids are
+  not listed, because the grid file's `"self-dual"` category already says it.
+- Nothing reads it directly. `util/build_catalogue.py` validates it (ids must
+  exist, attribute names must be known, no solid in two pairs) and folds it into
+  each grid's entry in `data/grids.json` as `"aliases"` and `"dual"` keys, absent
+  when a solid has none. A bad registry stops the build loudly with the old
+  catalogue left standing, so a typo cannot become lore that quietly never
+  arrives. An edit here therefore takes effect on the next
+  `util/build_catalogue.py` run, like any other change under `data/`.
+- `util/json_format.py data/*.json` skips it (see `HAND_EDITED_FILES`): the
+  one-line-per-leaf-list rule that suits coordinates would fold its multi-line
+  `_comment` header onto one line, and a hand-edited file's layout belongs to
+  whoever edits it.

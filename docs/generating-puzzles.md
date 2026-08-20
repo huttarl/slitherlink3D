@@ -152,6 +152,12 @@ faces/edges/puzzles, and writes the catalogue sorted by size (edges, then
 faces) — the order the picker presents, intended eventually as the player's
 progression order. A new grid won't appear in the picker until this has run.
 
+It also folds in `data/solids-meta.json`, the hand-edited lore registry
+(aliases and dual pairs — see `docs/json-format.md`), validating it first: a
+bad registry stops the build with the old catalogue left in place. So an edit
+to the registry, like any other change under `data/`, takes effect on the next
+build.
+
 `util/catalogue_report.py` then prints what `data/` holds: a line per grid with
 its counts, puzzles, display puzzles and categories, plus totals, and a note on
 any grid with no puzzles or (if it's big enough for the title screen) no display

@@ -14,6 +14,14 @@ Finished items live in ideas/TODOs-done.md.
   - [ ] ...?
 
 - Add Elongated pentagonal pyramid (J9), which is self-dual
+- And a Hexagonal trapezohedron
+- I think we have a deltoidal icositetrahedron (dual of rhombicuboctahedron),
+  but what about the pseudodeltoidal icositetrahedron (dual of J37)?
+
+
+- learned about "noble" category of polyhedra ("a polytope that is both isogonal and
+  isotopic, i.e. its vertices are identical under its symmetry group, and so are its facets").
+  It includes the Platonics, but are there other *convex* nobles?
 
 - [ ] Adding more info about each polyhedron, as applicable:
   - Design settled (2026-08-20): hand-curated lore lives in data/solids-meta.json
@@ -21,10 +29,16 @@ Finished items live in ideas/TODOs-done.md.
     fold into grids.json alongside what it reads from the V/E/F grid files; the
     About card then reads it off its catalogue entry, as it already does for
     categories. Geometry files stay tool-written; lore survives regeneration.
-  - [ ] teach build_catalogue.py to validate the registry (ids exist, dual pairs
+  - [x] teach build_catalogue.py to validate the registry (ids exist, dual pairs
     are a symmetric involution) and fold it into grids.json; json_format.py must
     not mangle the registry; catalogue_report.py staleness guard counts it as
     an input; pytest coverage
+    - Done 2026-08-20. Catalogue entries now carry "aliases" and "dual" (absent
+      when a solid has none); a bad registry stops the build loudly with the old
+      catalogue left standing. json_format.py's CLI skips it (HAND_EDITED_FILES).
+      The staleness guard needed nothing: it already globs all of data/*.json.
+      Tests in util/tests/test_build_catalogue.py, including one that validates
+      the real registry against the real grids.
   - [ ] add aliases, like "buckyball" / "soccer ball" for truncated icosahedron
   - [ ] link to dual solid - linking to that solid in the game, if we have it
     (navigate via puzzlePicker's leave-confirmation guard, exported)

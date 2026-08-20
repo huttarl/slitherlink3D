@@ -31,6 +31,15 @@ from pathlib import Path
 # "source" line: where to write it, and how much to say while doing it.
 NON_CONTENT_ARGUMENTS = ('--out=', '--quiet', '-q', '--verbose', '-v')
 
+# Hand-edited data files, which keep their own formatting. This module's rule
+# puts any leaf list on one line, which is right for coordinates and clue lists
+# but would fold the registry's multi-line "_comment" header into one unreadable
+# line -- and a hand-edited file's layout belongs to whoever edits it anyway.
+# The command-line pass skips them, because `json_format.py data/*.json`
+# sweeps them in indiscriminately; the reformat_file function itself still
+# reformats whatever it is given.
+HAND_EDITED_FILES = ('solids-meta.json',)
+
 
 def source_line(arguments=None):
     """The "source" property: the command that reproduces this file.
@@ -130,6 +139,9 @@ def main():
         print('Usage: python3 util/json_format.py <file.json> ...')
         return 1
     for path in paths:
+        if Path(path).name in HAND_EDITED_FILES:
+            print(f'skipped {path} (hand-edited; keeps its own formatting)')
+            continue
         reformat_file(path)
         print(f'formatted {path}')
     return 0
