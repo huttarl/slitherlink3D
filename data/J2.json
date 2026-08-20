@@ -1,7 +1,7 @@
 {
   "gridId": "J2",
   "gridName": "Pentagonal pyramid (J2)",
-  "categories": ["Johnson solid"],
+  "categories": ["Johnson solid", "self-dual"],
   "recipe": "J2",
   "source": "https://levskaya.github.io/polyhedronisme/?recipe=J2",
   "vertices": [

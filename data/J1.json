@@ -1,7 +1,7 @@
 {
   "gridId": "J1",
   "gridName": "Square pyramid (J1)",
-  "categories": ["Johnson solid"],
+  "categories": ["Johnson solid", "self-dual"],
   "recipe": "J1",
   "source": "https://levskaya.github.io/polyhedronisme/?recipe=J1",
   "vertices": [
