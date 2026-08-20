@@ -1,0 +1,46 @@
+{
+  "_comment": [
+    "Hand-edited lore about the solids: durable metadata that must survive",
+    "regeneration of the grid (V/E/F) files, which are tool-written and may be",
+    "rebuilt at any time. build_catalogue.py reads this file and folds it into",
+    "data/grids.json alongside what it reads from the grid files, so an edit",
+    "here takes effect after the next build_catalogue.py run.",
+    "",
+    "'solids' is keyed by gridId; each value is a dictionary of that solid's",
+    "attributes, so new kinds of lore (a preferred link, say) slot in beside",
+    "'aliases' without changing the file's shape. A solid with no lore simply",
+    "has no entry.",
+    "",
+    "'duals' lists each dual pair ONCE, unordered, rather than a 'dual' field",
+    "on both solids: symmetry then holds by construction. Only pairs where",
+    "both solids are in data/ belong here; add the pair when the missing dual",
+    "arrives. Self-dual solids are not listed -- that is what the 'self-dual'",
+    "category in the grid file says."
+  ],
+  "solids": {
+    "C": { "aliases": ["regular hexahedron"] },
+    "I": { "aliases": ["twenty-sided die (d20)"] },
+    "aC": { "aliases": ["vector equilibrium"] },
+    "tI": { "aliases": ["buckyball", "soccer ball"] }
+  },
+  "duals": [
+    ["C", "O"],
+    ["D", "I"],
+    ["tT", "dtT"],
+    ["tC", "dtC"],
+    ["tO", "dtO"],
+    ["tD", "dtD"],
+    ["tI", "dtI"],
+    ["aC", "daC"],
+    ["aD", "daD"],
+    ["eC", "deC"],
+    ["eD", "deD"],
+    ["bC", "dbC"],
+    ["bD", "dbD"],
+    ["sC", "dsC"],
+    ["sD", "dsD"],
+    ["cD", "gd20"],
+    ["gp12", "gd21"],
+    ["P3", "J12"]
+  ]
+}

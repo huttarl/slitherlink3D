@@ -14,11 +14,29 @@ Finished items live in ideas/TODOs-done.md.
   - [ ] ...?
 
 - [ ] Adding more info about each polyhedron, as applicable:
+  - Design settled (2026-08-20): hand-curated lore lives in data/solids-meta.json
+    (drafted -- aliases and dual pairs), which build_catalogue.py will validate and
+    fold into grids.json alongside what it reads from the V/E/F grid files; the
+    About card then reads it off its catalogue entry, as it already does for
+    categories. Geometry files stay tool-written; lore survives regeneration.
+  - [ ] teach build_catalogue.py to validate the registry (ids exist, dual pairs
+    are a symmetric involution) and fold it into grids.json; json_format.py must
+    not mangle the registry; catalogue_report.py staleness guard counts it as
+    an input; pytest coverage
   - [ ] add aliases, like "buckyball" / "soccer ball" for truncated icosahedron
   - [ ] link to dual solid - linking to that solid in the game, if we have it
-  - [ ] display Conway recipe, with link to polyhedronisme
+    (navigate via puzzlePicker's leave-confirmation guard, exported)
+  - [ ] display Conway recipe, with link to polyhedronisme; link the "Conway
+    recipe" label itself to an explanation (candidate: George Hart's
+    conway_notation.html page, matching polyhedronLinks house style)
   - [ ] Where to fit all this stuff, without overwhelming the user? Put some of it
     under a "More" fold?
+  - [ ] later, once the design settles: move the per-grid links currently encoded
+    in js/polyhedronLinks.js (the exception table) into the lore registry as a
+    per-solid property, folded into the catalogue like the rest
+  - Possible future bridge, only if needed: registry properties that must be
+    merged INTO the V/E/F grid files themselves (a util/apply_metadata.py pass,
+    with a staleness check). Not building it until a property demands it.
 
 - [ ] Add more rules, after A B C and D, to help the puzzle generator / evaluator know
     what's possible & easy for players. I have several that I use experientially in
