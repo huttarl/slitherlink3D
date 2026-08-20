@@ -152,7 +152,7 @@ faces/edges/puzzles, and writes the catalogue sorted by size (edges, then
 faces) — the order the picker presents, intended eventually as the player's
 progression order. A new grid won't appear in the picker until this has run.
 
-It also folds in `data/solids-meta.json`, the hand-edited lore registry
+It also folds in `data/lore.json`, the hand-edited lore registry
 (aliases and dual pairs — see `docs/json-format.md`), validating it first: a
 bad registry stops the build with the old catalogue left in place. So an edit
 to the registry, like any other change under `data/`, takes effect on the next

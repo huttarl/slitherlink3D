@@ -38,7 +38,7 @@ NON_CONTENT_ARGUMENTS = ('--out=', '--quiet', '-q', '--verbose', '-v')
 # The command-line pass skips them, because `json_format.py data/*.json`
 # sweeps them in indiscriminately; the reformat_file function itself still
 # reformats whatever it is given.
-HAND_EDITED_FILES = ('solids-meta.json',)
+HAND_EDITED_FILES = ('lore.json',)
 
 
 def source_line(arguments=None):

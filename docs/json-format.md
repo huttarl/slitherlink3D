@@ -139,7 +139,7 @@ Puzzles (and their solutions) will appear in a separate JSON file, with the foll
   }
 ```
 
-The lore registry: data/solids-meta.json
+The lore registry: data/lore.json
 - One more file lives in `data/`, and it is the odd one out: **hand-edited**, where
   everything else there is tool-written. It holds durable lore about the solids —
   facts that must survive regeneration of the grid files, which rebuild their

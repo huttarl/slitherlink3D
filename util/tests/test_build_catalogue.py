@@ -1,6 +1,6 @@
 """Tests for build_catalogue.py's handling of the lore registry.
 
-data/solids-meta.json is hand-edited, so the validation is the whole safety
+data/lore.json is hand-edited, so the validation is the whole safety
 story: a typo there must stop the catalogue build loudly, never become lore
 that quietly fails to reach the app. These tests pin the validator's rules,
 the folding of lore onto catalogue entries, and — as an integration check —
@@ -106,10 +106,10 @@ class TestTheRealRegistry:
         known_ids = set()
         for path in DATA_DIR.glob('*.json'):
             if path.stem.endswith('-puzzles') or path.name in (
-                    'grids.json', 'solids-meta.json'):
+                    'grids.json', 'lore.json'):
                 continue
             known_ids.add(json.loads(path.read_text())['gridId'])
         validate_lore(solids, duals, known_ids)
 
     def test_missing_registry_is_fine(self, tmp_path):
-        assert load_lore(tmp_path / 'solids-meta.json') == ({}, [])
+        assert load_lore(tmp_path / 'lore.json') == ({}, [])

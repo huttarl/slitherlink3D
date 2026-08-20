@@ -24,7 +24,7 @@ Finished items live in ideas/TODOs-done.md.
   It includes the Platonics, but are there other *convex* nobles?
 
 - [ ] Adding more info about each polyhedron, as applicable:
-  - Design settled (2026-08-20): hand-curated lore lives in data/solids-meta.json
+  - Design settled (2026-08-20): hand-curated lore lives in data/lore.json
     (drafted -- aliases and dual pairs), which build_catalogue.py will validate and
     fold into grids.json alongside what it reads from the V/E/F grid files; the
     About card then reads it off its catalogue entry, as it already does for

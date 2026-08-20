@@ -18,7 +18,7 @@ Note that the "file" property (the filename stem used to fetch
 data/<file>.json) can differ from the grid's internal "gridId" —
 e.g. cube.json has gridId "C".
 
-Besides the grid files, this folds in data/solids-meta.json, the hand-edited
+Besides the grid files, this folds in data/lore.json, the hand-edited
 lore registry (aliases, dual pairs — see the _comment in that file): each
 solid's lore lands on its catalogue entry, so the app reads one manifest and
 the registry survives regeneration of the tool-written grid files. The
@@ -35,7 +35,7 @@ import json_format
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CATALOGUE_PATH = DATA_DIR / "grids.json"
-META_PATH = DATA_DIR / "solids-meta.json"
+LORE_PATH = DATA_DIR / "lore.json"
 
 # The lore attributes a solid's registry entry may carry. Closed on purpose: an
 # unrecognized key in a hand-edited file is far more likely a typo ("aliasses")
@@ -86,14 +86,14 @@ def build_entry(grid_path):
     }
 
 
-def load_lore(meta_path=META_PATH):
+def load_lore(lore_path=LORE_PATH):
     """The lore registry's two parts, or empty ones if there is no registry.
 
     A missing registry is fine — the catalogue is then built from the grid
     files alone, exactly as before the registry existed."""
-    if not meta_path.exists():
+    if not lore_path.exists():
         return ({}, [])
-    data = json.load(open(meta_path))
+    data = json.load(open(lore_path))
     return (data.get("solids", {}), data.get("duals", []))
 
 
@@ -173,7 +173,7 @@ def main():
     for grid_path in sorted(DATA_DIR.glob("*.json")):
         if grid_path.name == CATALOGUE_PATH.name or grid_path.stem.endswith("-puzzles"):
             continue
-        if grid_path == META_PATH:
+        if grid_path == LORE_PATH:
             continue    # not skipped, just read separately -- see below
 
         entry = build_entry(grid_path)
@@ -188,7 +188,7 @@ def main():
     try:
         validate_lore(solids, duals, {e["gridId"] for e in entries})
     except ValueError as err:
-        print(f"{META_PATH.name} is invalid; catalogue NOT rebuilt:\n{err}",
+        print(f"{LORE_PATH.name} is invalid; catalogue NOT rebuilt:\n{err}",
               file=sys.stderr)
         return 1
     fold_lore(entries, solids, duals)
