@@ -205,6 +205,13 @@ function wireSettingToggles(gameState, puzzleGrid) {
     wireSetting('soundOn', 'soundOn', (on) => {
         setSoundEnabled(on);
     });
+
+    // The fold these three sit in. Not wireSetting's shape: a <details> opens
+    // and closes through `open` and reports it as 'toggle', where that helper
+    // speaks in checkboxes.
+    const fold = document.getElementById('settingsFold');
+    fold.open = settings.settingsOpen;
+    fold.addEventListener('toggle', () => saveSetting('settingsOpen', fold.open));
     // Nothing else to do in either direction, which is the opposite of the
     // highlighting above and worth saying why. Switching ON does not sweep the
     // board: this assists a MOVE, and a sweep would deduce from every face and

@@ -173,7 +173,11 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   has the same one. No DOM, no THREE; unit-tested headless.
 - `settings.js` — the player's settings across page loads, in `localStorage`
   under one namespaced key. Changing puzzle reloads the page, so a checkbox is
-  not somewhere a preference can live. `SETTINGS_DEFAULTS` in `constants.js` is
+  not somewhere a preference can live. They sit in the drawer behind a
+  `<details>` fold (`#settingsFold`) — a plain one, so the disclosure triangle,
+  the keyboard and the screen reader all come free; whether it is open is itself
+  a stored setting, so folding them away costs no extra step to a player who
+  wants them to hand. `SETTINGS_DEFAULTS` in `constants.js` is
   the only source of a default — the markup carries no `checked` — and
   `wireSettingToggles` in `ui.js` joins the two. Stored values are validated on
   the way in (known key, unchanged type), and every access is wrapped: no

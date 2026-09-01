@@ -183,6 +183,18 @@
             margin-top: 1ex;
         }
 
+        /* The settings fold. Matches the row spacing the buttons above it get
+           from #infoDrawer > button, so the summary reads as one more row of the
+           drawer rather than as a separate block. */
+        #settingsFold {
+            margin-top: 1ex;
+            font-size: 14px;
+        }
+
+        #settingsFold > summary {
+            cursor: pointer;
+        }
+
         #panelToggle {
             font-size: 20px;
             line-height: 1;
@@ -726,24 +738,34 @@
             <button id="levelCamera" class="hidden"
                     title="Right side up: turn the view upright again"
                     aria-label="Right side up">&#x21E7;</button>
-            <div style="margin-top: 1ex; font-size: 14px">
-                <label title="Mark edges in red when they clearly break the rules, as you play">
-                    <!-- No `checked` here, and none on any player setting: the
-                         defaults live in SETTINGS_DEFAULTS (js/constants.js),
-                         and ui.js sets these from the stored settings. -->
-                    <input type="checkbox" id="highlightViolations">
-                    Auto-highlight mistakes</label>
-            </div>
-            <div style="margin-top: 1ex; font-size: 14px">
-                <label title="After each move, do the bookkeeping it has made obvious: rule out the edges the move has just made impossible (the rest of a clue you have finished, and the edges the loop can no longer use at a corner), and remove any edge-pair arc whose two edges you have now decided. Undo takes back a move and its tidying together.">
-                    <input type="checkbox" id="autoTidy">
-                    Auto-tidy the board</label>
-            </div>
-            <div style="margin-top: 1ex; font-size: 14px">
-                <label title="Play the short tune when you solve a puzzle">
-                    <input type="checkbox" id="soundOn">
-                    Sound</label>
-            </div>
+            <!-- Folded away, because these are set rarely and read never, while
+                 the drawer above them is what a player uses constantly. A plain
+                 <details>: the disclosure triangle, the keyboard and the screen
+                 reader all come with it, where a hand-rolled toggle would have to
+                 re-earn each one. Whether it sits open is itself remembered
+                 (settingsOpen), which is what keeps the fold from costing a
+                 second step to everyone who does want the settings to hand. -->
+            <details id="settingsFold">
+                <summary>Settings</summary>
+                <div style="margin-top: 1ex; font-size: 14px">
+                    <label title="Mark edges in red when they clearly break the rules, as you play">
+                        <!-- No `checked` here, and none on any player setting: the
+                             defaults live in SETTINGS_DEFAULTS (js/constants.js),
+                             and ui.js sets these from the stored settings. -->
+                        <input type="checkbox" id="highlightViolations">
+                        Auto-highlight mistakes</label>
+                </div>
+                <div style="margin-top: 1ex; font-size: 14px">
+                    <label title="After each move, do the bookkeeping it has made obvious: rule out the edges the move has just made impossible (the rest of a clue you have finished, and the edges the loop can no longer use at a corner), and remove any edge-pair arc whose two edges you have now decided. Undo takes back a move and its tidying together.">
+                        <input type="checkbox" id="autoTidy">
+                        Auto-tidy the board</label>
+                </div>
+                <div style="margin-top: 1ex; font-size: 14px">
+                    <label title="Play the short tune when you solve a puzzle">
+                        <input type="checkbox" id="soundOn">
+                        Sound</label>
+                </div>
+            </details>
             <div id="checkFeedback" style="margin-top: 1ex; font-size: 14px" class="hidden">
                 <span id="checkStatus"></span>
                 <button id="clearErrors" class="hidden" style="margin-top: 0.5ex"

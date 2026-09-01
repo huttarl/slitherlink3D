@@ -516,6 +516,13 @@ export const SETTINGS_DEFAULTS = {
     // setSoundEnabled in celebrationSound.js; when there is more than one source
     // of sound, that belongs in a shared module instead.
     soundOn: true,
+    // Whether the drawer's Settings fold sits open. Not a setting about the game
+    // but about the panel, and it earns its place: folding the settings away
+    // costs a click to anyone who does want them to hand -- twice over on a
+    // phone, where the drawer itself starts collapsed -- and remembering the
+    // fold is what gives that player their one-time way out. Closed by default,
+    // since these are set rarely and read never.
+    settingsOpen: false,
 };
 
 export const CELEBRATION_TUNE = {
