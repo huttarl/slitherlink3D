@@ -11,7 +11,7 @@
  * be from a timer on page load. A solve always arrives through a click or a
  * keypress on "Check solution", so the gesture has always happened.
  */
-import {CELEBRATION_TUNE} from './constants.js';
+import {CELEBRATION_TUNE, SETTINGS_DEFAULTS} from './constants.js';
 import {debug} from './debug.js';
 
 /** Middle C, the tune's tonic. */
@@ -55,6 +55,30 @@ function context() {
  * @type {?GainNode}
  */
 let currentPlay = null;
+
+/**
+ * Whether sound is wanted at all -- the player's setting, which ui.js writes
+ * here from the checkbox (the same arrangement PuzzleGrid's flags use, so this
+ * module needs no import from the settings or UI layers).
+ *
+ * Held rather than read from storage per play, deliberately: under file:// there
+ * is no storage to read, and a player who muted would go on hearing the tune.
+ * Starts at the default, so a page whose wiring never runs still behaves.
+ *
+ * @type {boolean}
+ */
+let soundEnabled = SETTINGS_DEFAULTS.soundOn;
+
+/**
+ * Turns sound on or off. Switching it OFF silences anything already playing:
+ * a mute that waits for the current tune to finish is not a mute.
+ *
+ * @param {boolean} on
+ */
+export function setSoundEnabled(on) {
+    soundEnabled = on;
+    if (!on) stopCelebrationTune();
+}
 
 /**
  * Schedules one note.
@@ -118,6 +142,10 @@ export function stopCelebrationTune() {
  * which a chain of setTimeouts would not.
  */
 export function playCelebrationTune() {
+    if (!soundEnabled) {
+        debug('celebration tune: skipped, sound is off');
+        return;
+    }
     const ctx = context();
     if (!ctx) return;
     // A context created before the first gesture starts out suspended; a solve is

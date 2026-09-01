@@ -60,8 +60,13 @@ nothing to fetch and the tune is editable as letters in `js/constants.js`. It
 starts with beat 1 and its held note lands as the dialog opens.
 
 It can never be the primary celebration, since plenty of players have the tab
-muted — and note **there is no mute setting yet**, which is the obvious next thing
-this wants.
+muted. There is now a **Sound** setting (`soundOn` in `SETTINGS_DEFAULTS`,
+reaching the audio through `setSoundEnabled`), on by default and remembered
+across visits like the rest — a player who mutes has told us something about
+where they are, and re-enabling it at the next puzzle would be the rudest thing
+this app could do. Switching it off silences a tune already playing, since a mute
+that waits for the phrase to end is not a mute. The setting is named for sound in
+general rather than for this tune, so a later sound answers the same switch.
 
 **Rejected.** *Rays emanating* say nothing about the loop and fight the skybox.
 *Birds swirling* need models and flocking, and read as whimsy bolted onto a

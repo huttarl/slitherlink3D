@@ -505,6 +505,17 @@ export const SETTINGS_DEFAULTS = {
     // pair marks it has used up. Off, because it does bookkeeping that some
     // players would rather do themselves -- that IS the puzzle for them.
     autoTidy: false,
+    // Sound, which today means only the celebration tune. On, since it is a
+    // brief flourish at the one moment the player is certainly not concentrating
+    // -- but the setting matters more than most: a player who mutes it has told
+    // us something about where they are, and re-enabling it at the next puzzle
+    // would be the rudest thing this app could do.
+    //
+    // Named for sound in general rather than for that one tune, so a later
+    // sound answers the same switch. The flag reaches the audio through
+    // setSoundEnabled in celebrationSound.js; when there is more than one source
+    // of sound, that belongs in a shared module instead.
+    soundOn: true,
 };
 
 export const CELEBRATION_TUNE = {

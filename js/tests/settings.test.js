@@ -99,10 +99,12 @@ describe('loadSettings', () => {
 
     test('an unknown key is ignored', () => {
         // A setting we have since renamed or dropped, or a neighbor's data.
+        // The name is deliberately one that will never become real: this test
+        // first used 'soundOn' and started failing the day that was added.
         const storage = install(fakeStorage());
-        storage.setItem(STORAGE_KEY, JSON.stringify({soundOn: false}));
+        storage.setItem(STORAGE_KEY, JSON.stringify({aSettingWeDropped: false}));
         const settings = loadSettings();
-        assert.ok(!('soundOn' in settings));
+        assert.ok(!('aSettingWeDropped' in settings));
         assert.deepStrictEqual(settings, SETTINGS_DEFAULTS);
     });
 

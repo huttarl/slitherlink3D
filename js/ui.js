@@ -16,6 +16,7 @@ import {updatePairMark} from "./pairMarkRenderer.js";
 import {wantsTitleScreen} from "./titleScreen.js";
 import {finishCelebration, startCelebration, stopCelebration} from "./celebration.js";
 import {loadSettings, saveSetting} from "./settings.js";
+import {setSoundEnabled} from "./celebrationSound.js";
 import {CELEBRATION_TIMING} from "./constants.js";
 import {isDebugEnabled} from "./debug.js";
 
@@ -198,6 +199,11 @@ function wireSettingToggles(gameState, puzzleGrid) {
     // retire the pair marks it has used up.
     wireSetting('autoTidy', 'autoTidy', (on) => {
         puzzleGrid.autoTidy = on;
+    });
+
+    // Player setting: sound, which today is only the celebration tune.
+    wireSetting('soundOn', 'soundOn', (on) => {
+        setSoundEnabled(on);
     });
     // Nothing else to do in either direction, which is the opposite of the
     // highlighting above and worth saying why. Switching ON does not sweep the
