@@ -728,7 +728,10 @@
                     aria-label="Right side up">&#x21E7;</button>
             <div style="margin-top: 1ex; font-size: 14px">
                 <label title="Mark edges in red when they clearly break the rules, as you play">
-                    <input type="checkbox" id="highlightViolations" checked>
+                    <!-- No `checked` here, and none on any player setting: the
+                         defaults live in SETTINGS_DEFAULTS (js/constants.js),
+                         and ui.js sets these from the stored settings. -->
+                    <input type="checkbox" id="highlightViolations">
                     Auto-highlight mistakes</label>
             </div>
             <div style="margin-top: 1ex; font-size: 14px">

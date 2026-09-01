@@ -15,6 +15,7 @@ import {updateClueColors} from "./clueRenderer.js";
 import {updatePairMark} from "./pairMarkRenderer.js";
 import {wantsTitleScreen} from "./titleScreen.js";
 import {finishCelebration, startCelebration, stopCelebration} from "./celebration.js";
+import {loadSettings, saveSetting} from "./settings.js";
 import {CELEBRATION_TIMING} from "./constants.js";
 import {isDebugEnabled} from "./debug.js";
 
@@ -157,23 +158,46 @@ function wireSettingToggles(gameState, puzzleGrid) {
         gameState.toggleShowSolution(e.target.checked);
     });
 
+    // The player's own settings, which outlive the page: changing puzzle
+    // reloads it, so a checkbox is not somewhere a preference can live.
+    // See js/settings.js and SETTINGS_DEFAULTS.
+    const settings = loadSettings();
+
+    /**
+     * Wires one persisted setting. The stored value (or its default) goes into
+     * the checkbox and into the game, and every later change is applied and
+     * written back. The markup carries no `checked` attribute of its own --
+     * SETTINGS_DEFAULTS is the only default.
+     *
+     * @param {string} domId - the checkbox
+     * @param {string} key - its key in SETTINGS_DEFAULTS
+     * @param {function(boolean, boolean)} apply - given the value, and whether
+     *     this is the initial call rather than a change by the player
+     */
+    const wireSetting = (domId, key, apply) => {
+        const toggle = document.getElementById(domId);
+        toggle.checked = settings[key];
+        apply(settings[key], true);
+        toggle.addEventListener('change', (e) => {
+            apply(e.target.checked, false);
+            saveSetting(key, e.target.checked);
+        });
+    };
+
     // Player setting: passive red highlighting of rule violations.
-    const highlightToggle = document.getElementById('highlightViolations');
-    puzzleGrid.highlightRuleViolations = highlightToggle.checked;
-    highlightToggle.addEventListener('change', (e) => {
-        puzzleGrid.highlightRuleViolations = e.target.checked;
-        if (!e.target.checked) {
-            // Remove any red marks already on the board.
+    wireSetting('highlightViolations', 'highlightRuleViolations', (on, initial) => {
+        puzzleGrid.highlightRuleViolations = on;
+        if (!on && !initial) {
+            // Remove any red marks already on the board. Not at startup, where
+            // there is nothing yet to remove.
             puzzleGrid.clearEdgeHighlights();
         }
     });
 
     // Player setting: after each move, rule out the edges it has made impossible and
     // retire the pair marks it has used up.
-    const autoTidyToggle = document.getElementById('autoTidy');
-    puzzleGrid.autoTidy = autoTidyToggle.checked;
-    autoTidyToggle.addEventListener('change', (e) => {
-        puzzleGrid.autoTidy = e.target.checked;
+    wireSetting('autoTidy', 'autoTidy', (on) => {
+        puzzleGrid.autoTidy = on;
     });
     // Nothing else to do in either direction, which is the opposite of the
     // highlighting above and worth saying why. Switching ON does not sweep the

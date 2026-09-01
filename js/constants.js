@@ -480,6 +480,33 @@ for (let repeat = 0; repeat < TUNE_REPEATS; repeat++) {
 }
 TUNE_NOTES.push('C');       // the held tonic, which ends the phrase
 
+/**
+ * The player's settings, and what each starts as.
+ *
+ * The ONE source of truth for a setting's default. js/settings.js merges
+ * whatever the browser has stored over this, and ui.js sets the checkboxes from
+ * the result -- so the markup in main.html deliberately carries no `checked`
+ * attributes. Two sources of default would mean changing one here silently did
+ * nothing for anyone who had ever visited before.
+ *
+ * PLAYER PREFERENCES ONLY. The debug toggles (Show IDs, Show Solution) are
+ * deliberately absent and are never stored: they are transient developer state,
+ * and a persisted "Show Solution" would quietly hand the answer to every puzzle
+ * the player opened afterwards.
+ *
+ * A key added here is stored and restored with no further work; see
+ * wireSettingToggles for the one line that attaches it to a checkbox.
+ */
+export const SETTINGS_DEFAULTS = {
+    // Passive red highlighting of edges that clearly break a rule. On, because
+    // it reports the rules the player already knows rather than the solution.
+    highlightRuleViolations: true,
+    // After each move, rule out the edges it has made impossible and retire the
+    // pair marks it has used up. Off, because it does bookkeeping that some
+    // players would rather do themselves -- that IS the puzzle for them.
+    autoTidy: false,
+};
+
 export const CELEBRATION_TUNE = {
     phrase: TUNE_PHRASE,
     repeats: TUNE_REPEATS,

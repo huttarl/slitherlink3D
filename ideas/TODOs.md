@@ -1,6 +1,20 @@
 Note, some of these items may be already done even if they're not checked off.
 Finished items live in ideas/TODOs-done.md.
 
+- [x] persist user settings, when user goes to next puzzle.
+
+- [ ] Update the favicon: use tmp/icon-base1.png as a base. Make a larger icon (for browser home pages
+  that list frequently-visited sites). What are the recommended sizes to provide? What format is recommended?
+
+- [~] maybe just for fun, add an option to use other numerals for clues:
+  Persian/Urdu/Hindi/Eastern Arabic ...
+    - [x] implement number->string conversion for other locales
+    - [ ] add user-accessible settings for this
+
+- [ ] Add the ability to "color" faces to reflect "inside" vs. "outside". User selects a
+    "color" and then can click on a face to tint it that color. Implementation would have to
+    make sure it interacted OK with clue numerals. Colors must be light enough to contrast well.
+
 
 - [ ] The list of grids has become unwieldy. Do we need to break it down into collapsible categories?
   - [ ] Do we need to add a separate family, since "Other" (Miscellaneous) has become so big? What would
@@ -103,13 +117,6 @@ Finished items live in ideas/TODOs-done.md.
       disposes everything for free.)
     - (Left behind when its parent item -- the "next puzzle" button -- was moved
       to TODOs-done.md.)
-- [ ] Add the ability to "color" faces to reflect "inside" vs. "outside". User selects a
-    "color" and then can click on a face to tint it that color. Implementation would have to
-    make sure it interacted OK with clue numerals. Colors must be light enough to contrast well.
-- [ ] maybe just for fun, add an option to use other numerals for clues:
-  Persian/Urdu/Hindi/Eastern Arabic ...
-    - [x] implement number->string conversion for other locales
-    - [ ] add user-accessible settings for this
 - [ ] convert some existing .json files to the latest format spec, or move them out of the
     data folder, so it's less cluttered. Maybe just have a C.json and T.json in there for now.
 - [ ] 21 grids still have vertex coordinates at 3 decimals or fewer, from before obj2json.py

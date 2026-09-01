@@ -171,7 +171,17 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   `facesAroundVertex` (walks the fan of faces round a vertex), and
   `vertexConfiguration`, which returns the shared cycle only when every vertex
   has the same one. No DOM, no THREE; unit-tested headless.
-- `constants.js` — colors, radii, zoom limits, `EDGE_STATES` array.
+- `settings.js` — the player's settings across page loads, in `localStorage`
+  under one namespaced key. Changing puzzle reloads the page, so a checkbox is
+  not somewhere a preference can live. `SETTINGS_DEFAULTS` in `constants.js` is
+  the only source of a default — the markup carries no `checked` — and
+  `wireSettingToggles` in `ui.js` joins the two. Stored values are validated on
+  the way in (known key, unchanged type), and every access is wrapped: no
+  storage at all, under `file://` or with site data blocked, simply means the
+  defaults. Debug toggles are deliberately not stored; a persisted "Show
+  Solution" would hand over the answer to every later puzzle.
+- `constants.js` — colors, radii, zoom limits, `EDGE_STATES` array,
+  `SETTINGS_DEFAULTS`.
 - `perfOverlay.js::perfFrameStart/perfFrameEnd` — an on-screen frame-timing
   readout, off unless `?perf` is in the URL. `main.js`'s render loop brackets
   itself with the two calls. For phones, where DevTools needs a cable: it
@@ -245,7 +255,8 @@ All ES6 modules; Three.js vendored under `js/three/`.
   `titleScreen.js`
 - Polyhedron facts: `solidFacts.js`, `polyhedronLinks.js`, plus `categories`
   in the grid data and `groupGridsByFamily` in `catalogue.js`
-- Configuration: `constants.js`; `debug.js` (gated tracing);
+- Configuration: `constants.js`; `settings.js` (the player's stored
+  preferences); `debug.js` (gated tracing);
   `perfOverlay.js` (gated frame timing)
 - What the player's device is like, each a single media query with its reasoning:
   `motion.js` (does it want less animation?) and `pointer.js` (a finger or a
