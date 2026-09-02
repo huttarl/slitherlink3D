@@ -141,6 +141,14 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
     on a second row (`#info.collapsed #infoStrip`, and `#stripButtons` itself,
     which is otherwise atomic and can outgrow the strip alone). Reachable beats
     one-line.
+  - Whether the panel is collapsed is **stored** (`panelCollapsed`), because
+    changing puzzle reloads the page and a panel the player had deliberately
+    collapsed came back open. Only a deliberate toggle is written, and
+    `hasStoredSetting` — not the value — is what says whether the player has
+    ever chosen: until they have, the screen's width decides and keeps
+    deciding. main.html's pre-paint script applies the same rule, and so holds
+    a third copy of the storage key, for the reason it already holds the
+    breakpoint: no module can run that early.
   - Note `#whereAmI[hidden]` in the stylesheet is **required**, not tidiness:
     `#whereAmI` sets `display: flex`, and an ID selector outranks the browser's
     own `[hidden] { display: none }`, so without it `label.hidden = true` sets

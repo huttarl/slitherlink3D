@@ -845,8 +845,26 @@
                     document.getElementById('titleScreen').classList.remove('hidden');
                     return;
                 }
+                // The player's remembered choice wins over the screen's width,
+                // the same rule panelLayout.js applies (and a third copy of the
+                // storage key, for the same reason as the breakpoint above: a
+                // module can't run this early). Presence is the record of a
+                // deliberate toggle -- see hasStoredSetting. Wrapped, because
+                // merely touching localStorage throws where site data is
+                // blocked, and this runs before anything else could catch it.
+                var chosen = null;
+                try {
+                    var stored = JSON.parse(
+                        window.localStorage.getItem('slitherlink3D.settings'));
+                    if (stored && typeof stored.panelCollapsed === 'boolean') {
+                        chosen = stored.panelCollapsed;
+                    }
+                } catch (e) { /* no storage, or nothing usable in it */ }
+
                 var query = info.getAttribute('data-narrow-query');
-                if (window.matchMedia && window.matchMedia(query).matches) {
+                var collapsed = (chosen !== null) ? chosen
+                    : (window.matchMedia && window.matchMedia(query).matches);
+                if (collapsed) {
                     info.classList.add('collapsed');
                 }
             })();

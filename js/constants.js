@@ -523,6 +523,14 @@ export const SETTINGS_DEFAULTS = {
     // fold is what gives that player their one-time way out. Closed by default,
     // since these are set rarely and read never.
     settingsOpen: false,
+    // Whether the main panel is collapsed to its one-line strip. Unlike the
+    // rest, this default is mostly NOT what decides the starting state:
+    // panelLayout asks hasStoredSetting first, and while the player has never
+    // touched the toggle the screen's width decides (a phone starts collapsed,
+    // a desktop expanded). The value here only stands in for a storage that
+    // cannot be read at all. Stored because changing puzzle reloads the page,
+    // and a panel the player deliberately collapsed used to come back open.
+    panelCollapsed: false,
 };
 
 export const CELEBRATION_TUNE = {

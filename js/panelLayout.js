@@ -1,11 +1,14 @@
 /**
  * The main panel's two shapes: a one-line strip, and the full drawer.
  *
- * Nothing here knows about the game -- only about the panel's own DOM -- so
- * this module has no imports. Other UI modules ask it whether the panel is
- * collapsed (which decides where a message should go) and tell it what to put
- * in the where-am-I button.
+ * Nothing here knows about the game -- only about the panel's own DOM. Its one
+ * import is settings.js, which is equally free of the game and of the DOM;
+ * the panel needs it because whether the player has collapsed the panel has to
+ * outlive the page, changing puzzle being a reload. Other UI modules ask this
+ * module whether the panel is collapsed (which decides where a message should
+ * go) and tell it what to put in the where-am-I button.
  */
+import {hasStoredSetting, loadSettings, saveSetting} from './settings.js';
 
 // Buttons that live in the strip while the panel is collapsed: the things
 // wanted DURING a puzzle. Everything else (pickers, Reset, how-to-play, the
@@ -100,7 +103,14 @@ export function initPanelLayout() {
      *     changes overriding it (see the listener below)
      */
     function setCollapsed(collapsed, {playerChose = false} = {}) {
-        if (playerChose) playerChoseState = true;
+        if (playerChose) {
+            playerChoseState = true;
+            // Remembered across the reload that changing puzzle performs, and
+            // across visits. Only a deliberate toggle is written: an automatic
+            // collapse would otherwise record itself as a preference and stop
+            // the screen's width having a say ever again.
+            saveSetting('panelCollapsed', collapsed);
+        }
         info.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
         for (const id of STRIP_BUTTON_IDS) {
@@ -154,7 +164,10 @@ export function initPanelLayout() {
     // page that happened to load at zero width (a hidden container, say) would
     // stay collapsed even once it became wide.
     const narrowScreen = window.matchMedia(narrowScreenQuery());
-    let playerChoseState = false;
+    // A stored value means the player has chosen before, on some earlier page.
+    // Treat that exactly like choosing during this one, so the width stops
+    // overriding it -- otherwise rotating the phone would undo their choice.
+    let playerChoseState = hasStoredSetting('panelCollapsed');
 
     narrowScreen.addEventListener('change', () => {
         if (!playerChoseState) setCollapsed(narrowScreen.matches);
@@ -173,7 +186,11 @@ export function initPanelLayout() {
     // where the media-query listener above would never fire.
     window.addEventListener('resize', fitStrip);
 
-    setCollapsed(narrowScreen.matches);
+    // The player's own choice if they have ever made one, the screen's width
+    // otherwise. main.html's inline script applies the same rule before the
+    // first paint; this agrees with it and moves the buttons.
+    setCollapsed(playerChoseState
+        ? loadSettings().panelCollapsed : narrowScreen.matches);
     // Publish them, so expandDrawer and setWhereAmI can reach in (see above).
     setPanelCollapsed = setCollapsed;
     refitStrip = fitStrip;

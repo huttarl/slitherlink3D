@@ -103,6 +103,22 @@ export function loadSettings() {
 }
 
 /**
+ * Has the player ever set this one themselves?
+ *
+ * Only settings actually touched are written (see saveSetting), so presence in
+ * storage is the record of a deliberate choice -- which is a different question
+ * from what the setting's value is. The panel's collapsed state needs exactly
+ * that distinction: until the player has expressed a preference, the screen's
+ * width decides, and afterwards their choice does.
+ *
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function hasStoredSetting(key) {
+    return key in readStored();
+}
+
+/**
  * Records one setting the player has changed.
  *
  * Only the keys the player has actually touched are written, which is why this
