@@ -97,6 +97,17 @@
             min-width: 0;
         }
 
+        /* Last resort, when even dropping where-am-I leaves too little room
+           (panelLayout.js::fitStrip does that first). The button group then
+           moves to a second row instead of overflowing off the right edge,
+           where the last button is unreachable rather than merely cramped.
+           Reachable beats one-line. Collapsed only: expanded, this row is just
+           the toggle and the title, and it has nothing to wrap. */
+        #info.collapsed #infoStrip {
+            flex-wrap: wrap;
+            row-gap: 6px;
+        }
+
         /* The blanket `button { margin-top: 2ex }` below is meant for stacked
            rows in the drawer; in the strip it pushed everything ~21px down, so
            the space above the controls dwarfed the padding below them. The
@@ -133,6 +144,15 @@
             display: flex;
             align-items: baseline;
             gap: 0.35em;
+        }
+
+        /* REQUIRED, not belt and suspenders: the `display: flex` above is an ID
+           selector, so it beats the browser's own `[hidden] { display: none }`
+           and panelLayout.js::fitStrip's `label.hidden = true` would set the
+           attribute while leaving the label on screen. Anything that sets
+           `display` on an element that some script may hide needs this. */
+        #whereAmI[hidden] {
+            display: none;
         }
 
         /* The name absorbs the squeeze: shrink yes, GROW NO. Growing is what
@@ -221,6 +241,12 @@
             display: flex;
             gap: 6px;
             flex: 0 0 auto;
+            /* The group wraps INSIDE itself too, not only as a whole against
+               the row above (see #info.collapsed #infoStrip). Without this the
+               group is atomic: at a high browser zoom it can be wider than the
+               strip on its own, and then having a row to itself doesn't save
+               it -- the last button still hangs off the edge. */
+            flex-wrap: wrap;
         }
 
         /* In the strip, the borrowed buttons lose the vertical margins they

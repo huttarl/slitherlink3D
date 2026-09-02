@@ -23,6 +23,16 @@ const STRIP_BUTTON_IDS = ['undoMove', 'redoMove', 'levelCamera', 'checkSolution'
 // fallback for a page that somehow lacks the attribute.
 const NARROW_SCREEN_QUERY_FALLBACK = '(max-width: 700px)';
 
+// How much room where-am-I needs before it is worth showing at all, in pixels.
+// Below this it has been squeezed past saying anything -- at a browser zoom of
+// 170% it came out as a one-pixel dot -- while still holding room the buttons
+// need, so it is hidden instead and its space goes to them.
+//
+// About four characters at the strip's 14px. The label truncates with an
+// ellipsis long before this, which is the intended behaviour and not what this
+// is for: the point here is the difference between a short label and no label.
+const MIN_WHERE_AM_I_WIDTH = 56;
+
 /** The narrow-screen media query, as declared in main.html. */
 function narrowScreenQuery() {
     const info = document.getElementById('info');
@@ -36,6 +46,9 @@ const buttonHomes = new Map();
 
 /** initPanelLayout's collapse/expand function, published for expandDrawer. */
 let setPanelCollapsed = null;
+
+/** initPanelLayout's fitStrip, published for setWhereAmI. */
+let refitStrip = null;
 
 /**
  * Opens the drawer, for something outside this module that needs what's inside
@@ -103,6 +116,36 @@ export function initPanelLayout() {
                 button.textContent = home.label;
             }
         }
+        fitStrip();
+    }
+
+    /**
+     * Decides whether the strip can afford its where-am-I label.
+     *
+     * The strip's buttons do not shrink, and where-am-I is the only thing that
+     * yields, so a narrow strip squeezes it away to nothing and THEN pushes the
+     * last button off the right edge, out of reach. That is not a rare case: a
+     * browser zoom of 170% -- an ordinary accessibility setting -- leaves a
+     * 1080px phone with about 240 CSS pixels, where the buttons alone want 252.
+     *
+     * So: show the label, measure what it actually got, and drop it if that is
+     * too little to read. Dropping it costs nothing that was working (it was a
+     * dot) and returns its width to the buttons. Nothing is lost but the label
+     * itself -- the panel toggle beside it opens the same drawer.
+     *
+     * Measured rather than decided by a width breakpoint, because what has to
+     * fit is the buttons, and their number and wording can change.
+     */
+    function fitStrip() {
+        const label = document.getElementById('whereAmI');
+        if (!info.classList.contains('collapsed')) {
+            label.hidden = false;    // the drawer's header always has room
+            return;
+        }
+        // Un-hide before measuring, or a label hidden once would stay hidden:
+        // its width would read 0 forever, however wide the strip became.
+        label.hidden = false;
+        label.hidden = label.offsetWidth < MIN_WHERE_AM_I_WIDTH;
     }
 
     // Screen width decides the starting state, and keeps deciding until the
@@ -125,9 +168,15 @@ export function initPanelLayout() {
         setCollapsed(false, {playerChose: true});
     });
 
+    // Rotating the phone, or zooming, changes what the strip can hold without
+    // changing whether it is collapsed -- so this listens to resize as well,
+    // where the media-query listener above would never fire.
+    window.addEventListener('resize', fitStrip);
+
     setCollapsed(narrowScreen.matches);
-    // Publish it, so expandDrawer can reach in (see above).
+    // Publish them, so expandDrawer and setWhereAmI can reach in (see above).
     setPanelCollapsed = setCollapsed;
+    refitStrip = fitStrip;
 }
 
 /** True when the panel is collapsed, so check results belong in the toast. */
@@ -150,4 +199,7 @@ export function setWhereAmI(gridName, puzzleNumber) {
     document.getElementById('whereAmIGrid').textContent = gridName;
     document.getElementById('whereAmIPuzzle').textContent =
         puzzleNumber ? `· ${puzzleNumber}` : '· (none)';
+    // The text decides how much room the label asks for, so what fits has to be
+    // decided again -- this arrives well after the strip was first laid out.
+    if (refitStrip) refitStrip();
 }

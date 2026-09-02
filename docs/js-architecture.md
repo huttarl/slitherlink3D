@@ -130,6 +130,21 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   `isPanelCollapsed()`, which decides where a message should go, and
   `setWhereAmI()`, the strip's label. Called before the puzzle loads, so a
   phone never shows the full panel while waiting. No imports.
+  - The strip has to survive a **browser zoom**, which is where it used to
+    fail: zoom shrinks the CSS viewport rather than growing the buttons, and at
+    170% — an ordinary accessibility setting — a 1080px phone is left about 240
+    CSS pixels where the buttons alone wanted 252, so the last one hung off the
+    edge unreachable. Two things answer that, in order. `fitStrip` drops the
+    where-am-I label once it measures under `MIN_WHERE_AM_I_WIDTH`, since by
+    then it is a squeezed sliver holding room the buttons need and the toggle
+    beside it opens the same drawer. Below that, CSS wrapping puts the buttons
+    on a second row (`#info.collapsed #infoStrip`, and `#stripButtons` itself,
+    which is otherwise atomic and can outgrow the strip alone). Reachable beats
+    one-line.
+  - Note `#whereAmI[hidden]` in the stylesheet is **required**, not tidiness:
+    `#whereAmI` sets `display: flex`, and an ID selector outranks the browser's
+    own `[hidden] { display: none }`, so without it `label.hidden = true` sets
+    the attribute and changes nothing on screen.
 - `checkFeedback.js` — reporting how the solution is doing: the drawer's status
   line when the panel is open, a bottom toast bar when it's collapsed. Owns the
   Check and Clear-errors buttons, and the spoiler policy (mismatches reported
