@@ -17,14 +17,17 @@ import {hasStoredSetting, loadSettings, saveSetting} from './settings.js';
 // listeners and one disabled state.
 const STRIP_BUTTON_IDS = ['undoMove', 'redoMove', 'levelCamera', 'checkSolution'];
 
-// Below this viewport width the panel starts collapsed. Chosen to catch
-// phones in both orientations while leaving tablets and desktops expanded.
+// A viewport this small in EITHER dimension starts the panel collapsed, which
+// is what catches phones in both orientations while leaving tablets and
+// desktops expanded. Width alone did not: a phone in landscape is wider than
+// most thresholds and shorter than any of them, and the drawer's cost is
+// height.
 //
 // The value lives on #info as data-narrow-query, because main.html's inline
 // script needs the same breakpoint to collapse the panel before the first
 // paint, and two copies would eventually disagree. The literal here is only a
 // fallback for a page that somehow lacks the attribute.
-const NARROW_SCREEN_QUERY_FALLBACK = '(max-width: 700px)';
+const NARROW_SCREEN_QUERY_FALLBACK = '(max-width: 700px), (max-height: 500px)';
 
 // How much room where-am-I needs before it is worth showing at all, in pixels.
 // Below this it has been squeezed past saying anything -- at a browser zoom of

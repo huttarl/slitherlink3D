@@ -671,7 +671,12 @@
     <div id="canvas-container">
         <!-- data-narrow-query is the single source for the breakpoint: the
              inline script below and ui.js both read it, so they can't drift. -->
-        <div id="info" data-narrow-query="(max-width: 700px)">
+        <!-- EITHER dimension being small collapses the panel. Width alone was
+             wrong for a phone in landscape: 812x375 is 812 wide, so it counted
+             as a desktop and the drawer opened over a screen with 375px of
+             height to spare it. Height is the dimension the drawer actually
+             costs. -->
+        <div id="info" data-narrow-query="(max-width: 700px), (max-height: 500px)">
             <!-- The always-visible strip. On a phone this is the whole panel
                  most of the time (see #info.collapsed): the verbs you need
                  mid-puzzle, plus where-am-I, plus a way to open the rest.
