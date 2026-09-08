@@ -141,6 +141,10 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
     on a second row (`#info.collapsed #infoStrip`, and `#stripButtons` itself,
     which is otherwise atomic and can outgrow the strip alone). Reachable beats
     one-line.
+  - `STRIP_BUTTON_IDS` says which buttons the strip borrows. "Right side up" is
+    deliberately not among them, though it is a mid-puzzle button: on a solid
+    floating in space (or water), "up" is not very important, so a rolled view is
+    a look rather than a problem. It stays in the drawer.
   - Whether the panel is collapsed is **stored** (`panelCollapsed`), because
     changing puzzle reloads the page and a panel the player had deliberately
     collapsed came back open. Only a deliberate toggle is written, and

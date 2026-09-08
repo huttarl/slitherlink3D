@@ -11,6 +11,17 @@ Finished items live in ideas/TODOs-done.md.
     - [x] implement number->string conversion for other locales
     - [ ] add user-accessible settings for this
 
+- [ ] The celebration currently uses a "throbbing" animation to highlight the solution loop.
+  Krazydad's web site does the same thing, and that's probably where I got it from (long ago).
+  I don't want to be plagiarizing, or accused of it. Maybe I should look again for another way to
+  animate the loop. Had tried before with pulses running along the loop. Could try that again.
+  Would probably have to subdivide each side into a number of segments in order to show the
+  movement clearly.
+    - size of segments: divide the shortest side into 4 quarters. Use these quarter-lengths as
+      the basic unit, and divide all other sides into the nearest integral number of units.
+    - another idea would be transforming the curve into a smooth one: replacing every angle
+      (mid-edge to mid-edge) with a bezier or spline curve.
+
 - [ ] Add the ability to "color" faces to reflect "inside" vs. "outside". User selects a
     "color" and then can click on a face to tint it that color. Implementation would have to
     make sure it interacted OK with clue numerals. Colors must be light enough to contrast well.

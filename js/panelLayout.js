@@ -15,7 +15,12 @@ import {hasStoredSetting, loadSettings, saveSetting} from './settings.js';
 // settings) is only wanted between puzzles or rarely, so it stays in the
 // drawer. These are moved, not duplicated, so each button keeps one set of
 // listeners and one disabled state.
-const STRIP_BUTTON_IDS = ['undoMove', 'redoMove', 'levelCamera', 'checkSolution'];
+// "Right side up" (levelCamera) is deliberately NOT here, though it is a
+// mid-puzzle button: on a polyhedron floating in space (or water), "up" isn't
+// important, so being rolled is a look rather than a problem, and the
+// background carries what orientation cue there is. It stays in the drawer for
+// anyone who does want it.
+const STRIP_BUTTON_IDS = ['undoMove', 'redoMove', 'checkSolution'];
 
 // A viewport this small in EITHER dimension starts the panel collapsed, which
 // is what catches phones in both orientations while leaving tablets and

@@ -148,6 +148,41 @@ async function main() {
         gameState.onWindowResize();
     });
 
+    // Rotating an Android phone and rotating it back can leave the LAYOUT
+    // viewport at the landscape width while the screen is portrait again, so
+    // the browser shrinks the whole page to fit and every bit of DOM comes back
+    // at about half size. Reloading clears it, which is what says the state is
+    // the browser's rather than anything in our CSS.
+    //
+    // The lever is the viewport meta: re-applying it makes the browser work the
+    // viewport out again. Setting the SAME string is a no-op -- nothing has
+    // changed to react to -- so this sets a different one for a frame first.
+    // minimum-scale rather than maximum-scale as the temporary difference:
+    // maximum-scale would forbid zooming in, briefly but really, and a player
+    // who has set a browser zoom is the one most likely to be reading this
+    // page. A floor of 1 takes nothing away that anybody wants.
+    //
+    // orientationchange, not resize: this is worth doing when the screen turns
+    // and not on every keyboard-opening resize a phone reports.
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    // Read ONCE, not per rotation: restoring to whatever the attribute happens
+    // to say would append to the value it had last time, so a few rotations
+    // would leave a meta full of repeated clauses.
+    const viewportContent = viewportMeta && viewportMeta.getAttribute('content');
+    if (viewportMeta) {
+        window.addEventListener('orientationchange', () => {
+            viewportMeta.setAttribute('content',
+                                      `${viewportContent}, minimum-scale=1`);
+            // setTimeout, not requestAnimationFrame: a phone can be turned
+            // while this tab is in the background, where animation frames do
+            // not run at all and the value would stay changed indefinitely.
+            // The delay lets the browser act on the new value -- and lets its
+            // own viewport update, which lags the event, land first.
+            setTimeout(() => viewportMeta.setAttribute('content',
+                                                       viewportContent), 150);
+        });
+    }
+
     // Cleanup when the page is really going away -- and ONLY then.
     //
     // pagehide with a persisted check, not beforeunload: leaving a page does not
