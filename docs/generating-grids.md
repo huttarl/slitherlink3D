@@ -261,8 +261,8 @@ and Euler's formula — summing (6 − sides) over the faces always gives 12 whe
 three faces meet at every vertex — constrains the blocks: with random orbits
 alone, the orbits' own (6 − sides) must sum to 1. The `--vertex-axes`,
 `--face-axes` and `--edge-axes` options add points on the symmetry axes, whose
-faces are forced to 3 or 6 sides (vertex and face axes) or an even number (edge
-axes), and which take a share of that 12.
+faces are forced to a multiple of 3 sides (vertex and face axes — nonagons do
+turn up) or of 2 (edge axes), and which take a share of that 12.
 
 **Why tetrahedral**, rather than a bigger group: with congruent faces per orbit,
 higher symmetry means fewer orbits and so less variety. In 60–100 faces the

@@ -20,8 +20,9 @@ What the options mean for the solid:
                   contributes 12 faces of one size.
   --vertex-axes   also put a point on each of the tetrahedron's 4 vertex axes,
   --face-axes     or its 4 face axes, or its 6 edge axes. These points are fixed
-  --edge-axes     by some rotations, so their faces are forced to have 3 or 6
-                  sides (vertex and face axes) or an even number (edge axes).
+  --edge-axes     by some rotations, so their faces are forced to have a
+                  multiple of 3 sides (vertex and face axes: 3, 6, 9...) or of 2
+                  (edge axes: 4, 6, 8...).
   --relax         how evenly to spread the points, 0 to 1 (default 0.5). As in
                   genRandomPolyh.py, 0 leaves them where they fell and gives the
                   most varied face sizes, and 1 spreads them evenly.
