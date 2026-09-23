@@ -239,6 +239,76 @@ tell apart. One solid had 5 of its 84 edges under 0.10 against a median of
 nudge. The faces then aren't *exactly* flat any more, but the residual is
 smaller than the rounding `obj2json.py` applies anyway.
 
+## genSymmetric.py — random solids with tetrahedral symmetry
+
+`genRandomPolyh.py --dual` can give a varied face census, but the result is an
+asymmetric blob, while most of the collection's appeal is symmetry. This script
+gets both, by making the randomness symmetric:
+
+```
+util/genSymmetric.py 6 --relax=0.25 --seed=2
+util/genSymmetric.py 6 --relax=0.25 --seed=1 --vertex-axes --edge-axes
+```
+
+It picks a few random points and lets the 12 rotations of the tetrahedral group
+carry each one to 12 places. Each such set is an **orbit**. The hull of all the
+points is a triangulation with the same symmetry, and its polar dual
+(`genGoldberg.polar_dual`, so every face is exactly flat) is the solid.
+
+**Every face in an orbit is congruent to the rest**, since a symmetry of the
+whole solid carries any one to any other. So the census comes in blocks of 12,
+and Euler's formula — summing (6 − sides) over the faces always gives 12 when
+three faces meet at every vertex — constrains the blocks: with random orbits
+alone, the orbits' own (6 − sides) must sum to 1. The `--vertex-axes`,
+`--face-axes` and `--edge-axes` options add points on the symmetry axes, whose
+faces are forced to 3 or 6 sides (vertex and face axes) or an even number (edge
+axes), and which take a share of that 12.
+
+**Why tetrahedral**, rather than a bigger group: with congruent faces per orbit,
+higher symmetry means fewer orbits and so less variety. In 60–100 faces the
+tetrahedral group (order 12) leaves room for 5–8 independent orbits, the
+octahedral (24) for 2–4, and the icosahedral (60) for one, where Euler all but
+forces 12 pentagons and 60 hexagons, i.e. a Goldberg solid.
+
+Two things the construction must avoid, both of which break the symmetry:
+
+- **Coplanar points.** scipy's hull splits a flat facet into triangles
+  arbitrarily, and the polar dual then gets two coincident vertices. A draw
+  whose hull has any coplanar facets is rejected and redrawn.
+- **Drift during relaxation.** Only one representative per orbit moves, pushed
+  by every other point including its own images, and the images are recomputed
+  from it after every step. Moving the whole set would stay symmetric only in
+  exact arithmetic. The axis points never move.
+
+The output is checked before it is written: that every rotation carries the
+triangulation onto itself, then the usual Euler, flatness, closed-surface,
+winding and vertex-degree checks. It is also tested for a mirror or an
+inversion, and gets the `chiral` category when it has neither, which is
+normal: random orbits are chiral like the snub cube.
+
+Measured over six draws of 6 orbits (72 faces, 82 with axis points), with
+`grid_quality.py`:
+
+| relax | census | sharpest corner | flattest edge | shortest edge |
+|---|---|---|---|---|
+| 0 | 36×5, 12×6, 24×7 | 55° | 10° | 36% of median |
+| 0 | 24×4, 12×5, 12×6, 24×8 | 58° | 9° | 2% |
+| 0.25 | 12×5, 60×6 | 65° | 13° | 43% |
+| 0.25 | 24×5, 36×6, 12×7 | 58° | 10° | 21% |
+| 0.25, both axis options | 12×4, 12×5, 40×6, 12×7, 6×8 | 67° | 13° | 9% |
+| 0.5 | 12×5, 60×6 | 75° | 17° | 3% |
+
+Corners and edge angles are healthy — better than an unrelaxed
+`genRandomPolyh.py --dual` (31° and 1.6°). **Short edges are the open problem.**
+Two hull triangles that are nearly coplanar give poles, and so dual vertices,
+nearly on top of each other, and symmetric point sets make such near-coincidences
+common: even the evenly spread relax-0.5 draw had an edge 3% of the median.
+`genRandomPolyh.py`'s `separate_short_edges` solves this for its solids, but it
+nudges vertices one at a time and would break the symmetry, so it must not be
+used here. A symmetric version would move one representative per orbit and
+reapply the group, as the relaxation does. Until then, check `shortest edge` in
+`grid_quality.py` before keeping a draw.
+
 ## Checking a grid afterwards
 
 `util/grid_quality.py` reports the things that make a solid awkward to look at
