@@ -11,12 +11,15 @@ Finished items live in ideas/TODOs-done.md.
     - [x] implement number->string conversion for other locales
     - [ ] add user-accessible settings for this
 
-- tweak the "next" ordering so that more ordinary solids come before the twist: e.g. rhombicuboctahedron
+- [ ] tweak the "next" ordering so that more ordinary solids come before the twist: e.g. rhombicuboctahedron
   before pseudorhombicuboctahedron (elongated square gyrobicupola); and there's another one like that
   where two are next to each other and the less-ordinary one is coming first... what was it? I think the
   difference was a gyro (twist).
 
-- maybe add a "jump to a random puzzle" button
+- [ ] maybe add a "jump to a random puzzle" button
+
+- [ ] regarding the increasing number of solids with 'null' in polyhedronLinks.js, maybe we should make
+  that a separate list: "noLinks" : ["randomSphereA", "cageB", etc.]
 
 - [ ] The celebration currently uses a "throbbing" animation to highlight the solution loop.
   Krazydad's web site does the same thing, and that's probably where I got it from (long ago).

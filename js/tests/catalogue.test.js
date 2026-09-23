@@ -160,6 +160,54 @@ describe('groupGridsByFamily', () => {
     });
 });
 
+describe('groupGridsByFamily, splitting Miscellaneous', () => {
+    const misc = (file, ...categories) => ({file, categories: ['Miscellaneous', ...categories]});
+    const labelOf = (grids, file) => groupGridsByFamily(grids)
+        .find(group => group.grids.some(grid => grid.file === file)).label;
+
+    test('files each solid by what it is', () => {
+        const grids = [misc('P3', 'prism'), misc('spiral6', 'zonohedron'),
+                       misc('nt55', 'nanotube'), misc('C70', 'fullerene'),
+                       misc('randA', 'random')];
+        assert.deepStrictEqual(
+            groupGridsByFamily(grids).map(g => [g.label, g.grids.map(x => x.file)]),
+            [['Prisms and antiprisms', ['P3']], ['Zonohedra', ['spiral6']],
+             ['Nanotubes', ['nt55']], ['Fullerenes and geodesics', ['C70']],
+             ['Random solids', ['randA']]]);
+    });
+
+    test('where a solid fits two groups, the earlier one takes it', () => {
+        // The hexagonal prism is a parallelohedron too; C110 is a fullerene AND
+        // a capped nanotube, and goes with the tubes as its name says.
+        const grids = [misc('P6', 'prism', 'parallelohedron'),
+                       misc('C110', 'fullerene', 'nanotube')];
+        assert.strictEqual(labelOf(grids, 'P6'), 'Prisms and antiprisms');
+        assert.strictEqual(labelOf(grids, 'C110'), 'Nanotubes');
+    });
+
+    test('a cross-cutting attribute alone does not make a group', () => {
+        // The tetrahedral cages are chiral and random; chiral must not win.
+        assert.strictEqual(labelOf([misc('cageA', 'chiral', 'random')], 'cageA'),
+                           'Random solids');
+    });
+
+    test('a solid in none of the groups goes to Others', () => {
+        assert.strictEqual(labelOf([misc('capsid')], 'capsid'), 'Others');
+    });
+
+    test('the pieces sit where Miscellaneous did: after the classical families', () => {
+        const grids = [misc('randA', 'random'), ...CATEGORIZED, misc('P3', 'prism')];
+        assert.deepStrictEqual(groupGridsByFamily(grids).map(g => g.label),
+            ['Platonic solids', 'Archimedean solids', 'Johnson solids',
+             'Prisms and antiprisms', 'Random solids']);
+    });
+
+    test('no group is called Miscellaneous any more', () => {
+        const grids = [misc('P3', 'prism'), misc('capsid')];
+        assert.ok(!groupGridsByFamily(grids).some(g => g.label === 'Miscellaneous'));
+    });
+});
+
 /**
  * Conventions for the `categories` in the real data (data/<grid>.json, gathered
  * into data/grids.json by util/build_catalogue.py).

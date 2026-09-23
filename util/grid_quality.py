@@ -316,9 +316,7 @@ def main():
             paths.append(path if path.suffix == '.json'
                          else DATA_DIR / f'{argument}.json')
     else:
-        paths = sorted(p for p in DATA_DIR.glob('*.json')
-                       if not p.name.endswith('-puzzles.json')
-                       and p.name != 'grids.json')
+        paths = grid_topology.grid_paths(DATA_DIR)
     missing = [str(p) for p in paths if not p.exists()]
     if missing:
         print(f'No such grid file: {", ".join(missing)}', file=sys.stderr)

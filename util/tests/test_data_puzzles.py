@@ -149,9 +149,9 @@ def test_puzzle_agrees_with_its_grid(grid_path, puzzles_path, key, index):
 
 
 def grid_files():
-    """Every grid file in data/: not the puzzles, not the catalogue."""
-    return [p for p in sorted(DATA_DIR.glob('*.json'))
-            if p.name != 'grids.json' and not p.name.endswith('-puzzles.json')]
+    """Every grid file in data/: not the puzzles, the catalogue or the lore
+    registry (see grid_topology.grid_paths)."""
+    return grid_topology.grid_paths(DATA_DIR)
 
 
 def test_source_urls_name_the_right_solid():

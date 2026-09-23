@@ -1,7 +1,7 @@
 {
   "gridId": "RandomsphereC",
   "gridName": "Random sphere C",
-  "categories": ["Miscellaneous"],
+  "categories": ["Miscellaneous", "random"],
   "vertices": [
     [0.057, 0.101, -0.993],
     [0.626, -0.652, -0.428],

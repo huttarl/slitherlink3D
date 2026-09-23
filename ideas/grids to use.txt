@@ -46,6 +46,10 @@ Specific shapes & categories:
     (Maybe we could also have ants that travel from vertex to vertex, trying to improve their
     structure as well. Not sure what their criteria would be ...)
 
+- Randomness with symmetry is working well, especially with regularization.
+  But we seem to have all vertices of degree 3.
+  What about changing the vertex degree? Does that make it harder with the dual thing?
+
 - ooh, spirallohedra! see end of https://www.youtube.com/watch?v=zCr3mNUn-P0
     They're not convex, but I think we've found that that's ok.
     Also, try a couple of polar zonohedra; try to mitigate pointiness.

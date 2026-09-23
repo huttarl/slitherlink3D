@@ -36,6 +36,31 @@ const FAMILY_ORDER = [
     'Miscellaneous',
 ];
 
+// How the picker splits Miscellaneous, which had grown to more than twice the
+// size of any real family. Each solid goes under the FIRST group whose
+// categories it carries, so the order decides the overlaps: the hexagonal prism
+// is also a parallelohedron and goes with the prisms, and C110 is both a
+// fullerene and a nanotube and goes with the tubes, as its name says. A solid
+// matching none goes to 'Other'.
+//
+// This is the picker's grouping only. "Miscellaneous" is still the family in
+// the data and on the About card, so the grid files and their generators are
+// untouched by it. The labels are headings already, so they are not pluralized.
+const MISCELLANEOUS_GROUPS = [
+    {label: 'Prisms and antiprisms', categories: ['prism', 'antiprism']},
+    {label: 'Zonohedra', categories: ['zonohedron', 'zonish', 'parallelohedron']},
+    {label: 'Nanotubes', categories: ['nanotube']},
+    {label: 'Fullerenes and geodesics', categories: ['fullerene', 'Goldberg', 'geodesic']},
+    {label: 'Random solids', categories: ['random']},
+];
+
+const MISCELLANEOUS_LABELS = MISCELLANEOUS_GROUPS.map(group => group.label);
+
+// The picker's headings in order: the classical families, then Miscellaneous
+// in its pieces where the one heading used to be.
+const GROUP_ORDER = [...FAMILY_ORDER.filter(family => family !== 'Miscellaneous'),
+                     ...MISCELLANEOUS_LABELS];
+
 /** Plural of a category name: "Platonic solid" -> "Platonic solids". */
 function pluralizeCategory(category) {
     // -hedron -> -hedra, so "deltahedron" doesn't come out as "deltahedrons".
@@ -51,19 +76,25 @@ function pluralizeCategory(category) {
 /**
  * Which family a grid belongs to, for grouping purposes.
  *
- * A known family wins, so the groups come out in FAMILY_ORDER. Failing that we
- * fall back to the grid's first category, so a family added to the data shows
- * up as its own group straight away rather than being silently lumped in with
- * everything else -- and a grid with no categories at all still lands somewhere.
+ * A known family wins, so the groups come out in FAMILY_ORDER, except that a
+ * Miscellaneous solid goes to its piece of that family (MISCELLANEOUS_GROUPS).
+ * Failing a family we fall back to the grid's first category, so a family added
+ * to the data shows up as its own group straight away rather than being
+ * silently lumped in with everything else -- and a grid with no categories at
+ * all still lands somewhere.
  *
  * @param {Object} grid - a catalogue entry
- * @returns {string} the category to group under
+ * @returns {string} the category, or Miscellaneous group label, to group under
  */
 function gridFamily(grid) {
     const categories = grid.categories || [];
-    return FAMILY_ORDER.find(family => categories.includes(family))
-        || categories[0]
-        || 'Other';
+    const family = FAMILY_ORDER.find(known => categories.includes(known));
+    if (family === 'Miscellaneous') {
+        const group = MISCELLANEOUS_GROUPS.find(
+            candidate => candidate.categories.some(c => categories.includes(c)));
+        return group ? group.label : 'Other';
+    }
+    return family || categories[0] || 'Other';
 }
 
 /**
@@ -89,14 +120,16 @@ export function groupGridsByFamily(grids) {
     }
 
     const rank = family => {
-        const known = FAMILY_ORDER.indexOf(family);
+        const known = GROUP_ORDER.indexOf(family);
         // Unknown categories sort after all known families, among themselves
         // alphabetically (handled by the tie-break below).
-        return known < 0 ? FAMILY_ORDER.length : known;
+        return known < 0 ? GROUP_ORDER.length : known;
     };
     return [...groups.keys()]
         .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
-        .map(family => ({family, label: pluralizeCategory(family),
+        .map(family => ({family,
+                         label: MISCELLANEOUS_LABELS.includes(family)
+                             ? family : pluralizeCategory(family),
                          grids: groups.get(family)}));
 }
 

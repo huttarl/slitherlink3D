@@ -31,6 +31,27 @@ def load_grid(path):
     return json.loads(Path(path).read_text())
 
 
+def grid_paths(data_dir):
+    """Every grid file in `data_dir`, sorted by name.
+
+    Recognized by what is IN the file -- a gridId, vertices and faces -- the
+    same test build_catalogue.py applies, rather than by skipping the names of
+    the files that aren't grids. A list of names to skip has to grow with every
+    new kind of file in data/ (puzzle files, the catalogue, the lore registry),
+    and one missed name means a script treating that file as a grid.
+    """
+    grids = []
+    for path in sorted(Path(data_dir).glob('*.json')):
+        try:
+            data = json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if isinstance(data, dict) and all(key in data
+                                          for key in ('gridId', 'vertices', 'faces')):
+            grids.append(path)
+    return grids
+
+
 def edge_key(vertex1, vertex2):
     """The canonical form of the edge between two vertices."""
     return (vertex1, vertex2) if vertex1 < vertex2 else (vertex2, vertex1)

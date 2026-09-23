@@ -27,6 +27,8 @@ import sys
 import time
 from pathlib import Path
 
+import grid_topology
+
 UTIL_DIR = Path(__file__).resolve().parent
 DATA_DIR = UTIL_DIR.parent / 'data'
 RUN_GEN = UTIL_DIR / 'run_gen.py'
@@ -50,9 +52,7 @@ def puzzle_count(stem):
 
 def grid_stems():
     """Every grid file's stem, smallest first by edge count where known."""
-    stems = sorted(p.stem for p in DATA_DIR.glob('*.json')
-                   if not p.name.endswith('-puzzles.json')
-                   and p.name != 'grids.json')
+    stems = [p.stem for p in grid_topology.grid_paths(DATA_DIR)]
     edges = {}
     catalogue = DATA_DIR / 'grids.json'
     if catalogue.exists():

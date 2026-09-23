@@ -41,11 +41,18 @@ A JSON object containing the following properties:
     groups by family, and a solid can only be filed under one heading.
     The rest are cross-cutting properties: "deltahedron", "quasiregular", "zonohedron",
     "zonish", "parallelohedron", "chiral", "self-dual", "Goldberg", "geodesic",
-    "fullerene", "nanotube", "prism", "antiprism".
+    "fullerene", "nanotube", "prism", "antiprism", "random".
   - Some of those attributes catch a classical solid too, which is the point of their
     being cross-cutting: the cube is a "prism" as well as Platonic, and the octahedron
     an "antiprism".
-  - "Miscellaneous" is the catch-all for a solid in none of the classical families.
+  - "Miscellaneous" is the catch-all for a solid in none of the classical families. The
+    picker splits it by those solids' other categories (prisms and antiprisms,
+    zonohedra, nanotubes, fullerenes and geodesics, random solids; see
+    MISCELLANEOUS_GROUPS in js/catalogue.js), so a Miscellaneous solid wants one of
+    those categories, or it is filed under "Others".
+  - "random" marks a solid we generated from random points rather than one with a
+    mathematical identity: the random spheres (util/genRandomPolyh.py) and the
+    tetrahedral cages (util/genSymmetric.py, which adds it itself).
   - Where one category implies another, list only the narrowest: every parallelohedron
     is a zonohedron, so the cube says "parallelohedron" and stops there.
   - Names are kept short — "chiral", not "chiral polyhedron" — since the About card has already given the solid's name

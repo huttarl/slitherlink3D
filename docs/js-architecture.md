@@ -162,7 +162,9 @@ navigate to `?grid=<DEFAULT_GRID>`; "How to Play" adds `?howto=1`, which
   Check and Clear-errors buttons, and the spoiler policy (mismatches reported
   as a count only).
 - `puzzlePicker.js` — the polyhedron/puzzle pickers, populated from
-  `data/grids.json`; the "Next puzzle" buttons; and the "are you sure?" that
+  `data/grids.json` and grouped by family (`groupGridsByFamily` in
+  `catalogue.js`, which splits the big Miscellaneous family by its solids'
+  other categories); the "Next puzzle" buttons; and the "are you sure?" that
   guards leaving a part-worked board. Navigating reloads the page with new
   `?grid=`/`?puzzle=` parameters.
 - `confirmDialog.js` — our own yes/no dialog, in place of `window.confirm()`.

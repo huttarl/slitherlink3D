@@ -173,8 +173,12 @@ then goes through `obj2json.py` as above:
 
 ```
 util/genRandomPolyh.py 20 --quiet --name "Random sphere B" --out /tmp/b.obj
-util/obj2json.py /tmp/b.obj > data/randB.json
+util/obj2json.py /tmp/b.obj --categories="Miscellaneous,random" > data/randB.json
 ```
+
+The `random` category is what files it with the other random solids in the
+picker (see `MISCELLANEOUS_GROUPS` in `js/catalogue.js`). `obj2json.py` adds no
+categories of its own, so without it the solid would land under "Others".
 
 `--name` sets the OBJ group name, which is where `obj2json.py` gets the
 grid's name, so each solid needs its own. `--quiet` skips the matplotlib
@@ -399,3 +403,22 @@ count), the worst ratio of a face's longest side to its shortest, the
 range of face inscribed radii (which is the range of clue digit sizes), how far
 faces stray from flat, the vertex degrees, and whether every face is wound
 outward.
+
+How much of each is too much is a judgment, and the lines below are the ones in
+use. They are about play first: a face the player can't count, or two faces that
+read as one, spoils a board, while most of the rest merely looks less tidy.
+
+| measure | worth a second look past |
+|---|---|
+| straightest corner | 150°, where a corner starts to hide a side |
+| sides within a face | ×3.0 |
+| flattest edge | 8°, where two neighboring faces start to read as one |
+| sharpest corner | below 55° |
+| clue-size spread | **×2.5** |
+| shortest edge | below 40% of the median |
+
+Clue-size spread is deliberately the loosest. Clue digits of noticeably
+different sizes are fine on the board, and holding the spread tight works
+against regular faces: a regular octagon is simply bigger than a regular
+pentagon with the same edge, so any mixed census that is regularized widens it.
+It used to be judged at ×2.0, which demoted solids for no benefit to play.
