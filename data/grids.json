@@ -632,6 +632,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "C76",
+      "gridId": "C76",
+      "gridName": "C76 fullerene",
+      "categories": ["Miscellaneous", "fullerene"],
+      "faces": 40,
+      "edges": 114,
+      "vertices": 76,
+      "numPuzzles": 3
+    },
+    {
       "file": "cD",
       "gridId": "cD",
       "gridName": "Chamfered dodecahedron",

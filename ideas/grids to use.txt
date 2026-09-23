@@ -27,6 +27,29 @@ All of these will be convex (unless otherwise noted).
 
 Specific shapes & categories:
 
+- I wonder if there's some way to use stigmergy / "swarm intelligence" to generate interesting
+    solids, seeding with some randomness but preferring a variety of face and vertex degrees.
+    I don't know that stigmergy would change the algorithms much ... the idea is mainly to use
+    the environment to deposit markers as external memory, influencing other agents to behave
+    a certain way without direct communication.
+    How about something like this: We start by generating a random spheroid solid, like we already
+    do with genRandomPolyh.py. This gives us mostly triangles. Then, a bunch of ants start wandering
+    randomly over the surface, from face to adjacent face. At each face F, they try to improve
+    the structure: They try to join F with some adjacent triangular face G to form F', if they can do it without
+    degrading the solid. That may involve moving G's other vertex V in order to make F' planar, and convex.
+    A metric will determine whether the result is a better solid (we have some metrics like pointiness,
+    planarity, etc.)
+    The ants will try harder (try more candidate neighbors) if F's degree is 3 than 5.
+    After a while, they're not going to be having much success in improving the structure. A metric
+    about that says when to stop trying and return the result.
+    I guess that's more just agentic than stigmergic. Maybe.
+    (Maybe we could also have ants that travel from vertex to vertex, trying to improve their
+    structure as well. Not sure what their criteria would be ...)
+
+- ooh, spirallohedra! see end of https://www.youtube.com/watch?v=zCr3mNUn-P0
+    They're not convex, but I think we've found that that's ok.
+    Also, try a couple of polar zonohedra; try to mitigate pointiness.
+
 x Platonics, Archimedean solids, Johnson solids,
 x near-miss Johnson solids; https://en.wikipedia.org/wiki/Near-miss_Johnson_solid
     x e.g. expanded truncated icosahedron, with 3/4/5/6-gons!

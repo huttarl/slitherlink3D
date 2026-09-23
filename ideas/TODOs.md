@@ -11,6 +11,13 @@ Finished items live in ideas/TODOs-done.md.
     - [x] implement number->string conversion for other locales
     - [ ] add user-accessible settings for this
 
+- tweak the "next" ordering so that more ordinary solids come before the twist: e.g. rhombicuboctahedron
+  before pseudorhombicuboctahedron (elongated square gyrobicupola); and there's another one like that
+  where two are next to each other and the less-ordinary one is coming first... what was it? I think the
+  difference was a gyro (twist).
+
+- maybe add a "jump to a random puzzle" button
+
 - [ ] The celebration currently uses a "throbbing" animation to highlight the solution loop.
   Krazydad's web site does the same thing, and that's probably where I got it from (long ago).
   I don't want to be plagiarizing, or accused of it. Maybe I should look again for another way to

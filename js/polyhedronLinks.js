@@ -77,13 +77,14 @@ const SOLID_PAGE_EXCEPTIONS = {
     // The tetrakis snub cube is the geodesic on an octahedron rather than an
     // icosahedron; the wiki has no article on it under that name or any other.
     'dwC': null,
-    // The two fullerenes past C60. This wiki is about polytopes, and these cages
+    // The fullerenes other than C60. This wiki is about polytopes, and these cages
     // are known as molecules -- so it has the truncated icosahedron (as a solid)
-    // but nothing on C70 or C26 under any name. The reading is the 'fullerene'
-    // category link instead. Chemistry has plenty to say about both, if a per-solid
-    // link is ever wanted.
+    // but nothing on C70, C76 or C26 under any name. The reading is the 'fullerene'
+    // category link instead. Chemistry has plenty to say about all of them, if a
+    // per-solid link is ever wanted.
     'C26': null,
     'C70': null,
+    'C76': null,
     // The capped nanotube is a fullerene by construction rather than a named
     // molecule -- C110 has many isomers and this is simply the tube-shaped one -- so
     // there is no article about this solid anywhere to link to.
