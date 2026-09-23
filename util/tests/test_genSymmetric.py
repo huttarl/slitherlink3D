@@ -5,14 +5,19 @@ then the two claims the generator's design rests on: that relaxing keeps the
 symmetry exact, and that every orbit's faces are congruent -- which is what
 makes the face census come in blocks of 12.
 """
+import functools
+
 import numpy as np
+from scipy.spatial import ConvexHull
 
 import grid_checks
 from genGoldberg import polar_dual
 from genSymmetric import (EDGE_AXES, FACE_AXES, VERTEX_AXES, all_points, draw,
-                          has_mirror_symmetry, index_of, orbit, relax,
+                          dual_edge_lengths, dual_edges_of, has_mirror_symmetry,
+                          index_of, orbit, relax, separate_short_edges,
                           source_arguments, symmetry_problems,
-                          tetrahedral_rotations)
+                          tetrahedral_rotations, triangle_set)
+from grid_topology import edges_of
 
 ROTATIONS = tetrahedral_rotations()
 
@@ -81,7 +86,7 @@ class TestTheSolid:
         result = None
         while result is None:
             result = draw(self.orbits, np.empty((0, 3)), ROTATIONS, 0.0, rng)
-        (points, hull) = result
+        (_, points, hull) = result
         (vertices, faces) = polar_dual(points)
         return (points, hull, vertices, faces)
 
@@ -122,11 +127,69 @@ class TestMirrorCheck:
         result = None
         while result is None:
             result = draw(4, np.empty((0, 3)), ROTATIONS, 0.0, rng)
-        assert not has_mirror_symmetry(result[0])
+        (_, points, _) = result
+        assert not has_mirror_symmetry(points)
+
+
+@functools.lru_cache(maxsize=None)
+def separated():
+    """A draw with short edges, before and after separation. Cached, since the
+    relaxation and the separation are the slowest things in this file.
+
+    Seed 2 at relax 0.25 is the draw that main() makes for those arguments, and
+    its shortest edge starts at about 21% of the median.
+    """
+    rng = np.random.default_rng(2)
+    fixed = np.empty((0, 3))
+    result = None
+    while result is None:
+        result = draw(6, fixed, ROTATIONS, 0.25, rng)
+    (reps, points, hull) = result
+    (moved, before, after) = separate_short_edges(reps, fixed, ROTATIONS, 0.4)
+    moved_points = all_points(moved, fixed, ROTATIONS)
+    return (points, hull, moved_points, ConvexHull(moved_points), before, after)
+
+
+class TestSeparatingShortEdges:
+    def test_starts_short(self):
+        (*_, before, _) = separated()
+        assert before < 0.4
+
+    def test_reaches_the_target(self):
+        (*_, after) = separated()
+        assert after >= 0.4
+
+    def test_keeps_the_triangulation(self):
+        # A flip would change vertex degrees, and so the census.
+        (_, hull, _, moved_hull, _, _) = separated()
+        assert triangle_set(moved_hull.simplices) == triangle_set(hull.simplices)
+
+    def test_keeps_the_symmetry_exact(self):
+        (_, _, moved_points, moved_hull, _, _) = separated()
+        assert symmetry_problems(moved_points, moved_hull.simplices,
+                                 ROTATIONS) == []
+
+    def test_keeps_the_faces_exactly_flat(self):
+        # The point of moving the primal points rather than the dual's vertices.
+        (_, _, moved_points, _, _, _) = separated()
+        (vertices, faces) = polar_dual(moved_points)
+        assert grid_checks.check_flat_faces(vertices, faces, 1e-9) == []
+
+
+def test_dual_edge_lengths_measure_the_real_dual():
+    """The separation optimizes dual_edge_lengths, so it must agree with the
+    edges of the solid polar_dual actually builds."""
+    (points, hull, _, _, _, _) = separated()
+    predicted = sorted(dual_edge_lengths(points, hull.simplices,
+                                         dual_edges_of(hull.simplices)))
+    (vertices, faces) = polar_dual(points)
+    actual = sorted(grid_checks.distance(vertices[a], vertices[b])
+                    for (a, b) in edges_of(faces))
+    assert np.allclose(predicted, actual)
 
 
 def test_source_names_the_seed():
-    options = {'orbits': 6, 'relax': 0.25, 'seed': 42, 'axes': ['edge'],
-               'id': None, 'name': None}
-    assert source_arguments(options) == ['6', '--relax=0.25', '--seed=42',
-                                         '--edge-axes']
+    options = {'orbits': 6, 'relax': 0.25, 'min_edge': 0.4, 'seed': 42,
+               'axes': ['edge'], 'id': None, 'name': None}
+    assert source_arguments(options) == ['6', '--relax=0.25', '--min-edge=0.4',
+                                         '--seed=42', '--edge-axes']

@@ -286,28 +286,51 @@ winding and vertex-degree checks. It is also tested for a mirror or an
 inversion, and gets the `chiral` category when it has neither, which is
 normal: random orbits are chiral like the snub cube.
 
+**Short edges.** Two hull triangles that are nearly coplanar give poles, and
+so dual vertices, nearly on top of each other, and symmetric point sets make
+such near-coincidences common. Unseparated, even an evenly spread relax-0.5 draw
+had an edge 3% of the median. `genRandomPolyh.py`'s `separate_short_edges`
+solves this for its solids by nudging the dual's vertices one at a time and
+re-flattening the faces, which would break the symmetry here, and leaves the
+faces only nearly flat anyway.
+
+So this script's `separate_short_edges` works on the other side of the dual: it
+moves the **primal** points, deepening the fold between each nearly coplanar
+pair of triangles, by gradient descent on the total shortfall below `--min-edge`
+(default 0.4 of the median, as in `genRandomPolyh.py`). Three choices in it,
+each forced by something that went wrong without it:
+
+- **One representative per orbit moves**, and the group is reapplied, as in the
+  relaxation — so the symmetry stays exact. And since the polar dual of any
+  point set is flat, **the faces stay exactly flat** too (bow about 5e-10).
+- **The triangulation is held fixed.** A nearly coplanar pair can also be
+  resolved by flipping to the other diagonal, and left free to, the search did
+  exactly that: two orbits of squares and octagons turned into hexagons, because
+  a flip changes vertex degrees and so face sizes. That spends the very variety
+  the draw produced, so a step is kept only if its hull has the same triangles.
+- **The target tracks the current median.** Separating the short edges
+  lengthens the typical edge too — by 22% on one draw — so a target fixed at the
+  start was met, yet missed as `grid_quality.py` measures it.
+
 Measured over six draws of 6 orbits (72 faces, 82 with axis points), with
-`grid_quality.py`:
+`grid_quality.py`. The census is unchanged by separation in every case:
 
-| relax | census | sharpest corner | flattest edge | shortest edge |
+| relax | census | shortest edge, before → after | sharpest corner | flattest edge |
 |---|---|---|---|---|
-| 0 | 36×5, 12×6, 24×7 | 55° | 10° | 36% of median |
-| 0 | 24×4, 12×5, 12×6, 24×8 | 58° | 9° | 2% |
-| 0.25 | 12×5, 60×6 | 65° | 13° | 43% |
-| 0.25 | 24×5, 36×6, 12×7 | 58° | 10° | 21% |
-| 0.25, both axis options | 12×4, 12×5, 40×6, 12×7, 6×8 | 67° | 13° | 9% |
-| 0.5 | 12×5, 60×6 | 75° | 17° | 3% |
+| 0 | 36×5, 12×6, 24×7 | 36% → 42% | 55° → 52° | 10° → 10° |
+| 0 | 24×4, 12×5, 12×6, 24×8 | 2% → **33%** | 58° → 60° | 9° → 9° |
+| 0.25 | 12×5, 60×6 | 43% (already past) | 65° | 13° |
+| 0.25 | 24×5, 36×6, 12×7 | 21% → 43% | 58° → 69° | 10° → 8° |
+| 0.25, both axis options | 12×4, 12×5, 40×6, 12×7, 6×8 | 9% → 42% | 67° → 61° | 13° → 11° |
+| 0.5 | 12×5, 60×6 | 3% → 49% | 75° → 85° | 17° → 16° |
 
-Corners and edge angles are healthy — better than an unrelaxed
-`genRandomPolyh.py --dual` (31° and 1.6°). **Short edges are the open problem.**
-Two hull triangles that are nearly coplanar give poles, and so dual vertices,
-nearly on top of each other, and symmetric point sets make such near-coincidences
-common: even the evenly spread relax-0.5 draw had an edge 3% of the median.
-`genRandomPolyh.py`'s `separate_short_edges` solves this for its solids, but it
-nudges vertices one at a time and would break the symmetry, so it must not be
-used here. A symmetric version would move one representative per orbit and
-reapply the group, as the relaxation does. Until then, check `shortest edge` in
-`grid_quality.py` before keeping a draw.
+Corners and edge angles are healthy throughout — better than an unrelaxed
+`genRandomPolyh.py --dual` (31° and 1.6°). One draw stops short: the one with 24
+squares beside 24 octagons, which gets from 2% to 33% and then finds no further
+step that keeps its triangulation. Whether such an extreme census simply can't
+have regular edges, or that draw is caught in a local minimum, isn't settled.
+The script says so when it happens ("SHORT OF THE TARGET; try another seed"),
+and `--min-edge=0` turns the separation off.
 
 ## Checking a grid afterwards
 

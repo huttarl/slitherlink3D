@@ -2,7 +2,7 @@
 """Generate a random solid with tetrahedral rotational symmetry, as grid JSON.
 
 Usage:
-    util/genSymmetric.py [orbits] [--relax=T] [--seed=N]
+    util/genSymmetric.py [orbits] [--relax=T] [--min-edge=F] [--seed=N]
                          [--vertex-axes] [--face-axes] [--edge-axes]
                          [--id=ID] [--name=NAME]
 
@@ -25,6 +25,9 @@ What the options mean for the solid:
   --relax         how evenly to spread the points, 0 to 1 (default 0.5). As in
                   genRandomPolyh.py, 0 leaves them where they fell and gives the
                   most varied face sizes, and 1 spreads them evenly.
+  --min-edge      the shortest edge to allow, as a fraction of the median
+                  (default 0.4, as in genRandomPolyh.py; 0 to leave the points
+                  where the draw put them). See separate_short_edges.
   --seed          the random draw (default: chosen at random, and reported).
 
 Euler's formula constrains the census: summing (6 - sides) over the faces always
@@ -60,6 +63,20 @@ RELAX_STEP = 0.05
 RELAX_COOLING = 0.995
 RELAX_TOLERANCE = 1e-7
 RELAX_MAX_ITERATIONS = 5000
+
+# The shortest dual edge to allow, as a fraction of the median: the same
+# default as genRandomPolyh.py's --min-edge.
+MIN_EDGE_FRACTION = 0.4
+
+# Short-edge separation: the largest step a representative may take, the step
+# below which it gives up, the most rounds, and the finite-difference offset.
+SEPARATE_STEP = 0.02
+SEPARATE_MIN_STEP = 1e-7
+SEPARATE_ROUNDS = 500
+GRADIENT_H = 1e-7
+# Aim this far past the target: the descent approaches the line from below and
+# slows as it nears it, so aiming at the line itself leaves edges a hair short.
+SEPARATE_OVERSHOOT = 1.05
 
 
 def tetrahedral_rotations():
@@ -196,12 +213,8 @@ def has_mirror_symmetry(points):
                for m in (inversion, mirror))
 
 
-def draw(orbits, fixed, rotations, relax_fraction, rng):
-    """One attempt: the points, or None if their hull is degenerate."""
-    reps = random_unit_vectors(orbits, rng)
-    reps = partially_relaxed(reps, fixed, rotations, relax_fraction)
-    points = all_points(reps, fixed, rotations)
-
+def usable_hull(points):
+    """The points' convex hull, or None if it would make a bad solid."""
     # Distinct points: a representative too near an axis gives images that
     # nearly coincide.
     gaps = np.linalg.norm(points[:, None] - points[None, :], axis=2)
@@ -214,7 +227,122 @@ def draw(orbits, fixed, rotations, relax_fraction, rng):
         return None       # a point inside the hull would get no face
     if len(merge_coplanar_faces(points, hull)) != len(hull.simplices):
         return None       # coplanar points: see the module docstring
-    return (points, hull)
+    return hull
+
+
+def draw(orbits, fixed, rotations, relax_fraction, rng):
+    """One attempt: (representatives, points, hull), or None if the hull is
+    unusable."""
+    reps = random_unit_vectors(orbits, rng)
+    reps = partially_relaxed(reps, fixed, rotations, relax_fraction)
+    points = all_points(reps, fixed, rotations)
+    hull = usable_hull(points)
+    return None if hull is None else (reps, points, hull)
+
+
+def dual_edges_of(triangles):
+    """The dual's edges, as pairs of triangle indices: one pair per primal edge,
+    the two triangles that share it."""
+    sharing = {}
+    for (t, triangle) in enumerate(triangles):
+        for k in range(3):
+            edge = tuple(sorted((int(triangle[k]), int(triangle[(k + 1) % 3]))))
+            sharing.setdefault(edge, []).append(t)
+    return np.array(list(sharing.values()))
+
+
+def dual_edge_lengths(points, triangles, dual_edges):
+    """How long each dual edge is: the distance between the poles of its two
+    triangles, which is where polar_dual puts the dual's vertices."""
+    corners = points[triangles]
+    poles = np.linalg.solve(corners, np.ones((len(corners), 3, 1)))[..., 0]
+    return np.linalg.norm(poles[dual_edges[:, 0]] - poles[dual_edges[:, 1]], axis=1)
+
+
+def separate_short_edges(reps, fixed, rotations, min_fraction):
+    """Move the representatives until no dual edge is shorter than
+    `min_fraction` of the median, keeping the symmetry and flatness exact.
+
+    A short dual edge comes from two adjacent hull triangles that are nearly
+    coplanar: their poles, the dual's two vertices, then nearly coincide. So
+    this moves the PRIMAL points, deepening the fold between such triangles,
+    rather than nudging the dual's vertices as genRandomPolyh.py does. The dual
+    of any point set is exactly flat, so flatness costs nothing, and moving one
+    representative per orbit keeps the symmetry exact.
+
+    Gradient descent on the total squared shortfall, with the triangulation
+    held FIXED. A nearly coplanar pair of triangles can also be resolved by
+    flipping to the other diagonal, but a flip changes vertex degrees and so
+    face sizes: left free to flip, this turned two orbits of squares and
+    octagons into hexagons, spending the variety the draw produced. So a step is
+    kept only if the hull it actually produces is usable, has the same
+    triangles, and has less shortfall.
+
+    @returns (representatives, shortest before, shortest after), the shortest
+        dual edge given as a fraction of the median
+    """
+    hull = usable_hull(all_points(reps, fixed, rotations))
+    dual_edges = dual_edges_of(hull.simplices)
+    lengths = dual_edge_lengths(all_points(reps, fixed, rotations),
+                                hull.simplices, dual_edges)
+    before = float(lengths.min() / np.median(lengths))
+
+    def shortfall(candidate, triangles, edges):
+        # Against the CURRENT median, which is what grid_quality.py reports:
+        # separating the short edges lengthens the typical one too (by 22% on
+        # one draw), so a target fixed at the start would be missed as measured.
+        lengths = dual_edge_lengths(all_points(candidate, fixed, rotations),
+                                    triangles, edges)
+        target = min_fraction * SEPARATE_OVERSHOOT * np.median(lengths)
+        return float(np.sum(np.clip(target - lengths, 0, None) ** 2))
+
+    triangles = hull.simplices
+    wanted = triangle_set(triangles)
+    current = shortfall(reps, triangles, dual_edges)
+    step = SEPARATE_STEP
+    for _ in range(SEPARATE_ROUNDS):
+        if current == 0:
+            break
+        # Central differences over every coordinate of every representative.
+        gradient = np.zeros_like(reps)
+        for index in np.ndindex(reps.shape):
+            nudge = np.zeros_like(reps)
+            nudge[index] = GRADIENT_H
+            gradient[index] = (shortfall(reps + nudge, triangles, dual_edges)
+                               - shortfall(reps - nudge, triangles, dual_edges)
+                               ) / (2 * GRADIENT_H)
+        # Only the part along the sphere moves a point.
+        gradient -= np.sum(gradient * reps, axis=1, keepdims=True) * reps
+        largest = np.max(np.linalg.norm(gradient, axis=1))
+        if largest == 0:
+            break
+        direction = -gradient / largest
+
+        improved = False
+        while step > SEPARATE_MIN_STEP:
+            candidate = reps + step * direction
+            candidate /= np.linalg.norm(candidate, axis=1, keepdims=True)
+            candidate_hull = usable_hull(all_points(candidate, fixed, rotations))
+            if (candidate_hull is not None
+                    and triangle_set(candidate_hull.simplices) == wanted):
+                value = shortfall(candidate, triangles, dual_edges)
+                if value < current:
+                    (reps, current) = (candidate, value)
+                    step = min(step * 1.5, SEPARATE_STEP)
+                    improved = True
+                    break
+            step /= 2
+        if not improved:
+            break       # no downhill step left: as good as this draw gets
+
+    lengths = dual_edge_lengths(all_points(reps, fixed, rotations),
+                                triangles, dual_edges)
+    return (reps, before, float(lengths.min()) / float(np.median(lengths)))
+
+
+def triangle_set(triangles):
+    """A triangulation as a set, for comparing two regardless of order."""
+    return {frozenset(int(v) for v in t) for t in triangles}
 
 
 def census_line(faces):
@@ -223,11 +351,13 @@ def census_line(faces):
 
 
 def parse_arguments(argv):
-    options = {'orbits': 6, 'relax': 0.5, 'seed': None, 'axes': [],
-               'id': None, 'name': None}
+    options = {'orbits': 6, 'relax': 0.5, 'min_edge': MIN_EDGE_FRACTION,
+               'seed': None, 'axes': [], 'id': None, 'name': None}
     for argument in argv:
         if argument.startswith('--relax='):
             options['relax'] = float(argument.split('=', 1)[1])
+        elif argument.startswith('--min-edge='):
+            options['min_edge'] = float(argument.split('=', 1)[1])
         elif argument.startswith('--seed='):
             options['seed'] = int(argument.split('=', 1)[1])
         elif argument.startswith('--id='):
@@ -242,16 +372,20 @@ def parse_arguments(argv):
             raise SystemExit(f'Unrecognized argument {argument!r}.\n\n{__doc__}')
     if not 0 <= options['relax'] <= 1:
         raise SystemExit('--relax must be between 0 and 1.')
+    if not 0 <= options['min_edge'] < 1:
+        raise SystemExit('--min-edge must be at least 0 and less than 1.')
     if options['orbits'] < 1:
         raise SystemExit('orbits must be at least 1.')
     return options
 
 
 def source_arguments(options):
-    """The arguments that reproduce this file, with the seed always spelled out
-    -- a file made from a random seed must still name the seed it used."""
+    """The arguments that reproduce this file. The seed, relax and minimum edge
+    are always spelled out, even at their defaults: they decide the geometry,
+    and the line must go on reproducing the file after a default moves (see
+    docs/json-format.md)."""
     arguments = [str(options['orbits']), f'--relax={options["relax"]:g}',
-                 f'--seed={options["seed"]}']
+                 f'--min-edge={options["min_edge"]:g}', f'--seed={options["seed"]}']
     arguments += [f'--{axis}-axes' for axis in options['axes']]
     if options['id']:
         arguments.append(f'--id={options["id"]}')
@@ -277,7 +411,17 @@ def main():
         log(f'  draw {attempt} was degenerate; drawing again')
     else:
         raise SystemExit(f'No usable draw in {MAX_ATTEMPTS} attempts.')
-    (points, hull) = result
+    (reps, points, hull) = result
+
+    if options['min_edge'] > 0:
+        (reps, before, after) = separate_short_edges(reps, fixed, rotations,
+                                                     options['min_edge'])
+        points = all_points(reps, fixed, rotations)
+        hull = ConvexHull(points)
+        log(f'  shortest edge {before:.0%} of median before separating, '
+            f'{after:.0%} after (target {options["min_edge"]:.0%})'
+            + ('' if after >= options['min_edge']
+               else ' -- SHORT OF THE TARGET; try another seed'))
 
     (vertices, faces) = polar_dual(points)
     problems = (symmetry_problems(points, hull.simplices, rotations)
@@ -298,10 +442,15 @@ def main():
     # Every argument that changes the solid is in the default id, so two
     # different solids can never share one. Underscores between the parts, or
     # the axis letters run into the relax value ("ve" + "r25" read as "ver25").
+    # The minimum edge only when it isn't the default: an absent part then means
+    # the default, so ids stay unique without growing for the common case.
     parts = [f'symT{options["orbits"]}']
     if options['axes']:
         parts.append(''.join(axis[0] for axis in options['axes']))
-    parts += [f'r{round(options["relax"] * 100)}', f's{options["seed"]}']
+    parts.append(f'r{round(options["relax"] * 100)}')
+    if options['min_edge'] != MIN_EDGE_FRACTION:
+        parts.append(f'm{round(options["min_edge"] * 100)}')
+    parts.append(f's{options["seed"]}')
     grid_id = options['id'] or '_'.join(parts)
     grid = {
         'gridId': grid_id,
