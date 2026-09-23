@@ -631,7 +631,7 @@ def main():
     grid = {
         'gridId': grid_id,
         'gridName': options['name'] or f'Tetrahedral random solid {grid_id}',
-        'categories': ['Miscellaneous'] + (['chiral'] if chiral else []),
+        'categories': ['Miscellaneous', 'random'] + (['chiral'] if chiral else []),
         'source': json_format.source_line(source_arguments(options)),
         'vertices': [[round(float(c), 9) for c in v] for v in vertices],
         'faces': [[int(i) for i in face] for face in faces],

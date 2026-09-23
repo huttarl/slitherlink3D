@@ -788,6 +788,16 @@
       "numPuzzles": 3
     },
     {
+      "file": "cageA",
+      "gridId": "cageA",
+      "gridName": "Tetrahedral cage A",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 60,
+      "edges": 174,
+      "vertices": 116,
+      "numPuzzles": 3
+    },
+    {
       "file": "bD",
       "gridId": "bD",
       "gridName": "Truncated icosidodecahedron",
@@ -852,6 +862,26 @@
       "dual": "gp12"
     },
     {
+      "file": "cageB",
+      "gridId": "cageB",
+      "gridName": "Tetrahedral cage B",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 76,
+      "edges": 222,
+      "vertices": 148,
+      "numPuzzles": 3
+    },
+    {
+      "file": "cageC",
+      "gridId": "cageC",
+      "gridName": "Tetrahedral cage C",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 80,
+      "edges": 234,
+      "vertices": 156,
+      "numPuzzles": 3
+    },
+    {
       "file": "zonaD6",
       "gridId": "zonaD6",
       "gridName": "Six-zone icosidodecahedron",
@@ -859,6 +889,46 @@
       "faces": 122,
       "edges": 240,
       "vertices": 120,
+      "numPuzzles": 3
+    },
+    {
+      "file": "cageD",
+      "gridId": "cageD",
+      "gridName": "Tetrahedral cage D",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 84,
+      "edges": 246,
+      "vertices": 164,
+      "numPuzzles": 3
+    },
+    {
+      "file": "cageE",
+      "gridId": "cageE",
+      "gridName": "Tetrahedral cage E",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 84,
+      "edges": 246,
+      "vertices": 164,
+      "numPuzzles": 3
+    },
+    {
+      "file": "cageF",
+      "gridId": "cageF",
+      "gridName": "Tetrahedral cage F",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 84,
+      "edges": 246,
+      "vertices": 164,
+      "numPuzzles": 3
+    },
+    {
+      "file": "cageG",
+      "gridId": "cageG",
+      "gridName": "Tetrahedral cage G",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 96,
+      "edges": 282,
+      "vertices": 188,
       "numPuzzles": 3
     },
     {

@@ -131,6 +131,16 @@ const SOLID_PAGE_EXCEPTIONS = {
     'RandomsphereC': null,
     'RandomsphereD': null,
     'RandomsphereE': null,
+    // The tetrahedral cages (util/genSymmetric.py): random orbits under the
+    // tetrahedral rotations, regularized. Ours alone, like the random spheres,
+    // so there is no article anywhere; the 'chiral' category is the reading.
+    'cageA': null,
+    'cageB': null,
+    'cageC': null,
+    'cageD': null,
+    'cageE': null,
+    'cageF': null,
+    'cageG': null,
 };
 
 /**
@@ -225,6 +235,10 @@ export const UNLINKED_CATEGORIES = [
     // to read about being miscellaneous; what such a solid actually is shows in
     // its other categories, which are linked.
     'Miscellaneous',
+    // Our own random solids (util/genRandomPolyh.py, util/genSymmetric.py).
+    // There is no subject called "random polyhedra" to read about; the category
+    // exists to file them together in the picker.
+    'random',
 ];
 
 /**
