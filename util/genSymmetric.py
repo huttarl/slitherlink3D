@@ -2,8 +2,8 @@
 """Generate a random solid with tetrahedral rotational symmetry, as grid JSON.
 
 Usage:
-    util/genSymmetric.py [orbits] [--relax=T] [--min-edge=F] [--seed=N]
-                         [--vertex-axes] [--face-axes] [--edge-axes]
+    util/genSymmetric.py [orbits] [--relax=T] [--min-edge=F] [--regularize]
+                         [--seed=N] [--vertex-axes] [--face-axes] [--edge-axes]
                          [--id=ID] [--name=NAME]
 
 Output goes to stdout; progress, the census and the self-check go to stderr.
@@ -29,6 +29,10 @@ What the options mean for the solid:
   --min-edge      the shortest edge to allow, as a fraction of the median
                   (default 0.4, as in genRandomPolyh.py; 0 to leave the points
                   where the draw put them). See separate_short_edges.
+  --regularize    then move the points to make every face as nearly regular
+                  -- equal sides, equal angles -- as its neighbors allow, keeping
+                  the census. Off by default, so commands written before it
+                  existed still make the same solid. See regularize.
   --seed          the random draw (default: chosen at random, and reported).
 
 Euler's formula constrains the census: summing (6 - sides) over the faces always
@@ -78,6 +82,24 @@ GRADIENT_H = 1e-7
 # Aim this far past the target: the descent approaches the line from below and
 # slows as it nears it, so aiming at the line itself leaves edges a hair short.
 SEPARATE_OVERSHOOT = 1.05
+
+# Regularizing: its largest step, most rounds, and the smallest relative gain
+# in a round that is worth another. MIN_FACE_ANGLE is the flattest two
+# neighboring faces may meet, and CONSTRAINT_WEIGHT how hard the two held
+# limits (that and the minimum edge) outweigh the regularity itself.
+REGULARIZE_STEP = 0.01
+REGULARIZE_ROUNDS = 600
+REGULARIZE_TOLERANCE = 1e-5
+MIN_FACE_ANGLE = 8.0
+CONSTRAINT_WEIGHT = 50.0
+# The straightest a corner should be, in degrees, and how much that counts
+# beside the average regularity. A corner near 180 hides a side, which is what
+# makes a face hard to count; a regular nonagon's corners are 140. Averaging
+# alone let the straightest corners get WORSE while the rest improved, since a
+# face's angles have a fixed sum and a squeezed corner pushes its excess into
+# the others.
+STRAIGHT_CORNER = 145.0
+STRAIGHT_WEIGHT = 20.0
 
 
 def tetrahedral_rotations():
@@ -252,11 +274,17 @@ def dual_edges_of(triangles):
     return np.array(list(sharing.values()))
 
 
+def poles_of(points, triangles):
+    """The dual's vertices: each triangle's pole, the point p with p.a = p.b =
+    p.c = 1 for its three corners -- exactly what polar_dual computes."""
+    corners = points[triangles]
+    return np.linalg.solve(corners, np.ones((len(corners), 3, 1)))[..., 0]
+
+
 def dual_edge_lengths(points, triangles, dual_edges):
     """How long each dual edge is: the distance between the poles of its two
     triangles, which is where polar_dual puts the dual's vertices."""
-    corners = points[triangles]
-    poles = np.linalg.solve(corners, np.ones((len(corners), 3, 1)))[..., 0]
+    poles = poles_of(points, triangles)
     return np.linalg.norm(poles[dual_edges[:, 0]] - poles[dual_edges[:, 1]], axis=1)
 
 
@@ -288,20 +316,41 @@ def separate_short_edges(reps, fixed, rotations, min_fraction):
                                 hull.simplices, dual_edges)
     before = float(lengths.min() / np.median(lengths))
 
-    def shortfall(candidate, triangles, edges):
+    triangles = hull.simplices
+
+    def shortfall(candidate):
         # Against the CURRENT median, which is what grid_quality.py reports:
         # separating the short edges lengthens the typical one too (by 22% on
         # one draw), so a target fixed at the start would be missed as measured.
         lengths = dual_edge_lengths(all_points(candidate, fixed, rotations),
-                                    triangles, edges)
+                                    triangles, dual_edges)
         target = min_fraction * SEPARATE_OVERSHOOT * np.median(lengths)
         return float(np.sum(np.clip(target - lengths, 0, None) ** 2))
 
-    triangles = hull.simplices
-    wanted = triangle_set(triangles)
-    current = shortfall(reps, triangles, dual_edges)
-    step = SEPARATE_STEP
-    for _ in range(SEPARATE_ROUNDS):
+    reps = descend(reps, fixed, rotations, shortfall, SEPARATE_STEP,
+                   SEPARATE_ROUNDS, tolerance=0)
+    lengths = dual_edge_lengths(all_points(reps, fixed, rotations),
+                                triangles, dual_edges)
+    return (reps, before, float(lengths.min()) / float(np.median(lengths)))
+
+
+def descend(reps, fixed, rotations, objective, max_step, rounds, tolerance):
+    """Gradient descent on objective(representatives), keeping the triangulation.
+
+    The objective is expected to be computed on the starting triangulation, so
+    its gradient is exact for small enough steps. Each candidate step is then
+    judged on the hull it actually produces, and kept only if that hull is
+    usable, has the same triangles (see separate_short_edges on why), and
+    lowers the objective.
+
+    @param tolerance: stop once a round improves the objective by less than
+        this fraction of it; 0 to go on until no downhill step is left
+    @returns the representatives, as a new array
+    """
+    wanted = triangle_set(usable_hull(all_points(reps, fixed, rotations)).simplices)
+    current = objective(reps)
+    step = max_step
+    for _ in range(rounds):
         if current == 0:
             break
         # Central differences over every coordinate of every representative.
@@ -309,9 +358,8 @@ def separate_short_edges(reps, fixed, rotations, min_fraction):
         for index in np.ndindex(reps.shape):
             nudge = np.zeros_like(reps)
             nudge[index] = GRADIENT_H
-            gradient[index] = (shortfall(reps + nudge, triangles, dual_edges)
-                               - shortfall(reps - nudge, triangles, dual_edges)
-                               ) / (2 * GRADIENT_H)
+            gradient[index] = (objective(reps + nudge)
+                               - objective(reps - nudge)) / (2 * GRADIENT_H)
         # Only the part along the sphere moves a point.
         gradient -= np.sum(gradient * reps, axis=1, keepdims=True) * reps
         largest = np.max(np.linalg.norm(gradient, axis=1))
@@ -326,19 +374,130 @@ def separate_short_edges(reps, fixed, rotations, min_fraction):
             candidate_hull = usable_hull(all_points(candidate, fixed, rotations))
             if (candidate_hull is not None
                     and triangle_set(candidate_hull.simplices) == wanted):
-                value = shortfall(candidate, triangles, dual_edges)
+                value = objective(candidate)
                 if value < current:
+                    gain = current - value
                     (reps, current) = (candidate, value)
-                    step = min(step * 1.5, SEPARATE_STEP)
+                    step = min(step * 1.5, max_step)
                     improved = True
                     break
             step /= 2
         if not improved:
             break       # no downhill step left: as good as this draw gets
+        if gain <= tolerance * (current + gain):
+            break
+    return reps
 
-    lengths = dual_edge_lengths(all_points(reps, fixed, rotations),
-                                triangles, dual_edges)
-    return (reps, before, float(lengths.min()) / float(np.median(lengths)))
+
+def face_cycles(points, triangles):
+    """Each dual face as the ordered cycle of its corners, which are indices
+    into `triangles` (the dual's vertices are the triangles' poles).
+
+    Taken from polar_dual, so the order matches the solid it builds. That
+    computes its own hull of the same points, so check that its vertices really
+    are these triangles' poles before trusting the indices.
+    """
+    (vertices, faces) = polar_dual(points)
+    if not np.allclose(vertices, poles_of(points, triangles)):
+        raise RuntimeError("polar_dual's hull disagrees with this triangulation")
+    return faces
+
+
+def grouped_by_size(faces):
+    """The faces as {sides: array of corner cycles}, so faces of one size can
+    be measured together."""
+    groups = {}
+    for face in faces:
+        groups.setdefault(len(face), []).append(face)
+    return {sides: np.array(cycles) for (sides, cycles) in groups.items()}
+
+
+def face_shape(poles, groups):
+    """Per-face measurements of how far each face is from regular.
+
+    @returns (irregularity, straightness, straightest corner in degrees, worst
+        ratio of a face's longest side to its shortest). Irregularity is the
+        mean, over every corner of every face, of the squared relative
+        difference of its side from the face's mean side, plus the squared
+        difference in radians of its angle from a regular polygon's,
+        180 - 360/sides degrees. Straightness is the mean squared excess, in
+        radians, of each corner over STRAIGHT_CORNER.
+    """
+    total = 0.0
+    straightness = 0.0
+    count = 0
+    straightest = 0.0
+    lopsided = 1.0
+    cap = np.radians(STRAIGHT_CORNER)
+    for (sides, cycles) in groups.items():
+        corner = poles[cycles]                          # (faces, sides, 3)
+        following = np.roll(corner, -1, axis=1)
+        preceding = np.roll(corner, 1, axis=1)
+        lengths = np.linalg.norm(following - corner, axis=2)
+        total += np.sum((lengths / lengths.mean(axis=1, keepdims=True) - 1) ** 2)
+        (a, b) = (preceding - corner, following - corner)
+        cosines = np.sum(a * b, axis=2) / (np.linalg.norm(a, axis=2)
+                                           * np.linalg.norm(b, axis=2))
+        angles = np.arccos(np.clip(cosines, -1, 1))
+        total += np.sum((angles - np.pi * (sides - 2) / sides) ** 2)
+        straightness += np.sum(np.clip(angles - cap, 0, None) ** 2)
+        count += cycles.size
+        straightest = max(straightest, float(np.degrees(angles.max())))
+        lopsided = max(lopsided, float(np.max(lengths.max(axis=1)
+                                              / lengths.min(axis=1))))
+    return (total / count, straightness / count, straightest, lopsided)
+
+
+def regularize(reps, fixed, rotations, min_fraction):
+    """Move the representatives to make every face as nearly regular as the
+    census allows, keeping the symmetry, the flatness and the census exact.
+
+    As near as the census ALLOWS, because three regular faces meeting at a
+    corner must leave its angles summing to less than 360 degrees for the solid
+    to be convex, and regular hexagons already sum to exactly 360. So a face of
+    six or more sides can be near-regular only where smaller faces sit beside
+    it; elsewhere it has to stay squeezed. This finds the compromise.
+
+    Two things are held while it does, because regularizing works against both:
+    no dual edge shorter than `min_fraction` of the median, and no two
+    neighboring faces flatter than MIN_FACE_ANGLE. The second is cheap to state,
+    because each face of a polar dual lies in the plane x.v = 1 and so has the
+    point v itself as its normal: the angle between two neighboring faces IS the
+    angle between their two points.
+
+    @returns (representatives, shape before, shape after), each shape being
+        face_shape's (irregularity, straightest corner, worst side ratio)
+    """
+    points = all_points(reps, fixed, rotations)
+    triangles = usable_hull(points).simplices
+    groups = grouped_by_size(face_cycles(points, triangles))
+    dual_edges = dual_edges_of(triangles)
+    neighbors = np.array(sorted({tuple(sorted((int(t[k]), int(t[(k + 1) % 3]))))
+                                 for t in triangles for k in range(3)}))
+    flattest = np.radians(MIN_FACE_ANGLE)
+
+    def shape(candidate):
+        return face_shape(poles_of(all_points(candidate, fixed, rotations),
+                                   triangles), groups)
+
+    def objective(candidate):
+        pts = all_points(candidate, fixed, rotations)
+        poles = poles_of(pts, triangles)
+        (irregularity, straightness, _, _) = face_shape(poles, groups)
+        lengths = np.linalg.norm(poles[dual_edges[:, 0]] - poles[dual_edges[:, 1]],
+                                 axis=1)
+        target = min_fraction * np.median(lengths)
+        short = np.mean(np.clip(target - lengths, 0, None) ** 2) / target ** 2
+        between = np.arccos(np.clip(np.sum(pts[neighbors[:, 0]]
+                                           * pts[neighbors[:, 1]], axis=1), -1, 1))
+        flat = np.mean(np.clip(flattest - between, 0, None) ** 2) / flattest ** 2
+        return (irregularity + STRAIGHT_WEIGHT * straightness
+                + CONSTRAINT_WEIGHT * (short + flat))
+
+    before = shape(reps)
+    reps = descend(reps, fixed, rotations, objective, REGULARIZE_STEP,
+                   REGULARIZE_ROUNDS, REGULARIZE_TOLERANCE)
+    return (reps, before, shape(reps))
 
 
 def triangle_set(triangles):
@@ -353,9 +512,12 @@ def census_line(faces):
 
 def parse_arguments(argv):
     options = {'orbits': 6, 'relax': 0.5, 'min_edge': MIN_EDGE_FRACTION,
-               'seed': None, 'axes': [], 'id': None, 'name': None}
+               'regularize': False, 'seed': None, 'axes': [], 'id': None,
+               'name': None}
     for argument in argv:
-        if argument.startswith('--relax='):
+        if argument == '--regularize':
+            options['regularize'] = True
+        elif argument.startswith('--relax='):
             options['relax'] = float(argument.split('=', 1)[1])
         elif argument.startswith('--min-edge='):
             options['min_edge'] = float(argument.split('=', 1)[1])
@@ -388,6 +550,8 @@ def source_arguments(options):
     arguments = [str(options['orbits']), f'--relax={options["relax"]:g}',
                  f'--min-edge={options["min_edge"]:g}', f'--seed={options["seed"]}']
     arguments += [f'--{axis}-axes' for axis in options['axes']]
+    if options['regularize']:
+        arguments.append('--regularize')
     if options['id']:
         arguments.append(f'--id={options["id"]}')
     if options['name']:
@@ -424,6 +588,15 @@ def main():
             + ('' if after >= options['min_edge']
                else ' -- SHORT OF THE TARGET; try another seed'))
 
+    if options['regularize']:
+        (reps, before, after) = regularize(reps, fixed, rotations,
+                                           options['min_edge'])
+        points = all_points(reps, fixed, rotations)
+        hull = ConvexHull(points)
+        log(f'  regularized: straightest corner {before[2]:.0f} -> '
+            f'{after[2]:.0f} degrees, sides within a face up to '
+            f'x{before[3]:.1f} -> x{after[3]:.1f}')
+
     (vertices, faces) = polar_dual(points)
     problems = (symmetry_problems(points, hull.simplices, rotations)
                 + grid_checks.check_euler(vertices, faces)
@@ -451,6 +624,8 @@ def main():
     parts.append(f'r{round(options["relax"] * 100)}')
     if options['min_edge'] != MIN_EDGE_FRACTION:
         parts.append(f'm{round(options["min_edge"] * 100)}')
+    if options['regularize']:
+        parts.append('reg')
     parts.append(f's{options["seed"]}')
     grid_id = options['id'] or '_'.join(parts)
     grid = {

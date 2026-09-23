@@ -10,11 +10,13 @@ import functools
 import numpy as np
 from scipy.spatial import ConvexHull
 
+import genSymmetric
 import grid_checks
 from genGoldberg import polar_dual
-from genSymmetric import (EDGE_AXES, FACE_AXES, VERTEX_AXES, all_points, draw,
-                          dual_edge_lengths, dual_edges_of, has_mirror_symmetry,
-                          index_of, orbit, relax, separate_short_edges,
+from genSymmetric import (EDGE_AXES, FACE_AXES, MIN_FACE_ANGLE, VERTEX_AXES,
+                          all_points, draw, dual_edge_lengths, dual_edges_of,
+                          face_shape, has_mirror_symmetry, index_of, orbit,
+                          regularize, relax, separate_short_edges,
                           source_arguments, symmetry_problems,
                           tetrahedral_rotations, triangle_set)
 from grid_topology import edges_of
@@ -188,8 +190,83 @@ def test_dual_edge_lengths_measure_the_real_dual():
     assert np.allclose(predicted, actual)
 
 
+def test_a_regular_face_scores_as_regular():
+    """face_shape's zero point: a regular hexagon has no irregularity, no
+    corner past the straight-corner limit, 120-degree corners and equal
+    sides. Pins the measure the regularizer optimizes."""
+    angles = np.linspace(0, 2 * np.pi, 6, endpoint=False)
+    poles = np.column_stack([np.cos(angles), np.sin(angles), np.ones(6)])
+    (irregularity, straightness, straightest, lopsided) = face_shape(
+        poles, {6: np.array([[0, 1, 2, 3, 4, 5]])})
+    assert irregularity < 1e-12
+    assert straightness == 0
+    assert np.isclose(straightest, 120.0)
+    assert np.isclose(lopsided, 1.0)
+
+
+@functools.lru_cache(maxsize=None)
+def regularized():
+    """The separated draw above, regularized. Fewer rounds than the script
+    uses, to keep the suite quick; the tests ask only that it improves and
+    keeps what it must keep, which a short run already shows."""
+    (points, hull, moved_points, moved_hull, _, _) = separated()
+    fixed = np.empty((0, 3))
+    rng = np.random.default_rng(2)
+    result = None
+    while result is None:
+        result = draw(6, fixed, ROTATIONS, 0.25, rng)
+    (reps, _, _) = result
+    (reps, _, _) = separate_short_edges(reps, fixed, ROTATIONS, 0.4)
+    saved = genSymmetric.REGULARIZE_ROUNDS
+    genSymmetric.REGULARIZE_ROUNDS = 40
+    try:
+        (reps, before, after) = regularize(reps, fixed, ROTATIONS, 0.4)
+    finally:
+        genSymmetric.REGULARIZE_ROUNDS = saved
+    points = all_points(reps, fixed, ROTATIONS)
+    return (moved_hull, points, ConvexHull(points), before, after)
+
+
+class TestRegularizing:
+    def test_makes_faces_more_regular(self):
+        (_, _, _, before, after) = regularized()
+        assert after[0] < before[0]          # the irregularity itself
+        assert after[2] < before[2]          # the straightest corner
+        assert after[3] < before[3]          # sides within a face
+
+    def test_keeps_the_triangulation(self):
+        (hull_before, _, hull_after, _, _) = regularized()
+        assert triangle_set(hull_after.simplices) == triangle_set(hull_before.simplices)
+
+    def test_keeps_the_symmetry_and_flatness(self):
+        (_, points, hull, _, _) = regularized()
+        assert symmetry_problems(points, hull.simplices, ROTATIONS) == []
+        (vertices, faces) = polar_dual(points)
+        assert grid_checks.check_flat_faces(vertices, faces, 1e-9) == []
+
+    def test_keeps_the_held_limits(self):
+        # Neighboring faces' angle is their points' angle (see regularize).
+        (_, points, hull, _, _) = regularized()
+        lengths = dual_edge_lengths(points, hull.simplices,
+                                    dual_edges_of(hull.simplices))
+        assert lengths.min() >= 0.4 * np.median(lengths) * 0.99
+        neighbors = {tuple(sorted((int(t[k]), int(t[(k + 1) % 3]))))
+                     for t in hull.simplices for k in range(3)}
+        flattest = min(np.degrees(np.arccos(np.clip(points[a] @ points[b], -1, 1)))
+                       for (a, b) in neighbors)
+        assert flattest >= MIN_FACE_ANGLE * 0.99
+
+
 def test_source_names_the_seed():
-    options = {'orbits': 6, 'relax': 0.25, 'min_edge': 0.4, 'seed': 42,
-               'axes': ['edge'], 'id': None, 'name': None}
+    options = {'orbits': 6, 'relax': 0.25, 'min_edge': 0.4, 'regularize': False,
+               'seed': 42, 'axes': ['edge'], 'id': None, 'name': None}
     assert source_arguments(options) == ['6', '--relax=0.25', '--min-edge=0.4',
                                          '--seed=42', '--edge-axes']
+
+
+def test_source_names_regularizing_only_when_on():
+    # Off must leave no trace: commands written before the option existed
+    # have to go on making the same solid.
+    options = {'orbits': 6, 'relax': 0.25, 'min_edge': 0.4, 'regularize': True,
+               'seed': 42, 'axes': [], 'id': None, 'name': None}
+    assert source_arguments(options)[-1] == '--regularize'

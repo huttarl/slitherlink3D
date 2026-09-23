@@ -332,10 +332,70 @@ have regular edges, or that draw is caught in a local minimum, isn't settled.
 The script says so when it happens ("SHORT OF THE TARGET; try another seed"),
 and `--min-edge=0` turns the separation off.
 
+**Regular faces (`--regularize`).** Unregularized, the faces are lopsided —
+sides differing 3 to 8.6 times within one face — and, worse for play, have
+nearly straight corners, 151–170°. A corner near 180° hides a side, so a
+heptagon reads as a hexagon and the player has to count edges. `--regularize`
+moves the points again, by the same symmetric descent with the same
+triangulation, toward faces with equal sides and equal angles.
+
+It cannot get all the way, and the reason is worth knowing before trying to
+make it. A flat face's angles always total (sides − 2) × 180°, and at each
+vertex the three faces' angles must total under 360°. If the faces there were
+regular, the angle left over would be 360 × (1/a + 1/b + 1/c) − 180°, which
+is 0 for three hexagons and negative for a heptagon between two hexagons. Where
+it's negative, regularity is impossible: that corner is squeezed, and since the
+face's total is fixed, its excess goes into the face's other corners — which
+is exactly how straight corners arise. It depends only on which faces touch
+which, so it can be read off a draw before any geometry. A scan of 1,524 varied
+draws found **only two** with no corner over budget, both pentagons, hexagons
+and heptagons. Every draw with squares, octagons or nonagons had at least 12.
+Random orbits simply don't ring big faces with small ones, which is how the
+Archimedean solids make big faces regular.
+
+Three things in the objective, each from something that went wrong without it:
+
+- A **penalty on corners straighter than 145°** (a regular nonagon's are
+  140°). Minimizing the average irregularity alone left the straightest corner
+  of the widest candidate at 160° and made its nonagons worse, 147° → 155°,
+  because the excess only moved around.
+- The **minimum edge** is held, as in separation.
+- **No two neighboring faces flatter than 8°**, since pushing corners toward a
+  360° total is pushing the solid toward flat. On a polar dual this is cheap:
+  each face lies in the plane x·v = 1, so its normal is its own point v, and the
+  angle between two neighboring faces *is* the angle between their points.
+
+It's **off by default** so that commands written before it existed still make
+the same solid, and gets `reg` in the default id.
+
+Measured on ten candidates:
+
+| solid | census | straightest corner | sides within a face | clue-size spread |
+|---|---|---|---|---|
+| symT6_v_r25_reg_s1 | 24×5, 40×6, 12×7 | 152° → 138° | ×4.6 → ×1.7 | ×1.4 → ×2.1 |
+| symT5_vf_r50_reg_s8 | 24×5, 32×6, 12×7 | 160° → 141° | ×6.4 → ×1.7 | ×1.3 |
+| symT6_r25_reg_s3 | 24×5, 36×6, 12×7 | 155° → 141° | ×3.2 → ×1.5 | ×1.5 → ×1.4 |
+| symT8_r25_reg_s1 | 36×5, 36×6, 24×7 | 156° → 145° | ×4.8 → ×2.0 | ×1.6 → ×1.7 |
+| symT7_r25_reg_s1 | 12×4, 24×5, 12×6, 36×7 | 158° → 145° | ×5.6 → ×3.4 | ×1.5 → ×1.9 |
+| symT5_r25_reg_s1 | 36×5, 12×6, 12×8 | 159° → 146° | ×7.3 → ×2.2 | ×1.6 → ×2.5 |
+| symT7_r25_reg_s3 | 36×5, 24×6, 24×7 | 157° → 146° | ×3.7 → ×1.5 | ×1.5 → ×1.6 |
+| symT6_e_r25_reg_s1 | 12×4, 24×5, 12×6, 24×7, 6×8 | 157° → 147° | ×5.4 → ×3.6 | ×1.6 → ×1.9 |
+| symT6_vf_r25_reg_s2 | 12×4, 24×5, 28×6, 12×8, 4×9 | 160° → 149° | ×5.6 → ×3.2 | ×1.7 → ×2.5 |
+| symT7_r10_reg_s2 | 12×4, 36×5, 12×6, 12×7, 12×9 | 164° → 153° | ×5.8 → ×4.0 | ×1.9 |
+
+The pattern is the budget's: the more varied the census, the less it
+improves. The cost is **clue-size spread**, which grows on the mixed censuses,
+because regular faces of different side counts are simply different sizes. And
+two different draws (seeds 8 and 34 of the same settings) regularized to exactly
+the same solid, metric for metric: once the points are free to move, the
+result depends only on which faces touch which.
+
 ## Checking a grid afterwards
 
 `util/grid_quality.py` reports the things that make a solid awkward to look at
-or play on: shortest/median/longest edge, the sharpest corner of any face, the
+or play on: shortest/median/longest edge, the sharpest and the straightest
+corner of any face (a corner near 180° hides a side, making the face hard to
+count), the worst ratio of a face's longest side to its shortest, the
 range of face inscribed radii (which is the range of clue digit sizes), how far
 faces stray from flat, the vertex degrees, and whether every face is wound
 outward.

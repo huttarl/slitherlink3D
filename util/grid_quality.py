@@ -85,9 +85,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from grid_checks import (  # noqa: E402
-    centroid, direction_classes, distance, dot, face_bow, face_normal,
-    face_skew, inscribed_radius, sharpest_corner, side_ratio, subtract,
-    wound_outward,
+    centroid, corner_angles, direction_classes, distance, dot, edge_lengths,
+    face_bow, face_normal, face_skew, inscribed_radius, sharpest_corner,
+    side_ratio, subtract, wound_outward,
 )
 import grid_topology  # noqa: E402
 from grid_topology import (boundary_cycles, edge_degrees, edges_of,  # noqa: E402
@@ -247,6 +247,12 @@ def report(path):
     print(f'  edges     {lengths[0]:.3f} / {median:.3f} / {lengths[-1]:.3f}  '
           f'(shortest is {lengths[0] / median:.0%} of median)')
     print(f'  sharpest  {min(sharpest_corner(f) for f in faces):.1f} degrees')
+    # The other end of the same scale, and the one that makes a face hard to
+    # count: a corner near 180 degrees hides a side, so a heptagon reads as a
+    # hexagon. A regular polygon's corners never pass 180 - 360/sides.
+    print(f'  straightest {max(max(corner_angles(f)) for f in faces):.1f} degrees')
+    lopsided = max(max(edge_lengths(f)) / min(edge_lengths(f)) for f in faces)
+    print(f'  sides     up to x{lopsided:.1f} longest to shortest, within one face')
     print(f'  inradius  {min(inradii):.3f} to {max(inradii):.3f}  '
           f'(x{max(inradii) / min(inradii):.1f})')
     print(f'  bow       {max(face_bow(f) for f in faces):.1e}')
