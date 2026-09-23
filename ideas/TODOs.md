@@ -21,6 +21,10 @@ Finished items live in ideas/TODOs-done.md.
 - [ ] regarding the increasing number of solids with 'null' in polyhedronLinks.js, maybe we should make
   that a separate list: "noLinks" : ["randomSphereA", "cageB", etc.]
 
+- [ ] on the tetrahedral cages, the clue numbers on irregular faces look more off-center than
+  they need to be (I took a screenshot). I don't know if the math could be improved for that ...
+  I'm sure it's complicated.
+
 - [ ] The celebration currently uses a "throbbing" animation to highlight the solution loop.
   Krazydad's web site does the same thing, and that's probably where I got it from (long ago).
   I don't want to be plagiarizing, or accused of it. Maybe I should look again for another way to

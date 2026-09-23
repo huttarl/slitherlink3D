@@ -245,6 +245,9 @@ smaller than the rounding `obj2json.py` applies anyway.
 
 ## genSymmetric.py — random solids with tetrahedral symmetry
 
+(Open questions and next steps — other symmetry groups, vertices of degree
+more than 3 — are in `ideas/symmetric-solids.md`.)
+
 `genRandomPolyh.py --dual` can give a varied face census, but the result is an
 asymmetric blob, while most of the collection's appeal is symmetry. This script
 gets both, by making the randomness symmetric:
