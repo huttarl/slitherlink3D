@@ -114,8 +114,9 @@ is possible next, and the open questions. Written 2026-09-23.
    - The 44-face pick (`1 --group=octahedral --relax=0 --seed=7 --face-axes
      --edge-axes --regularize`) was tried with its nonagons moved inward
      (`--face-axes=D`), compared on
-     https://claude.ai/artifact/DVrCvSWMNnziFjs2BMb2eB. Which distance to use
-     is undecided; 0.92 has the evenest sides.
+     https://claude.ai/artifact/DVrCvSWMNnziFjs2BMb2eB. It shipped at 0.94 as
+     `data/ocageG` ("Octahedral cage G"): sides ×1.8 and clue spread ×2.2,
+     where 0.92 had the evenest sides (×1.5) but a spread right on the line.
 2. **Icosahedral with forced pentagons** (degree-5 vertices): only one free
    orbit, but the degree-5 vertices might make it worthwhile anyway.
 3. **Full groups with reflections** (T_d, T_h, O_h): mirror-symmetric rather

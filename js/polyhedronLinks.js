@@ -149,6 +149,7 @@ const SOLID_PAGE_EXCEPTIONS = {
     'ocageD': null,
     'ocageE': null,
     'ocageF': null,
+    'ocageG': null,
 };
 
 /**

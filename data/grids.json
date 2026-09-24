@@ -663,6 +663,16 @@
       "dual": "gd20"
     },
     {
+      "file": "ocageG",
+      "gridId": "ocageG",
+      "gridName": "Octahedral cage G",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 44,
+      "edges": 120,
+      "vertices": 78,
+      "numPuzzles": 3
+    },
+    {
       "file": "deD",
       "gridId": "deD",
       "gridName": "Deltoidal hexecontahedron",
