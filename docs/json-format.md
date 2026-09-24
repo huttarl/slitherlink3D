@@ -52,7 +52,8 @@ A JSON object containing the following properties:
     those categories, or it is filed under "Others".
   - "random" marks a solid we generated from random points rather than one with a
     mathematical identity: the random spheres (util/genRandomPolyh.py) and the
-    tetrahedral cages (util/genSymmetric.py, which adds it itself).
+    tetrahedral and octahedral orbit solids (util/genSymmetric.py, which adds it
+    itself).
   - Where one category implies another, list only the narrowest: every parallelohedron
     is a zonohedron, so the cube says "parallelohedron" and stops there.
   - Names are kept short — "chiral", not "chiral polyhedron" — since the About card has already given the solid's name

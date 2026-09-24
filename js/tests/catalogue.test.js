@@ -186,7 +186,7 @@ describe('groupGridsByFamily, splitting Miscellaneous', () => {
     });
 
     test('a cross-cutting attribute alone does not make a group', () => {
-        // The tetrahedral cages are chiral and random; chiral must not win.
+        // The tetrahedral orbit solids are chiral and random; chiral must not win.
         assert.strictEqual(labelOf([misc('cageA', 'chiral', 'random')], 'cageA'),
                            'Random solids');
     });

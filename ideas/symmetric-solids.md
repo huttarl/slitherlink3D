@@ -15,14 +15,19 @@ is possible next, and the open questions. Written 2026-09-23.
   `--regularize` (off by default, so older commands still reproduce). Every
   step keeps the symmetry exact, the faces exactly flat, and the triangulation
   (hence the census) fixed.
-- **Seven solids shipped**: `data/cageA`–`cageG` ("Tetrahedral cage A"–"G"),
+- **Seven solids shipped**: `data/cageA`–`cageG` ("Tetrahedral orbit solid A"–"G"),
   60–96 faces, all regularized, each with 3 puzzles and a display puzzle. Their
   `source` lines reproduce them. They carry the `random` category and file under
   "Random solids" in the picker.
+- **Names and ids differ on purpose.** The solids were named "cage" until
+  2026-09-24, and were then renamed "orbit solid", since in graph theory a
+  cage is something else: the smallest regular graph of a given degree and
+  girth. The ids (`cageA`, `ocageA`, …) kept the old word, because URLs and
+  puzzle files use them.
 - Candidates were reviewed on a private page,
   https://claude.ai/artifact/G3W5K5YVEKwSn5cdfjx2WV (exported locally to
   `tmp/Tetrahedral Solid Candidates/`). It names them by their generator ids
-  (symT…), not by the cage letters. Mapping: cageA ← symT5_r25_reg_s1,
+  (symT…), not by the letters. Mapping: cageA ← symT5_r25_reg_s1,
   cageB ← symT6_v_r25_reg_s1, cageC ← symT6_vf_r25_reg_s2,
   cageD ← symT7_r25_reg_s1, cageE ← symT7_r25_reg_s3, cageF ← symT7_r10_reg_s2,
   cageG ← symT8_r25_reg_s1.
@@ -67,7 +72,7 @@ is possible next, and the open questions. Written 2026-09-23.
 7. **Only higher-order axes can force coplanarity.** A point's images around a
    k-fold axis are exactly coplanar however the point moves. The tetrahedral
    group's axes are at most 3-fold, and three points are always coplanar, so it
-   can't force degree > 3 — which is why every cage is trivalent, axis options
+   can't force degree > 3 — which is why every tetrahedral orbit solid is trivalent, axis options
    and all. The octahedral group's 4-fold axes give squares (degree-4 vertices,
    six of them); the icosahedral group's 5-fold axes give pentagons (degree 5,
    twelve).
@@ -79,10 +84,10 @@ is possible next, and the open questions. Written 2026-09-23.
    facets held fixed. How it works, and a table of eighteen regularized
    candidates, are in the genSymmetric section of `docs/generating-grids.md`.
    Every octahedral solid has exactly six vertices of degree 4, except with
-   `--vertex-axes`, which leaves none. The tetrahedral cages still regenerate
+   `--vertex-axes`, which leaves none. The tetrahedral orbit solids still regenerate
    byte for byte.
    - **Six shipped** (2026-09-24), as `data/ocageA`–`ocageF` ("Octahedral
-     cage A"–"F"), lettered by face count: ocageA ← symO3_r25_reg_s1,
+     orbit solid A"–"F"), lettered by face count: ocageA ← symO3_r25_reg_s1,
      ocageB ← symO3_r25_reg_s9, ocageC ← symO3_f_r25_reg_s1,
      ocageD ← symO3_f_r25_reg_s5, ocageE ← symO3_e_r25_reg_s7,
      ocageF ← symO4_r25_reg_s7. They were chosen on a private review page,
@@ -109,13 +114,13 @@ is possible next, and the open questions. Written 2026-09-23.
      `tmp/Small Symmetric Candidates/solids/`. None of the ten shares a census
      with any grid in `data/`, so none is a solid we already have. Reviewed on
      https://claude.ai/artifact/W1zLocW6cArEEDqBdXW7J9. The first pick shipped
-     as `data/cageH` ("Tetrahedral cage H", 34 faces; its letter follows G
+     as `data/cageH` ("Tetrahedral orbit solid H", 34 faces; its letter follows G
      rather than the face count, so that the older ids stay put).
    - The 44-face pick (`1 --group=octahedral --relax=0 --seed=7 --face-axes
      --edge-axes --regularize`) was tried with its nonagons moved inward
      (`--face-axes=D`), compared on
      https://claude.ai/artifact/DVrCvSWMNnziFjs2BMb2eB. It shipped at 0.94 as
-     `data/ocageG` ("Octahedral cage G"): sides ×1.8 and clue spread ×2.2,
+     `data/ocageG` ("Octahedral orbit solid G"): sides ×1.8 and clue spread ×2.2,
      where 0.92 had the evenest sides (×1.5) but a spread right on the line.
 2. **Icosahedral with forced pentagons** (degree-5 vertices): only one free
    orbit, but the degree-5 vertices might make it worthwhile anyway.
@@ -133,4 +138,4 @@ is possible next, and the open questions. Written 2026-09-23.
 7. The capsid and the expanded truncated icosahedron land under "Others" in
    the picker: the capsid has no structural category.
 8. Clue digits look off-center on irregular faces (see `ideas/TODOs.md`),
-   which the cages make more noticeable.
+   which the orbit solids make more noticeable.

@@ -24,7 +24,7 @@ Finished items live in ideas/TODOs-done.md.
 - [ ] maybe, as a player aid for large puzzles, highlight the "hungry" faces: those that have
   just one more (or zero more) available edge than the clue calls for.
   This is helpful because with heptagons and nonagons, it can be a chore to keep counting sides.
-  
+
   In the simplest case, this is (for example) a triangle with a 2 clue. But in the more general
   case ... for t = total edges, c = clue, r = edges ruled out, f = edges filled in:
   - (If f > c, color the clue red?)
@@ -33,7 +33,7 @@ Finished items live in ideas/TODOs-done.md.
   - else if t-r = c+1 (hungry face; defecit 1), highlight (whitish glow)
 
 
-- [ ] on the tetrahedral cages, the clue numbers on irregular faces look more off-center than
+- [ ] on the tetrahedral orbit solids, the clue numbers on irregular faces look more off-center than
   they need to be (I took a screenshot). I don't know if the math could be improved for that ...
   I'm sure it's complicated.
 

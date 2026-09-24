@@ -584,7 +584,7 @@
     {
       "file": "cageH",
       "gridId": "cageH",
-      "gridName": "Tetrahedral cage H",
+      "gridName": "Tetrahedral orbit solid H",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 34,
       "edges": 96,
@@ -665,7 +665,7 @@
     {
       "file": "ocageG",
       "gridId": "ocageG",
-      "gridName": "Octahedral cage G",
+      "gridName": "Octahedral orbit solid G",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 44,
       "edges": 120,
@@ -810,7 +810,7 @@
     {
       "file": "cageA",
       "gridId": "cageA",
-      "gridName": "Tetrahedral cage A",
+      "gridName": "Tetrahedral orbit solid A",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 60,
       "edges": 174,
@@ -862,7 +862,7 @@
     {
       "file": "ocageA",
       "gridId": "ocageA",
-      "gridName": "Octahedral cage A",
+      "gridName": "Octahedral orbit solid A",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 72,
       "edges": 204,
@@ -872,7 +872,7 @@
     {
       "file": "ocageB",
       "gridId": "ocageB",
-      "gridName": "Octahedral cage B",
+      "gridName": "Octahedral orbit solid B",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 72,
       "edges": 204,
@@ -904,7 +904,7 @@
     {
       "file": "cageB",
       "gridId": "cageB",
-      "gridName": "Tetrahedral cage B",
+      "gridName": "Tetrahedral orbit solid B",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 76,
       "edges": 222,
@@ -914,7 +914,7 @@
     {
       "file": "ocageC",
       "gridId": "ocageC",
-      "gridName": "Octahedral cage C",
+      "gridName": "Octahedral orbit solid C",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 80,
       "edges": 228,
@@ -924,7 +924,7 @@
     {
       "file": "ocageD",
       "gridId": "ocageD",
-      "gridName": "Octahedral cage D",
+      "gridName": "Octahedral orbit solid D",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 80,
       "edges": 228,
@@ -934,7 +934,7 @@
     {
       "file": "cageC",
       "gridId": "cageC",
-      "gridName": "Tetrahedral cage C",
+      "gridName": "Tetrahedral orbit solid C",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 80,
       "edges": 234,
@@ -944,7 +944,7 @@
     {
       "file": "ocageE",
       "gridId": "ocageE",
-      "gridName": "Octahedral cage E",
+      "gridName": "Octahedral orbit solid E",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 84,
       "edges": 240,
@@ -964,7 +964,7 @@
     {
       "file": "cageD",
       "gridId": "cageD",
-      "gridName": "Tetrahedral cage D",
+      "gridName": "Tetrahedral orbit solid D",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 84,
       "edges": 246,
@@ -974,7 +974,7 @@
     {
       "file": "cageE",
       "gridId": "cageE",
-      "gridName": "Tetrahedral cage E",
+      "gridName": "Tetrahedral orbit solid E",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 84,
       "edges": 246,
@@ -984,7 +984,7 @@
     {
       "file": "cageF",
       "gridId": "cageF",
-      "gridName": "Tetrahedral cage F",
+      "gridName": "Tetrahedral orbit solid F",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 84,
       "edges": 246,
@@ -994,7 +994,7 @@
     {
       "file": "ocageF",
       "gridId": "ocageF",
-      "gridName": "Octahedral cage F",
+      "gridName": "Octahedral orbit solid F",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 96,
       "edges": 276,
@@ -1004,7 +1004,7 @@
     {
       "file": "cageG",
       "gridId": "cageG",
-      "gridName": "Tetrahedral cage G",
+      "gridName": "Tetrahedral orbit solid G",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 96,
       "edges": 282,
