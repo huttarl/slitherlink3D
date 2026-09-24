@@ -582,6 +582,16 @@
       "dual": "tI"
     },
     {
+      "file": "cageH",
+      "gridId": "cageH",
+      "gridName": "Tetrahedral cage H",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 34,
+      "edges": 96,
+      "vertices": 64,
+      "numPuzzles": 3
+    },
+    {
       "file": "zonaC4",
       "gridId": "zonaC4",
       "gridName": "Four-zone cuboctahedron",

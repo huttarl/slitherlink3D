@@ -141,6 +141,7 @@ const SOLID_PAGE_EXCEPTIONS = {
     'cageE': null,
     'cageF': null,
     'cageG': null,
+    'cageH': null,
     // The octahedral cages: the same, under the octahedral rotations.
     'ocageA': null,
     'ocageB': null,

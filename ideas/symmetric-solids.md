@@ -107,7 +107,15 @@ is possible next, and the open questions. Written 2026-09-23.
      12×7 with nothing flagged. So does `3 --relax=0 --seed=7 --edge-axes`,
      at 42 faces (6×4, 12×5, 12×6, 12×7). Candidates are in
      `tmp/Small Symmetric Candidates/solids/`. None of the ten shares a census
-     with any grid in `data/`, so none is a solid we already have.
+     with any grid in `data/`, so none is a solid we already have. Reviewed on
+     https://claude.ai/artifact/W1zLocW6cArEEDqBdXW7J9. The first pick shipped
+     as `data/cageH` ("Tetrahedral cage H", 34 faces; its letter follows G
+     rather than the face count, so that the older ids stay put).
+   - The 44-face pick (`1 --group=octahedral --relax=0 --seed=7 --face-axes
+     --edge-axes --regularize`) was tried with its nonagons moved inward
+     (`--face-axes=D`), compared on
+     https://claude.ai/artifact/DVrCvSWMNnziFjs2BMb2eB. Which distance to use
+     is undecided; 0.92 has the evenest sides.
 2. **Icosahedral with forced pentagons** (degree-5 vertices): only one free
    orbit, but the degree-5 vertices might make it worthwhile anyway.
 3. **Full groups with reflections** (T_d, T_h, O_h): mirror-symmetric rather

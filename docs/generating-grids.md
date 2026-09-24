@@ -486,6 +486,23 @@ are unusable. The last row has corners of 7° and 178° and two faces meeting at
 1.3°: its separation stopped short of the minimum edge, and regularizing left
 its straightest corner at 178°.
 
+**Moving the axis faces (`--face-axes=D`, and likewise for the other two).**
+Once everything else is done, this moves the planes of those axis points' faces
+to distance D from the center, where regularizing left them at 1. Below 1 it
+slices them deeper: they grow, their neighbors are trimmed, and no other face
+moves. Each face lies in the plane x·v = 1 of its point v, so this is just the
+axis points scaled by 1/D, and the symmetry and flatness stay exact. A distance
+that would change which faces meet is refused.
+
+It can only change side lengths. Sliding a plane without tilting it leaves
+every edge's direction alone, since an edge runs where two planes meet, so
+every corner angle and dihedral angle stays exactly as it was. On the 44-face
+small candidate (12 rectangles, 24 pentagons, 8 nonagons on the face axes),
+moving the nonagons to 0.92 made the rectangles squares to within 1% and
+halved the pentagons' worst side ratio, from ×3.1 to ×1.5. The price was the
+clue-size spread, from ×1.5 to ×2.5, as the nonagons grew. At 0.80 a
+neighbor's edge vanished, and the move was refused.
+
 ## Checking a grid afterwards
 
 `util/grid_quality.py` reports the things that make a solid awkward to look at

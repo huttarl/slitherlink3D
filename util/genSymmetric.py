@@ -33,6 +33,11 @@ What the options mean for the solid:
                   faces is forced to be a multiple of the axis's fold. Under T
                   that is 3 for vertex and face axes (3, 6, 9...) and 2 for
                   edge axes (4, 6, 8...); under O it is 4, 3 and 2.
+                  With a value, as --face-axes=0.95, those faces' planes are
+                  moved to that distance from the center once everything else
+                  is done: below 1 slices them deeper, making them wider and
+                  trimming their neighbors, and no other face moves. See
+                  move_axis_faces.
   --relax         how evenly to spread the points, 0 to 1 (default 0.5). As in
                   genRandomPolyh.py, 0 leaves them where they fell and gives the
                   most varied face sizes, and 1 spreads them evenly.
@@ -650,6 +655,31 @@ def regularize(reps, fixed, rotations, min_fraction):
     return (reps, before, shape(reps))
 
 
+def move_axis_faces(reps, axis_points, distances, rotations):
+    """Move the axis points' face planes to the given distances from the center.
+
+    A face lies in the plane x.v = 1 of its point v, at distance 1/|v| from the
+    center, so scaling an axis point by 1/distance moves its face's plane and
+    no other. The point stays on its axis, so the symmetry stays exact, and the
+    dual is still exactly flat. Done last, after regularizing, since moving the
+    points earlier would let everything else move to suit.
+
+    @param axis_points: [(axis name, its points)], in the order the fixed
+        points are stacked
+    @param distances: {axis name: distance}, for the axes to move
+    @returns (the moved fixed points, their hull's facets), or None if the move
+        changes which faces meet -- a neighbor's edge shrunk to nothing
+    """
+    before = usable_hull(all_points(reps, np.vstack([p for (_, p) in axis_points]),
+                                    rotations), rotations)
+    moved = np.vstack([points / distances.get(name, 1.0)
+                       for (name, points) in axis_points])
+    after = usable_hull(all_points(reps, moved, rotations), rotations)
+    if after is None or facet_set(after) != facet_set(before):
+        return None
+    return (moved, after)
+
+
 def facet_set(facets):
     """A hull's facets as a set, for comparing two regardless of order."""
     return {frozenset(int(v) for v in f) for f in facets}
@@ -663,7 +693,7 @@ def census_line(faces):
 def parse_arguments(argv):
     options = {'orbits': 6, 'group': 'tetrahedral', 'relax': 0.5,
                'min_edge': MIN_EDGE_FRACTION, 'regularize': False, 'seed': None,
-               'axes': [], 'id': None, 'name': None}
+               'axes': [], 'axis_distances': {}, 'id': None, 'name': None}
     for argument in argv:
         if argument == '--regularize':
             options['regularize'] = True
@@ -679,8 +709,15 @@ def parse_arguments(argv):
             options['id'] = argument.split('=', 1)[1]
         elif argument.startswith('--name='):
             options['name'] = argument.split('=', 1)[1]
-        elif argument in ('--vertex-axes', '--face-axes', '--edge-axes'):
-            options['axes'].append(argument[2:].split('-')[0])
+        elif argument.partition('=')[0] in ('--vertex-axes', '--face-axes',
+                                            '--edge-axes'):
+            (flag, _, value) = argument.partition('=')
+            axis = flag[2:].split('-')[0]
+            options['axes'].append(axis)
+            if value:
+                options['axis_distances'][axis] = float(value)
+                if options['axis_distances'][axis] <= 0:
+                    raise SystemExit(f'{flag} needs a distance above 0.')
         elif argument.isdigit():
             options['orbits'] = int(argument)
         else:
@@ -708,7 +745,10 @@ def source_arguments(options):
         arguments.append(f'--group={options["group"]}')
     arguments += [f'--relax={options["relax"]:g}',
                   f'--min-edge={options["min_edge"]:g}', f'--seed={options["seed"]}']
-    arguments += [f'--{axis}-axes' for axis in options['axes']]
+    for axis in options['axes']:
+        distance = options['axis_distances'].get(axis)
+        arguments.append(f'--{axis}-axes' + ('' if distance is None
+                                             else f'={distance:g}'))
     if options['regularize']:
         arguments.append('--regularize')
     if options['id']:
@@ -756,6 +796,18 @@ def main():
             f'{after[2]:.0f} degrees, sides within a face up to '
             f'x{before[3]:.1f} -> x{after[3]:.1f}')
 
+    if options['axis_distances']:
+        result = move_axis_faces(reps, [(a, group['axes'][a]) for a in options['axes']],
+                                 options['axis_distances'], rotations)
+        if result is None:
+            raise SystemExit('Moving the axis faces that far changes which faces '
+                             'meet; try a distance nearer 1. Not written.')
+        (fixed, facets) = result
+        points = all_points(reps, fixed, rotations)
+        log('  moved the axis faces to distance '
+            + ', '.join(f'{d:g} ({axis})'
+                        for (axis, d) in options['axis_distances'].items()))
+
     (vertices, faces) = facet_dual(points, facets)
     problems = (symmetry_problems(points, facets, rotations)
                 + grid_checks.check_euler(vertices, faces)
@@ -782,7 +834,11 @@ def main():
     # the default, so ids stay unique without growing for the common case.
     parts = [f'sym{group["letter"]}{options["orbits"]}']
     if options['axes']:
-        parts.append(''.join(axis[0] for axis in options['axes']))
+        # A moved axis carries its distance, as "f95" for --face-axes=0.95.
+        parts.append(''.join(
+            axis[0] + (f'{round(options["axis_distances"][axis] * 100)}'
+                       if axis in options['axis_distances'] else '')
+            for axis in options['axes']))
     parts.append(f'r{round(options["relax"] * 100)}')
     if options['min_edge'] != MIN_EDGE_FRACTION:
         parts.append(f'm{round(options["min_edge"] * 100)}')

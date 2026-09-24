@@ -20,7 +20,7 @@ from genSymmetric import (EDGE_AXES, FACE_AXES, GROUPS, MIN_FACE_ANGLE,
                           VERTEX_AXES, all_points, draw, dual_edge_lengths,
                           dual_edges_of, face_shape, facet_dual, facet_edges,
                           facet_set, hull_facets, has_mirror_symmetry, index_of,
-                          octahedral_rotations, orbit, pole_triples, regularize,
+                          move_axis_faces, octahedral_rotations, orbit, pole_triples, regularize,
                           relax, separate_short_edges, source_arguments,
                           symmetry_problems, tetrahedral_rotations, usable_hull)
 from grid_topology import edges_of, vertex_degrees
@@ -446,8 +446,68 @@ class TestMovingOctahedralPoints:
         assert flattest >= MIN_FACE_ANGLE * 0.99
 
 
+def corner_angles_by_face(points, facets):
+    """Each face's corner angles, sorted, in face (point) order."""
+    (vertices, faces) = facet_dual(points, facets)
+    result = []
+    for face in faces:
+        corners = vertices[face]
+        (a, b) = (np.roll(corners, 1, axis=0) - corners, np.roll(corners, -1, axis=0) - corners)
+        cosines = np.sum(a * b, axis=1) / (np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1))
+        result.append(np.sort(np.arccos(np.clip(cosines, -1, 1))))
+    return result
+
+
+class TestMovingAxisFaces:
+    """--face-axes=D and the like: the axis faces' planes move, and nothing
+    else does."""
+
+    AXES = [('face', GROUPS['octahedral']['axes']['face']),
+            ('edge', GROUPS['octahedral']['axes']['edge'])]
+
+    def before_and_after(self, distance):
+        fixed = np.vstack([p for (_, p) in self.AXES])
+        rng = np.random.default_rng(7)
+        result = None
+        while result is None:
+            result = draw(1, fixed, OCTAHEDRAL, 0.0, rng)
+        (reps, points, facets) = result
+        return (reps, points, facets,
+                move_axis_faces(reps, self.AXES, {'face': distance}, OCTAHEDRAL))
+
+    def test_keeps_the_facets_symmetry_and_flatness(self):
+        (reps, _, facets, (moved, moved_facets)) = self.before_and_after(0.97)
+        assert facet_set(moved_facets) == facet_set(facets)
+        points = all_points(reps, moved, OCTAHEDRAL)
+        assert symmetry_problems(points, moved_facets, OCTAHEDRAL) == []
+        (vertices, faces) = facet_dual(points, moved_facets)
+        assert grid_checks.check_flat_faces(vertices, faces, 1e-9) == []
+
+    def test_moves_only_the_chosen_planes(self):
+        # A face's plane is x.v = 1, at distance 1/|v| from the center.
+        (reps, _, _, (moved, _)) = self.before_and_after(0.97)
+        distances = 1 / np.linalg.norm(all_points(reps, moved, OCTAHEDRAL), axis=1)
+        faces_of_face_axes = len(reps) * 24 + np.arange(8)
+        assert np.allclose(distances[faces_of_face_axes], 0.97)
+        others = np.setdiff1d(np.arange(len(distances)), faces_of_face_axes)
+        assert np.allclose(distances[others], 1.0)
+
+    def test_leaves_every_angle_alone(self):
+        # Sliding a plane without tilting it leaves every edge's direction,
+        # and so every corner angle, as it was: only side lengths change.
+        (reps, points, facets, (moved, moved_facets)) = self.before_and_after(0.97)
+        before = corner_angles_by_face(points, facets)
+        after = corner_angles_by_face(all_points(reps, moved, OCTAHEDRAL), moved_facets)
+        assert all(np.allclose(b, a) for (b, a) in zip(before, after))
+
+    def test_refuses_a_move_that_changes_which_faces_meet(self):
+        (*_, result) = self.before_and_after(0.5)
+        assert result is None
+
+
 OPTIONS = {'orbits': 6, 'group': 'tetrahedral', 'relax': 0.25, 'min_edge': 0.4,
-           'regularize': False, 'seed': 42, 'axes': [], 'id': None, 'name': None}
+           'regularize': False, 'seed': 42, 'axes': [], 'axis_distances': {},
+           'id': None, 'name': None}
 
 
 def test_source_names_the_seed():
@@ -468,3 +528,14 @@ def test_source_names_the_group_only_when_not_tetrahedral():
     assert not any(a.startswith('--group') for a in source_arguments(OPTIONS))
     options = dict(OPTIONS, group='octahedral')
     assert source_arguments(options)[:2] == ['6', '--group=octahedral']
+
+
+def test_source_names_an_axis_distance_only_when_given():
+    options = dict(OPTIONS, axes=['face', 'edge'], axis_distances={'face': 0.92})
+    assert source_arguments(options)[-2:] == ['--face-axes=0.92', '--edge-axes']
+
+
+def test_an_axis_flag_takes_a_distance():
+    options = genSymmetric.parse_arguments(['1', '--face-axes=0.92', '--edge-axes'])
+    assert options['axes'] == ['face', 'edge']
+    assert options['axis_distances'] == {'face': 0.92}
