@@ -1,28 +1,38 @@
 #!/usr/bin/env python3
-"""Generate a random solid with tetrahedral rotational symmetry, as grid JSON.
+"""Generate a random solid with tetrahedral or octahedral rotational symmetry,
+as grid JSON.
 
 Usage:
-    util/genSymmetric.py [orbits] [--relax=T] [--min-edge=F] [--regularize]
-                         [--seed=N] [--vertex-axes] [--face-axes] [--edge-axes]
-                         [--id=ID] [--name=NAME]
+    util/genSymmetric.py [orbits] [--group=G] [--relax=T] [--min-edge=F]
+                         [--regularize] [--seed=N] [--vertex-axes]
+                         [--face-axes] [--edge-axes] [--id=ID] [--name=NAME]
 
 Output goes to stdout; progress, the census and the self-check go to stderr.
 
-How it works: a few random points are chosen, and the 12 rotations of the
-tetrahedral group T carry each one to 12 places. Each such set of 12 is an ORBIT.
-The convex hull of all the points is a triangulation with the same symmetry, and
-its polar dual (genGoldberg.polar_dual) is the solid: one face per point, every
-face exactly flat, three faces at every vertex.
+How it works: a few random points are chosen, and the rotations of a symmetry
+group carry each one to as many places: 12 for the tetrahedral group T, 24 for
+the octahedral group O. Each such set is an ORBIT. The convex hull of all the
+points has the same symmetry, and its polar dual is the solid: one face per
+point, every face exactly flat, and as many faces at each vertex as its hull
+facet has corners.
+
+Under T every facet is a triangle, so three faces meet at every vertex. Under O
+the four images of a point around each 4-fold axis are always coplanar, so
+unless --vertex-axes puts points on those axes, the hull has a square facet
+around each of them, and the solid has six vertices where four faces meet.
 
 What the options mean for the solid:
-  orbits          how many random orbits (default 6), 12 faces each. Every face
-                  in an orbit is congruent to the others, so each orbit
-                  contributes 12 faces of one size.
-  --vertex-axes   also put a point on each of the tetrahedron's 4 vertex axes,
-  --face-axes     or its 4 face axes, or its 6 edge axes. These points are fixed
-  --edge-axes     by some rotations, so their faces are forced to have a
-                  multiple of 3 sides (vertex and face axes: 3, 6, 9...) or of 2
-                  (edge axes: 4, 6, 8...).
+  orbits          how many random orbits (default 6), 12 or 24 faces each.
+                  Every face in an orbit is congruent to the others, so each
+                  orbit contributes 12 or 24 faces of one size.
+  --group         tetrahedral (the default) or octahedral.
+  --vertex-axes   also put a point on each of the solid's vertex axes, or its
+  --face-axes     face axes, or its edge axes: of the tetrahedron (4, 4 and 6
+  --edge-axes     points) or of the octahedron (6, 8 and 12). These points are
+                  fixed by some rotations, so the number of sides of their
+                  faces is forced to be a multiple of the axis's fold. Under T
+                  that is 3 for vertex and face axes (3, 6, 9...) and 2 for
+                  edge axes (4, 6, 8...); under O it is 4, 3 and 2.
   --relax         how evenly to spread the points, 0 to 1 (default 0.5). As in
                   genRandomPolyh.py, 0 leaves them where they fell and gives the
                   most varied face sizes, and 1 spreads them evenly.
@@ -35,15 +45,17 @@ What the options mean for the solid:
                   existed still make the same solid. See regularize.
   --seed          the random draw (default: chosen at random, and reported).
 
-Euler's formula constrains the census: summing (6 - sides) over the faces always
-gives 12. With 12 congruent faces per orbit, the orbits' own (6 - sides) must sum
-to 1, less whatever the axis points take. See docs/generating-grids.md.
+Euler's formula constrains the census: summing (6 - sides) over the faces
+gives 12, plus 2 for each vertex where four faces meet. With 12 congruent faces
+per orbit under T, and 24 under O with its six such vertices, the orbits' own
+(6 - sides) must sum to 1 either way, less whatever the axis points take. See
+docs/generating-grids.md.
 
-The solid is checked before it is written: tetrahedral symmetry of the
-triangulation, Euler, flat faces, a closed and outward-wound surface, and three
-faces per vertex. A draw whose hull has coplanar points is rejected and redrawn,
-since the hull would then split a flat facet into triangles arbitrarily, which
-breaks the symmetry and gives the dual coincident vertices.
+The solid is checked before it is written: the symmetry of the hull's facets,
+Euler, flat faces, a closed and outward-wound surface, and the vertex degrees.
+Coplanar hull points that the symmetry forces are merged into one facet (see
+hull_facets). A draw with points that are only NEARLY coplanar is rejected and
+redrawn, since its dual would have nearly coincident vertices.
 
 Requires numpy and scipy.
 """
@@ -54,7 +66,7 @@ from scipy.spatial import ConvexHull
 
 import grid_checks
 import json_format
-from genGoldberg import polar_dual
+from genGoldberg import cycle_around
 from genUniformPolyh import merge_coplanar_faces
 
 # How many fresh draws to try before giving up on a degenerate configuration.
@@ -62,6 +74,11 @@ MAX_ATTEMPTS = 50
 
 # Two points closer than this are treated as the same point.
 SAME_POINT = 1e-6
+
+# Hull triangles in one plane to within this are one facet. Symmetry-forced
+# coplanarity is exact up to rounding, near 1e-16; this is far above that and
+# far below the near-coplanarity that usable_hull rejects.
+COPLANAR = 1e-9
 
 # Repulsion schedule: the step shrinks until moves fall below the tolerance.
 RELAX_STEP = 0.05
@@ -115,12 +132,49 @@ def tetrahedral_rotations():
     return [s @ p for s in signs for p in permutations]
 
 
+def octahedral_rotations():
+    """The 24 rotations of the octahedral group O, as exact 3x3 matrices: the
+    signed permutation matrices of determinant +1.
+
+    T is half of O, so O is T's 12 followed by each of them after a quarter
+    turn about z. T's come first and in their own order, so that a tetrahedral
+    draw's arithmetic is untouched by O's existence.
+    """
+    quarter = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]], dtype=float)
+    tetrahedral = tetrahedral_rotations()
+    return tetrahedral + [quarter @ r for r in tetrahedral]
+
+
 # The points on the tetrahedron's symmetry axes, by which feature the axis runs
 # through. Each set is one orbit of T.
 VERTEX_AXES = np.array([[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]]) / 3 ** 0.5
 FACE_AXES = -VERTEX_AXES
 EDGE_AXES = np.array([[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0],
                       [0, 0, 1], [0, 0, -1]], dtype=float)
+
+# The same for the octahedron, each set one orbit of O: its vertex axes are
+# the 4-fold ones, its face axes the 3-fold, and its edge axes the 2-fold.
+OCTAHEDRON_VERTEX_AXES = EDGE_AXES
+OCTAHEDRON_FACE_AXES = np.vstack([VERTEX_AXES, FACE_AXES])
+OCTAHEDRON_EDGE_AXES = np.array([[a, b, 0] for a in (1, -1) for b in (1, -1)]
+                                + [[a, 0, b] for a in (1, -1) for b in (1, -1)]
+                                + [[0, a, b] for a in (1, -1) for b in (1, -1)],
+                                dtype=float) / 2 ** 0.5
+
+# What each --group means: its rotations, the points on each kind of axis, the
+# vertex degrees its solids can have (see the module docstring on the squares),
+# and the letter and word that name its solids.
+GROUPS = {
+    'tetrahedral': {
+        'rotations': tetrahedral_rotations,
+        'axes': {'vertex': VERTEX_AXES, 'face': FACE_AXES, 'edge': EDGE_AXES},
+        'degrees': [3], 'letter': 'T', 'name': 'Tetrahedral'},
+    'octahedral': {
+        'rotations': octahedral_rotations,
+        'axes': {'vertex': OCTAHEDRON_VERTEX_AXES, 'face': OCTAHEDRON_FACE_AXES,
+                 'edge': OCTAHEDRON_EDGE_AXES},
+        'degrees': [3, 4], 'letter': 'O', 'name': 'Octahedral'},
+}
 
 
 def log(*args):
@@ -205,20 +259,23 @@ def index_of(point, points):
     return nearest if distances[nearest] < SAME_POINT else None
 
 
-def symmetry_problems(points, triangles, rotations):
-    """Check that every rotation carries the triangulation onto itself.
+def symmetry_problems(points, facets, rotations):
+    """Check that every rotation carries the hull's facets onto themselves.
 
-    The dual is computed from the triangulation alone, so a symmetric
-    triangulation means a symmetric solid.
+    The dual is computed from the facets alone, so symmetric facets mean a
+    symmetric solid.
     """
-    wanted = {frozenset(int(v) for v in t) for t in triangles}
+    wanted = facet_set(facets)
     for (n, r) in enumerate(rotations):
-        mapping = [index_of(r @ p, points) for p in points]
-        if None in mapping:
+        # Where each point's image lands, all at once: this runs on every step
+        # of the descent.
+        gaps = np.linalg.norm((points @ r.T)[:, None] - points[None, :], axis=2)
+        mapping = gaps.argmin(axis=1)
+        if np.any(gaps[np.arange(len(points)), mapping] >= SAME_POINT):
             return [f'rotation {n} carries a point to where there is none']
-        image = {frozenset(mapping[v] for v in t) for t in wanted}
+        image = {frozenset(int(mapping[v]) for v in f) for f in wanted}
         if image != wanted:
-            return [f'rotation {n} does not carry the triangulation onto itself']
+            return [f'rotation {n} does not carry the facets onto themselves']
     return []
 
 
@@ -236,8 +293,55 @@ def has_mirror_symmetry(points):
                for m in (inversion, mirror))
 
 
-def usable_hull(points):
-    """The points' convex hull, or None if it would make a bad solid."""
+def hull_facets(points, hull):
+    """The hull's facets, as tuples of point indices: its triangles, with any
+    that lie in one plane merged into one polygon.
+
+    scipy's hull comes back triangulated, splitting a flat polygon into
+    triangles arbitrarily. Each facet's pole is one vertex of the dual, so an
+    unmerged square would give the dual two coincident vertices where there
+    should be one vertex with four faces.
+
+    A triangle keeps its corners in the hull's order, and the facets come in
+    the order of their first triangles, so a hull with nothing to merge gives
+    exactly the vertices genGoldberg.polar_dual does. A merged facet's corners
+    go in order around it.
+    """
+    # How far each triangle's neighbors' corners are from its plane: the two
+    # corners they share are on it, so the largest is the third.
+    homogeneous = np.hstack([points, np.ones((len(points), 1))])
+    across = homogeneous[hull.simplices[hull.neighbors]]       # (F, 3, 3, 4)
+    heights = np.abs(np.einsum('fd,fkvd->fkv', hull.equations, across)).max(axis=2)
+
+    group = list(range(len(hull.simplices)))
+
+    def root(t):
+        while group[t] != t:
+            t = group[t]
+        return t
+
+    for (t, k) in np.argwhere(heights < COPLANAR):
+        group[root(int(hull.neighbors[t, k]))] = root(int(t))
+
+    members = {}
+    for t in range(len(hull.simplices)):
+        members.setdefault(root(t), []).append(t)
+    facets = []
+    for triangles in sorted(members.values(), key=min):
+        if len(triangles) == 1:
+            facets.append(tuple(int(v) for v in hull.simplices[triangles[0]]))
+            continue
+        corners = sorted({int(v) for t in triangles for v in hull.simplices[t]})
+        # Around the centroid, which a convex polygon always contains.
+        offsets = points[corners] - points[corners].mean(axis=0)
+        facets.append(tuple(cycle_around(hull.equations[triangles[0]][:3],
+                                         offsets, corners)))
+    return facets
+
+
+def usable_hull(points, rotations):
+    """The facets of the points' hull (see hull_facets), or None if it would
+    make a bad solid."""
     # Distinct points: a representative too near an axis gives images that
     # nearly coincide.
     gaps = np.linalg.norm(points[:, None] - points[None, :], axis=2)
@@ -248,43 +352,91 @@ def usable_hull(points):
     hull = ConvexHull(points)
     if len(hull.vertices) != len(points):
         return None       # a point inside the hull would get no face
-    if len(merge_coplanar_faces(points, hull)) != len(hull.simplices):
-        return None       # coplanar points: see the module docstring
-    return hull
+    facets = hull_facets(points, hull)
+    # merge_coplanar_faces rounds the planes, so it also merges triangles that
+    # are only NEARLY coplanar, whose poles, the dual's vertices, would nearly
+    # coincide. A facet it merges that hull_facets doesn't is one of those.
+    if len(merge_coplanar_faces(points, hull)) != len(facets):
+        return None
+    # A merge that the symmetry forces is carried onto itself by every
+    # rotation; one that the tolerance made by accident would not be.
+    if (len(facets) != len(hull.simplices)
+            and symmetry_problems(points, facets, rotations)):
+        return None
+    return facets
+
+
+def facets_of(points):
+    """The facets of the points' hull, for points already known to be usable."""
+    return hull_facets(points, ConvexHull(points))
 
 
 def draw(orbits, fixed, rotations, relax_fraction, rng):
-    """One attempt: (representatives, points, hull), or None if the hull is
+    """One attempt: (representatives, points, facets), or None if the hull is
     unusable."""
     reps = random_unit_vectors(orbits, rng)
     reps = partially_relaxed(reps, fixed, rotations, relax_fraction)
     points = all_points(reps, fixed, rotations)
-    hull = usable_hull(points)
-    return None if hull is None else (reps, points, hull)
+    facets = usable_hull(points, rotations)
+    return None if facets is None else (reps, points, facets)
 
 
-def dual_edges_of(triangles):
-    """The dual's edges, as pairs of triangle indices: one pair per primal edge,
-    the two triangles that share it."""
+def facet_dual(points, facets):
+    """The polar dual of the hull with these facets, about the unit sphere.
+
+    genGoldberg.polar_dual builds it from the hull's raw triangles, which would
+    give a merged facet one pole per triangle. This is the same construction
+    over the merged facets: each facet's pole is solved from three of its
+    corners, the rest lying in the same plane.
+
+    @returns (vertices, faces) -- one vertex per facet, one face per point,
+        each face flat and wound counterclockwise seen from outside
+    """
+    poles = np.array([np.linalg.solve(points[list(facet[:3])], np.ones(3))
+                      for facet in facets])
+    around = [[] for _ in range(len(points))]
+    for (f, facet) in enumerate(facets):
+        for vertex in facet:
+            around[vertex].append(f)
+    faces = [cycle_around(points[v], poles[corners], corners)
+             for (v, corners) in enumerate(around)]
+    return (poles, faces)
+
+
+def facet_edges(facet):
+    """A facet's sides, as sorted pairs of point indices: its corners are in
+    order around it, so each corner and the next."""
+    return [tuple(sorted((facet[k], facet[(k + 1) % len(facet)])))
+            for k in range(len(facet))]
+
+
+def dual_edges_of(facets):
+    """The dual's edges, as pairs of facet indices: one pair per primal edge,
+    the two facets that share it."""
     sharing = {}
-    for (t, triangle) in enumerate(triangles):
-        for k in range(3):
-            edge = tuple(sorted((int(triangle[k]), int(triangle[(k + 1) % 3]))))
-            sharing.setdefault(edge, []).append(t)
+    for (f, facet) in enumerate(facets):
+        for edge in facet_edges(facet):
+            sharing.setdefault(edge, []).append(f)
     return np.array(list(sharing.values()))
 
 
-def poles_of(points, triangles):
-    """The dual's vertices: each triangle's pole, the point p with p.a = p.b =
-    p.c = 1 for its three corners -- exactly what polar_dual computes."""
-    corners = points[triangles]
+def pole_triples(facets):
+    """Three corners of each facet, from which poles_of solves its pole."""
+    return np.array([facet[:3] for facet in facets])
+
+
+def poles_of(points, triples):
+    """The dual's vertices: each facet's pole, the point p with p.a = p.b =
+    p.c = 1 for three of its corners (pole_triples) -- what facet_dual
+    computes."""
+    corners = points[triples]
     return np.linalg.solve(corners, np.ones((len(corners), 3, 1)))[..., 0]
 
 
-def dual_edge_lengths(points, triangles, dual_edges):
+def dual_edge_lengths(points, triples, dual_edges):
     """How long each dual edge is: the distance between the poles of its two
-    triangles, which is where polar_dual puts the dual's vertices."""
-    poles = poles_of(points, triangles)
+    facets, which is where facet_dual puts the dual's vertices."""
+    poles = poles_of(points, triples)
     return np.linalg.norm(poles[dual_edges[:, 0]] - poles[dual_edges[:, 1]], axis=1)
 
 
@@ -299,55 +451,54 @@ def separate_short_edges(reps, fixed, rotations, min_fraction):
     of any point set is exactly flat, so flatness costs nothing, and moving one
     representative per orbit keeps the symmetry exact.
 
-    Gradient descent on the total squared shortfall, with the triangulation
+    Gradient descent on the total squared shortfall, with the hull's facets
     held FIXED. A nearly coplanar pair of triangles can also be resolved by
     flipping to the other diagonal, but a flip changes vertex degrees and so
     face sizes: left free to flip, this turned two orbits of squares and
     octagons into hexagons, spending the variety the draw produced. So a step is
     kept only if the hull it actually produces is usable, has the same
-    triangles, and has less shortfall.
+    facets, and has less shortfall.
 
     @returns (representatives, shortest before, shortest after), the shortest
         dual edge given as a fraction of the median
     """
-    hull = usable_hull(all_points(reps, fixed, rotations))
-    dual_edges = dual_edges_of(hull.simplices)
+    facets = usable_hull(all_points(reps, fixed, rotations), rotations)
+    dual_edges = dual_edges_of(facets)
+    triples = pole_triples(facets)
     lengths = dual_edge_lengths(all_points(reps, fixed, rotations),
-                                hull.simplices, dual_edges)
+                                triples, dual_edges)
     before = float(lengths.min() / np.median(lengths))
-
-    triangles = hull.simplices
 
     def shortfall(candidate):
         # Against the CURRENT median, which is what grid_quality.py reports:
         # separating the short edges lengthens the typical one too (by 22% on
         # one draw), so a target fixed at the start would be missed as measured.
         lengths = dual_edge_lengths(all_points(candidate, fixed, rotations),
-                                    triangles, dual_edges)
+                                    triples, dual_edges)
         target = min_fraction * SEPARATE_OVERSHOOT * np.median(lengths)
         return float(np.sum(np.clip(target - lengths, 0, None) ** 2))
 
     reps = descend(reps, fixed, rotations, shortfall, SEPARATE_STEP,
                    SEPARATE_ROUNDS, tolerance=0)
     lengths = dual_edge_lengths(all_points(reps, fixed, rotations),
-                                triangles, dual_edges)
+                                triples, dual_edges)
     return (reps, before, float(lengths.min()) / float(np.median(lengths)))
 
 
 def descend(reps, fixed, rotations, objective, max_step, rounds, tolerance):
-    """Gradient descent on objective(representatives), keeping the triangulation.
+    """Gradient descent on objective(representatives), keeping the facets.
 
-    The objective is expected to be computed on the starting triangulation, so
-    its gradient is exact for small enough steps. Each candidate step is then
+    The objective is expected to be computed on the starting facets, so its
+    gradient is exact for small enough steps. Each candidate step is then
     judged on the hull it actually produces, and kept only if that hull is
-    usable, has the same triangles (see separate_short_edges on why), and
-    lowers the objective.
+    usable, has the same facets (see separate_short_edges on why), and lowers
+    the objective.
 
     @param tolerance: stop once a round improves the objective by less than
         this fraction of it; 0 to go on until no downhill step is left
     @returns the representatives, as a new array
     """
-    wanted = triangle_set(usable_hull(all_points(reps, fixed, rotations)).simplices)
+    wanted = facet_set(usable_hull(all_points(reps, fixed, rotations), rotations))
     current = objective(reps)
     step = max_step
     for _ in range(rounds):
@@ -371,9 +522,10 @@ def descend(reps, fixed, rotations, objective, max_step, rounds, tolerance):
         while step > SEPARATE_MIN_STEP:
             candidate = reps + step * direction
             candidate /= np.linalg.norm(candidate, axis=1, keepdims=True)
-            candidate_hull = usable_hull(all_points(candidate, fixed, rotations))
-            if (candidate_hull is not None
-                    and triangle_set(candidate_hull.simplices) == wanted):
+            candidate_facets = usable_hull(all_points(candidate, fixed, rotations),
+                                           rotations)
+            if (candidate_facets is not None
+                    and facet_set(candidate_facets) == wanted):
                 value = objective(candidate)
                 if value < current:
                     gain = current - value
@@ -389,18 +541,13 @@ def descend(reps, fixed, rotations, objective, max_step, rounds, tolerance):
     return reps
 
 
-def face_cycles(points, triangles):
+def face_cycles(points, facets):
     """Each dual face as the ordered cycle of its corners, which are indices
-    into `triangles` (the dual's vertices are the triangles' poles).
+    into `facets` (the dual's vertices are the facets' poles).
 
-    Taken from polar_dual, so the order matches the solid it builds. That
-    computes its own hull of the same points, so check that its vertices really
-    are these triangles' poles before trusting the indices.
+    Taken from facet_dual, so the order matches the solid it builds.
     """
-    (vertices, faces) = polar_dual(points)
-    if not np.allclose(vertices, poles_of(points, triangles)):
-        raise RuntimeError("polar_dual's hull disagrees with this triangulation")
-    return faces
+    return facet_dual(points, facets)[1]
 
 
 def grouped_by_size(faces):
@@ -452,9 +599,10 @@ def regularize(reps, fixed, rotations, min_fraction):
     """Move the representatives to make every face as nearly regular as the
     census allows, keeping the symmetry, the flatness and the census exact.
 
-    As near as the census ALLOWS, because three regular faces meeting at a
+    As near as the census ALLOWS, because the regular faces meeting at a
     corner must leave its angles summing to less than 360 degrees for the solid
-    to be convex, and regular hexagons already sum to exactly 360. So a face of
+    to be convex, and three regular hexagons already sum to exactly 360. So a
+    face of
     six or more sides can be near-regular only where smaller faces sit beside
     it; elsewhere it has to stay squeezed. This finds the compromise.
 
@@ -469,20 +617,22 @@ def regularize(reps, fixed, rotations, min_fraction):
         face_shape's (irregularity, straightest corner, worst side ratio)
     """
     points = all_points(reps, fixed, rotations)
-    triangles = usable_hull(points).simplices
-    groups = grouped_by_size(face_cycles(points, triangles))
-    dual_edges = dual_edges_of(triangles)
-    neighbors = np.array(sorted({tuple(sorted((int(t[k]), int(t[(k + 1) % 3]))))
-                                 for t in triangles for k in range(3)}))
+    facets = usable_hull(points, rotations)
+    groups = grouped_by_size(face_cycles(points, facets))
+    dual_edges = dual_edges_of(facets)
+    triples = pole_triples(facets)
+    # Faces that share an edge: the points at the ends of a facet's side.
+    neighbors = np.array(sorted({edge for facet in facets
+                                 for edge in facet_edges(facet)}))
     flattest = np.radians(MIN_FACE_ANGLE)
 
     def shape(candidate):
         return face_shape(poles_of(all_points(candidate, fixed, rotations),
-                                   triangles), groups)
+                                   triples), groups)
 
     def objective(candidate):
         pts = all_points(candidate, fixed, rotations)
-        poles = poles_of(pts, triangles)
+        poles = poles_of(pts, triples)
         (irregularity, straightness, _, _) = face_shape(poles, groups)
         lengths = np.linalg.norm(poles[dual_edges[:, 0]] - poles[dual_edges[:, 1]],
                                  axis=1)
@@ -500,9 +650,9 @@ def regularize(reps, fixed, rotations, min_fraction):
     return (reps, before, shape(reps))
 
 
-def triangle_set(triangles):
-    """A triangulation as a set, for comparing two regardless of order."""
-    return {frozenset(int(v) for v in t) for t in triangles}
+def facet_set(facets):
+    """A hull's facets as a set, for comparing two regardless of order."""
+    return {frozenset(int(v) for v in f) for f in facets}
 
 
 def census_line(faces):
@@ -511,12 +661,14 @@ def census_line(faces):
 
 
 def parse_arguments(argv):
-    options = {'orbits': 6, 'relax': 0.5, 'min_edge': MIN_EDGE_FRACTION,
-               'regularize': False, 'seed': None, 'axes': [], 'id': None,
-               'name': None}
+    options = {'orbits': 6, 'group': 'tetrahedral', 'relax': 0.5,
+               'min_edge': MIN_EDGE_FRACTION, 'regularize': False, 'seed': None,
+               'axes': [], 'id': None, 'name': None}
     for argument in argv:
         if argument == '--regularize':
             options['regularize'] = True
+        elif argument.startswith('--group='):
+            options['group'] = argument.split('=', 1)[1]
         elif argument.startswith('--relax='):
             options['relax'] = float(argument.split('=', 1)[1])
         elif argument.startswith('--min-edge='):
@@ -533,6 +685,8 @@ def parse_arguments(argv):
             options['orbits'] = int(argument)
         else:
             raise SystemExit(f'Unrecognized argument {argument!r}.\n\n{__doc__}')
+    if options['group'] not in GROUPS:
+        raise SystemExit(f'--group must be one of {", ".join(GROUPS)}.')
     if not 0 <= options['relax'] <= 1:
         raise SystemExit('--relax must be between 0 and 1.')
     if not 0 <= options['min_edge'] < 1:
@@ -546,9 +700,14 @@ def source_arguments(options):
     """The arguments that reproduce this file. The seed, relax and minimum edge
     are always spelled out, even at their defaults: they decide the geometry,
     and the line must go on reproducing the file after a default moves (see
-    docs/json-format.md)."""
-    arguments = [str(options['orbits']), f'--relax={options["relax"]:g}',
-                 f'--min-edge={options["min_edge"]:g}', f'--seed={options["seed"]}']
+    docs/json-format.md). The group only when it isn't tetrahedral, so that files
+    written before --group existed still regenerate byte for byte, source line
+    included."""
+    arguments = [str(options['orbits'])]
+    if options['group'] != 'tetrahedral':
+        arguments.append(f'--group={options["group"]}')
+    arguments += [f'--relax={options["relax"]:g}',
+                  f'--min-edge={options["min_edge"]:g}', f'--seed={options["seed"]}']
     arguments += [f'--{axis}-axes' for axis in options['axes']]
     if options['regularize']:
         arguments.append('--regularize')
@@ -564,9 +723,9 @@ def main():
     if options['seed'] is None:
         options['seed'] = int(np.random.default_rng().integers(0, 2 ** 31))
     rng = np.random.default_rng(options['seed'])
-    rotations = tetrahedral_rotations()
-    axis_sets = {'vertex': VERTEX_AXES, 'face': FACE_AXES, 'edge': EDGE_AXES}
-    chosen = [axis_sets[a] for a in options['axes']]
+    group = GROUPS[options['group']]
+    rotations = group['rotations']()
+    chosen = [group['axes'][a] for a in options['axes']]
     fixed = np.vstack(chosen) if chosen else np.empty((0, 3))
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -576,13 +735,13 @@ def main():
         log(f'  draw {attempt} was degenerate; drawing again')
     else:
         raise SystemExit(f'No usable draw in {MAX_ATTEMPTS} attempts.')
-    (reps, points, hull) = result
+    (reps, points, facets) = result
 
     if options['min_edge'] > 0:
         (reps, before, after) = separate_short_edges(reps, fixed, rotations,
                                                      options['min_edge'])
         points = all_points(reps, fixed, rotations)
-        hull = ConvexHull(points)
+        facets = facets_of(points)
         log(f'  shortest edge {before:.0%} of median before separating, '
             f'{after:.0%} after (target {options["min_edge"]:.0%})'
             + ('' if after >= options['min_edge']
@@ -592,22 +751,25 @@ def main():
         (reps, before, after) = regularize(reps, fixed, rotations,
                                            options['min_edge'])
         points = all_points(reps, fixed, rotations)
-        hull = ConvexHull(points)
+        facets = facets_of(points)
         log(f'  regularized: straightest corner {before[2]:.0f} -> '
             f'{after[2]:.0f} degrees, sides within a face up to '
             f'x{before[3]:.1f} -> x{after[3]:.1f}')
 
-    (vertices, faces) = polar_dual(points)
-    problems = (symmetry_problems(points, hull.simplices, rotations)
+    (vertices, faces) = facet_dual(points, facets)
+    problems = (symmetry_problems(points, facets, rotations)
                 + grid_checks.check_euler(vertices, faces)
                 + grid_checks.check_flat_faces(vertices, faces, 1e-9)
                 + grid_checks.check_closed_surface(faces)
                 + grid_checks.check_outward_winding(vertices, faces)
-                + grid_checks.check_vertex_degrees(faces, [3]))
+                + grid_checks.check_vertex_degrees(faces, group['degrees']))
     chiral = not has_mirror_symmetry(points)
 
+    degrees = grid_checks.face_census(facets)
     log(f'seed {options["seed"]}: {len(points)} points, {len(faces)} faces '
-        f'({census_line(faces)}), {"chiral" if chiral else "achiral"}')
+        f'({census_line(faces)}), vertex degrees '
+        + ', '.join(f'{count}x{degree}' for (degree, count) in sorted(degrees.items()))
+        + f', {"chiral" if chiral else "achiral"}')
     if problems:
         for problem in problems:
             log(f'  FAILED: {problem}')
@@ -618,7 +780,7 @@ def main():
     # the axis letters run into the relax value ("ve" + "r25" read as "ver25").
     # The minimum edge only when it isn't the default: an absent part then means
     # the default, so ids stay unique without growing for the common case.
-    parts = [f'symT{options["orbits"]}']
+    parts = [f'sym{group["letter"]}{options["orbits"]}']
     if options['axes']:
         parts.append(''.join(axis[0] for axis in options['axes']))
     parts.append(f'r{round(options["relax"] * 100)}')
@@ -630,7 +792,7 @@ def main():
     grid_id = options['id'] or '_'.join(parts)
     grid = {
         'gridId': grid_id,
-        'gridName': options['name'] or f'Tetrahedral random solid {grid_id}',
+        'gridName': options['name'] or f'{group["name"]} random solid {grid_id}',
         'categories': ['Miscellaneous', 'random'] + (['chiral'] if chiral else []),
         'source': json_format.source_line(source_arguments(options)),
         'vertices': [[round(float(c), 9) for c in v] for v in vertices],

@@ -243,10 +243,10 @@ tell apart. One solid had 5 of its 84 edges under 0.10 against a median of
 nudge. The faces then aren't *exactly* flat any more, but the residual is
 smaller than the rounding `obj2json.py` applies anyway.
 
-## genSymmetric.py — random solids with tetrahedral symmetry
+## genSymmetric.py — random solids with tetrahedral or octahedral symmetry
 
-(Open questions and next steps — other symmetry groups, vertices of degree
-more than 3 — are in `ideas/symmetric-solids.md`.)
+(Open questions and next steps — other symmetry groups, vertices of higher
+degree — are in `ideas/symmetric-solids.md`.)
 
 `genRandomPolyh.py --dual` can give a varied face census, but the result is an
 asymmetric blob, while most of the collection's appeal is symmetry. This script
@@ -276,12 +276,18 @@ higher symmetry means fewer orbits and so less variety. In 60–100 faces the
 tetrahedral group (order 12) leaves room for 5–8 independent orbits, the
 octahedral (24) for 2–4, and the icosahedral (60) for one, where Euler all but
 forces 12 pentagons and 60 hexagons, i.e. a Goldberg solid.
+`--group=octahedral` exists anyway, for the one thing the tetrahedral group
+can't do: vertices where four faces meet (see below).
 
 Two things the construction must avoid, both of which break the symmetry:
 
-- **Coplanar points.** scipy's hull splits a flat facet into triangles
-  arbitrarily, and the polar dual then gets two coincident vertices. A draw
-  whose hull has any coplanar facets is rejected and redrawn.
+- **Nearly coplanar points.** Their triangles' poles, which are the dual's
+  vertices, nearly coincide. A draw whose hull has any is rejected and
+  redrawn. *Exactly* coplanar points are a different matter: scipy's hull
+  splits the flat facet they make into triangles arbitrarily, so they are
+  merged back into one facet, whose pole is then one dual vertex with as many
+  faces as the facet has corners. Under the tetrahedral group that never
+  happens; under the octahedral group it's the point.
 - **Drift during relaxation.** Only one representative per orbit moves, pushed
   by every other point including its own images, and the images are recomputed
   from it after every step. Moving the whole set would stay symmetric only in
@@ -396,6 +402,88 @@ because regular faces of different side counts are simply different sizes. And
 two different draws (seeds 8 and 34 of the same settings) regularized to exactly
 the same solid, metric for metric: once the points are free to move, the
 result depends only on which faces touch which.
+
+**Vertices of degree 4 (`--group=octahedral`).**
+
+```
+util/genSymmetric.py 3 --group=octahedral --relax=0.25 --seed=9 --regularize
+```
+
+Every vertex of a tetrahedral solid has three faces, whatever the options,
+because a dual vertex is the pole of one hull facet and has one face per corner
+of that facet. Four faces at a vertex need four exactly coplanar points, and
+random points are never coplanar four at a time unless the symmetry makes them
+so. A point's images about a k-fold axis are always coplanar, but the
+tetrahedral group's axes are at most 3-fold, and three points are always
+coplanar anyway.
+
+The octahedral group O (the 24 signed permutation matrices of determinant 1)
+has 4-fold axes. The hull facet that such an axis passes through must be
+carried onto itself by the quarter turn, so it's a square: four images of one
+point. So every octahedral draw has six square facets, one at each end of the
+three axes, and the solid has six vertices of degree 4. The exception is
+`--vertex-axes`, which under O puts points on those very axes: the hull then
+has a corner there instead, every facet is a triangle, and every vertex has
+degree 3 again.
+
+The axis options take the octahedron's axes under O: `--vertex-axes` 6 points
+(4-fold, their faces having a multiple of 4 sides), `--face-axes` 8 (3-fold),
+`--edge-axes` 12 (2-fold). Euler's formula still fixes the census's blocks:
+summing (6 − sides) gives 12 plus 2 for each vertex of degree 4, so 24 here,
+and with 24 faces per orbit, the orbits' own (6 − sides) must again sum to 1.
+
+What the octahedral group needed from the code, which the tetrahedral solids
+share without being changed by it:
+
+- **Merged facets** (`hull_facets`). Hull triangles within 1e-9 of one plane are
+  merged into one facet. A symmetry-forced square is exact up to rounding,
+  near 1e-16, while anything scipy's rounding would merge but this doesn't is
+  rejected as nearly coplanar, as before. A merged facet must also be carried
+  onto itself by the symmetry, which one merged by accident would not be.
+- **A polar dual over the facets** (`facet_dual`). `genGoldberg.polar_dual`
+  works from the raw triangles, so it would give a square two poles.
+- **Facets, not triangles, held fixed** by separation and regularizing, and
+  compared by the symmetry check.
+
+With nothing to merge, `facet_dual` gives exactly what `polar_dual` does, and
+the octahedral rotations begin with the tetrahedral ones in their own order.
+So every tetrahedral command still makes the same file: `cageA`–`cageG` were
+regenerated from their source lines and compared byte for byte.
+
+**What it gives.** A census scan of 40 seeds per setting (2–4 orbits, each axis
+option, relax 0 and 0.25) found plenty of variety: triangles through decagons,
+and 15-gons once. But the budget of the tetrahedral section applies unchanged,
+and there is less room to spend it, with only two to four free orbits. Eighteen
+regularized candidates, all with six vertices of degree 4:
+
+| solid | census | straightest corner | sides within a face | shortest edge | flattest |
+|---|---|---|---|---|---|
+| symO3_r25_reg_s1 | 24×5, 48×6 | 125° | ×1.3 | 95% | 21° |
+| symO4_r25_reg_s1 | 24×5, 72×6 | 130° | ×1.5 | 77% | 19° |
+| symO3_e_r25_reg_s1 | 24×5, 60×6 | 129° | ×1.6 | 80% | 21° |
+| symO2_e_r25_reg_s1 | 12×4, 48×6 | 136° | ×2.0 | 72% | 18° |
+| symO3_r25_reg_s9 | 24×4, 24×6, 24×7 | 137° | ×1.8 | 76% | 20° |
+| symO3_f_r25_reg_s1 | 48×5, 8×6, 24×7 | 138° | ×1.8 | 67% | 18° |
+| symO3_e_r25_reg_s7 | 12×4, 24×5, 24×6, 24×7 | 139° | ×1.9 | 64% | 16° |
+| symO2_fe_r25_reg_s1 | 12×4, 24×5, 8×6, 24×7 | 146° | ×2.0 | 58% | 13° |
+| symO4_r25_reg_s7 | 24×4, 24×5, 24×6, 24×8 | 147° | ×3.0 | 40% | 14° |
+| symO2_fe_r25_reg_s7 | 8×3, 12×4, 24×6, 24×7 | 150° | ×2.9 | 57% | 11° |
+| symO3_f_r25_reg_s5 | 8×3, 24×5, 24×6, 24×7 | 150° | ×2.0 | 60% | 10° |
+| symO3_f_r25_reg_s21 | 24×4, 24×5, 24×7, 8×9 | 152° | ×4.6 | 42% | 13° |
+| symO2_fe_r0_reg_s19 | 24×4, 24×5, 8×6, 12×10 | 161° | ×4.7 | 39% | 11° |
+| symO3_e_r0_reg_s8 | 24×4, 24×5, 24×7, 12×8 | 165° | ×6.2 | 39% | 7° |
+| symO3_r0_reg_s19 | 24×4, 24×5, 24×8 | 168° | ×13.8 | 39% | 7° |
+| symO4_r0_reg_s10 | 24×3, 24×5, 24×6, 24×9 | 178° | ×13.7 | 36% | 1.3° |
+
+(Two more, symO3_r0_reg_s1 and symO3_r25_reg_s2, came out identical to
+symO3_r25_reg_s1 metric for metric: the combinatorics decide again.)
+
+The most common census at relax 0.25, one orbit of pentagons among hexagons,
+regularizes almost perfectly and is correspondingly plain. The varied ones
+regularize worst, as under T, and the relax-0 draws that gave the widest faces
+are unusable. The last row has corners of 7° and 178° and two faces meeting at
+1.3°: its separation stopped short of the minimum edge, and regularizing left
+its straightest corner at 178°.
 
 ## Checking a grid afterwards
 

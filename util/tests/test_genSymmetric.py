@@ -1,65 +1,86 @@
-"""Tests for genSymmetric.py, the tetrahedrally symmetric random solids.
+"""Tests for genSymmetric.py, the random solids with tetrahedral or octahedral
+symmetry.
 
 The group arithmetic is pinned first, since everything else depends on it, and
 then the two claims the generator's design rests on: that relaxing keeps the
 symmetry exact, and that every orbit's faces are congruent -- which is what
-makes the face census come in blocks of 12.
+makes the face census come in blocks of 12 (or 24). Then the octahedral
+group's merged facets, which give it vertices where four faces meet.
 """
 import functools
 
 import numpy as np
+import pytest
 from scipy.spatial import ConvexHull
 
 import genSymmetric
 import grid_checks
 from genGoldberg import polar_dual
-from genSymmetric import (EDGE_AXES, FACE_AXES, MIN_FACE_ANGLE, VERTEX_AXES,
-                          all_points, draw, dual_edge_lengths, dual_edges_of,
-                          face_shape, has_mirror_symmetry, index_of, orbit,
-                          regularize, relax, separate_short_edges,
-                          source_arguments, symmetry_problems,
-                          tetrahedral_rotations, triangle_set)
-from grid_topology import edges_of
+from genSymmetric import (EDGE_AXES, FACE_AXES, GROUPS, MIN_FACE_ANGLE,
+                          VERTEX_AXES, all_points, draw, dual_edge_lengths,
+                          dual_edges_of, face_shape, facet_dual, facet_edges,
+                          facet_set, hull_facets, has_mirror_symmetry, index_of,
+                          octahedral_rotations, orbit, pole_triples, regularize,
+                          relax, separate_short_edges, source_arguments,
+                          symmetry_problems, tetrahedral_rotations, usable_hull)
+from grid_topology import edges_of, vertex_degrees
 
 ROTATIONS = tetrahedral_rotations()
+OCTAHEDRAL = octahedral_rotations()
 
 
-def is_closed_under_rotations(points):
+def is_closed_under_rotations(points, rotations=ROTATIONS):
     """Every rotation carries every point onto a point of the set."""
     return all(index_of(r @ p, points) is not None
-               for r in ROTATIONS for p in points)
+               for r in rotations for p in points)
 
 
+@pytest.mark.parametrize('name', GROUPS)
 class TestGroup:
-    def test_twelve_distinct_rotations(self):
-        assert len(ROTATIONS) == 12
-        flattened = {tuple(np.round(r, 9).ravel()) for r in ROTATIONS}
-        assert len(flattened) == 12
+    def test_distinct_rotations(self, name):
+        rotations = GROUPS[name]['rotations']()
+        assert len(rotations) == {'tetrahedral': 12, 'octahedral': 24}[name]
+        flattened = {tuple(np.round(r, 9).ravel()) for r in rotations}
+        assert len(flattened) == len(rotations)
 
-    def test_each_is_a_proper_rotation(self):
-        for r in ROTATIONS:
+    def test_each_is_a_proper_rotation(self, name):
+        for r in GROUPS[name]['rotations']():
             assert np.allclose(r @ r.T, np.eye(3))
             assert np.isclose(np.linalg.det(r), 1.0)
 
-    def test_closed_under_composition(self):
-        known = {tuple(np.round(r, 9).ravel()) for r in ROTATIONS}
-        for a in ROTATIONS:
-            for b in ROTATIONS:
+    def test_closed_under_composition(self, name):
+        rotations = GROUPS[name]['rotations']()
+        known = {tuple(np.round(r, 9).ravel()) for r in rotations}
+        for a in rotations:
+            for b in rotations:
                 assert tuple(np.round(a @ b, 9).ravel()) in known
 
-    def test_generic_orbit_has_twelve_points(self):
+    def test_generic_orbit_has_a_point_per_rotation(self, name):
         point = np.array([0.3, 0.5, 0.8])
         point /= np.linalg.norm(point)
-        images = orbit(point, ROTATIONS)
+        images = orbit(point, GROUPS[name]['rotations']())
         gaps = np.linalg.norm(images[:, None] - images[None, :], axis=2)
         np.fill_diagonal(gaps, np.inf)
         assert gaps.min() > 1e-6
 
-    def test_each_axis_set_is_one_orbit(self):
-        for axes in (VERTEX_AXES, FACE_AXES, EDGE_AXES):
-            assert is_closed_under_rotations(axes)
+    def test_each_axis_set_is_one_orbit(self, name):
+        rotations = GROUPS[name]['rotations']()
+        for axes in GROUPS[name]['axes'].values():
+            assert is_closed_under_rotations(axes, rotations)
             # ...and a single orbit, not several: one point reaches them all.
-            assert len({index_of(r @ axes[0], axes) for r in ROTATIONS}) == len(axes)
+            assert len({index_of(r @ axes[0], axes) for r in rotations}) == len(axes)
+
+
+def test_octahedral_group_starts_with_the_tetrahedral():
+    # So that adding O changed nothing about a tetrahedral draw.
+    assert all(np.array_equal(o, t) for (o, t) in zip(OCTAHEDRAL, ROTATIONS))
+
+
+def test_octahedral_axes_have_their_folds():
+    # Each axis point is fixed by as many rotations as its axis is fold.
+    for (kind, fold) in (('vertex', 4), ('face', 3), ('edge', 2)):
+        point = GROUPS['octahedral']['axes'][kind][0]
+        assert sum(np.allclose(r @ point, point) for r in OCTAHEDRAL) == fold
 
 
 class TestRelaxing:
@@ -88,13 +109,26 @@ class TestTheSolid:
         result = None
         while result is None:
             result = draw(self.orbits, np.empty((0, 3)), ROTATIONS, 0.0, rng)
-        (_, points, hull) = result
-        (vertices, faces) = polar_dual(points)
-        return (points, hull, vertices, faces)
+        (_, points, facets) = result
+        (vertices, faces) = facet_dual(points, facets)
+        return (points, facets, vertices, faces)
 
     def test_triangulation_is_symmetric(self):
-        (points, hull, _, _) = self.solid()
-        assert symmetry_problems(points, hull.simplices, ROTATIONS) == []
+        (points, facets, _, _) = self.solid()
+        assert symmetry_problems(points, facets, ROTATIONS) == []
+
+    def test_every_facet_is_a_triangle(self):
+        # T's axes are at most 3-fold, so nothing forces four points coplanar.
+        (_, facets, _, _) = self.solid()
+        assert {len(f) for f in facets} == {3}
+
+    def test_facet_dual_is_polar_dual(self):
+        # With nothing merged the two must agree exactly: the tetrahedral
+        # solids already in data/ were made by polar_dual.
+        (points, _, vertices, faces) = self.solid()
+        (expected_vertices, expected_faces) = polar_dual(points)
+        assert np.array_equal(vertices, expected_vertices)
+        assert faces == expected_faces
 
     def test_passes_the_shared_checks(self):
         (_, _, vertices, faces) = self.solid()
@@ -146,10 +180,11 @@ def separated():
     result = None
     while result is None:
         result = draw(6, fixed, ROTATIONS, 0.25, rng)
-    (reps, points, hull) = result
+    (reps, points, facets) = result
     (moved, before, after) = separate_short_edges(reps, fixed, ROTATIONS, 0.4)
     moved_points = all_points(moved, fixed, ROTATIONS)
-    return (points, hull, moved_points, ConvexHull(moved_points), before, after)
+    return (points, facets, moved_points, usable_hull(moved_points, ROTATIONS),
+            before, after)
 
 
 class TestSeparatingShortEdges:
@@ -163,28 +198,27 @@ class TestSeparatingShortEdges:
 
     def test_keeps_the_triangulation(self):
         # A flip would change vertex degrees, and so the census.
-        (_, hull, _, moved_hull, _, _) = separated()
-        assert triangle_set(moved_hull.simplices) == triangle_set(hull.simplices)
+        (_, facets, _, moved_facets, _, _) = separated()
+        assert facet_set(moved_facets) == facet_set(facets)
 
     def test_keeps_the_symmetry_exact(self):
-        (_, _, moved_points, moved_hull, _, _) = separated()
-        assert symmetry_problems(moved_points, moved_hull.simplices,
-                                 ROTATIONS) == []
+        (_, _, moved_points, moved_facets, _, _) = separated()
+        assert symmetry_problems(moved_points, moved_facets, ROTATIONS) == []
 
     def test_keeps_the_faces_exactly_flat(self):
         # The point of moving the primal points rather than the dual's vertices.
-        (_, _, moved_points, _, _, _) = separated()
-        (vertices, faces) = polar_dual(moved_points)
+        (_, _, moved_points, moved_facets, _, _) = separated()
+        (vertices, faces) = facet_dual(moved_points, moved_facets)
         assert grid_checks.check_flat_faces(vertices, faces, 1e-9) == []
 
 
 def test_dual_edge_lengths_measure_the_real_dual():
     """The separation optimizes dual_edge_lengths, so it must agree with the
-    edges of the solid polar_dual actually builds."""
-    (points, hull, _, _, _, _) = separated()
-    predicted = sorted(dual_edge_lengths(points, hull.simplices,
-                                         dual_edges_of(hull.simplices)))
-    (vertices, faces) = polar_dual(points)
+    edges of the solid facet_dual actually builds."""
+    (points, facets, _, _, _, _) = separated()
+    predicted = sorted(dual_edge_lengths(points, pole_triples(facets),
+                                         dual_edges_of(facets)))
+    (vertices, faces) = facet_dual(points, facets)
     actual = sorted(grid_checks.distance(vertices[a], vertices[b])
                     for (a, b) in edges_of(faces))
     assert np.allclose(predicted, actual)
@@ -209,7 +243,7 @@ def regularized():
     """The separated draw above, regularized. Fewer rounds than the script
     uses, to keep the suite quick; the tests ask only that it improves and
     keeps what it must keep, which a short run already shows."""
-    (points, hull, moved_points, moved_hull, _, _) = separated()
+    (_, _, _, moved_facets, _, _) = separated()
     fixed = np.empty((0, 3))
     rng = np.random.default_rng(2)
     result = None
@@ -224,7 +258,18 @@ def regularized():
     finally:
         genSymmetric.REGULARIZE_ROUNDS = saved
     points = all_points(reps, fixed, ROTATIONS)
-    return (moved_hull, points, ConvexHull(points), before, after)
+    return (moved_facets, points, usable_hull(points, ROTATIONS), before, after)
+
+
+def held_limits(points, facets):
+    """(the shortest dual edge as a fraction of the median, the flattest two
+    neighboring faces meet in degrees), the two limits regularizing holds.
+    Neighboring faces' angle is their points' angle (see regularize)."""
+    lengths = dual_edge_lengths(points, pole_triples(facets), dual_edges_of(facets))
+    neighbors = {edge for facet in facets for edge in facet_edges(facet)}
+    flattest = min(np.degrees(np.arccos(np.clip(points[a] @ points[b], -1, 1)))
+                   for (a, b) in neighbors)
+    return (lengths.min() / np.median(lengths), flattest)
 
 
 class TestRegularizing:
@@ -235,31 +280,178 @@ class TestRegularizing:
         assert after[3] < before[3]          # sides within a face
 
     def test_keeps_the_triangulation(self):
-        (hull_before, _, hull_after, _, _) = regularized()
-        assert triangle_set(hull_after.simplices) == triangle_set(hull_before.simplices)
+        (facets_before, _, facets_after, _, _) = regularized()
+        assert facet_set(facets_after) == facet_set(facets_before)
 
     def test_keeps_the_symmetry_and_flatness(self):
-        (_, points, hull, _, _) = regularized()
-        assert symmetry_problems(points, hull.simplices, ROTATIONS) == []
-        (vertices, faces) = polar_dual(points)
+        (_, points, facets, _, _) = regularized()
+        assert symmetry_problems(points, facets, ROTATIONS) == []
+        (vertices, faces) = facet_dual(points, facets)
         assert grid_checks.check_flat_faces(vertices, faces, 1e-9) == []
 
     def test_keeps_the_held_limits(self):
-        # Neighboring faces' angle is their points' angle (see regularize).
-        (_, points, hull, _, _) = regularized()
-        lengths = dual_edge_lengths(points, hull.simplices,
-                                    dual_edges_of(hull.simplices))
-        assert lengths.min() >= 0.4 * np.median(lengths) * 0.99
-        neighbors = {tuple(sorted((int(t[k]), int(t[(k + 1) % 3]))))
-                     for t in hull.simplices for k in range(3)}
-        flattest = min(np.degrees(np.arccos(np.clip(points[a] @ points[b], -1, 1)))
-                       for (a, b) in neighbors)
+        (_, points, facets, _, _) = regularized()
+        (shortest, flattest) = held_limits(points, facets)
+        assert shortest >= 0.4 * 0.99
         assert flattest >= MIN_FACE_ANGLE * 0.99
 
 
+def cube_corners():
+    return np.array([[x, y, z] for x in (1, -1) for y in (1, -1)
+                     for z in (1, -1)], dtype=float) / 3 ** 0.5
+
+
+class TestMergingFacets:
+    """hull_facets merges exactly coplanar triangles, and usable_hull rejects
+    triangles that are only nearly so. Tried on a cube, whose faces are
+    squares, with no symmetry to lean on."""
+
+    def test_a_cube_has_six_square_facets(self):
+        points = cube_corners()
+        facets = hull_facets(points, ConvexHull(points))
+        assert sorted(len(f) for f in facets) == [4] * 6
+
+    def test_a_square_facet_goes_around_its_side(self):
+        # Each corner and the next are the ends of one of the cube's edges.
+        points = cube_corners()
+        edge = min(grid_checks.distance(points[0], p) for p in points[1:])
+        for facet in hull_facets(points, ConvexHull(points)):
+            for (a, b) in facet_edges(facet):
+                assert np.isclose(grid_checks.distance(points[a], points[b]), edge)
+
+    def test_its_dual_is_an_octahedron(self):
+        # One vertex per facet, with four faces around it: the reason for
+        # merging, since unmerged, each square would give two vertices.
+        points = cube_corners()
+        (vertices, faces) = facet_dual(points, usable_hull(points, [np.eye(3)]))
+        assert len(vertices) == 6
+        assert set(vertex_degrees(faces).values()) == {4}
+        assert grid_checks.check_flat_faces(vertices, faces, 1e-9) == []
+
+    def test_a_corner_pulled_well_out_splits_its_squares(self):
+        points = cube_corners()
+        points[0] *= 1.05
+        facets = usable_hull(points, [np.eye(3)])
+        assert sorted(len(f) for f in facets) == [3] * 6 + [4] * 3
+
+    def test_a_corner_pulled_barely_out_is_rejected(self):
+        # Three pairs of triangles nearly coplanar: the dual would have three
+        # pairs of nearly coincident vertices.
+        points = cube_corners()
+        points[0] *= 1 + 1e-8
+        assert usable_hull(points, [np.eye(3)]) is None
+
+
+class TestTheOctahedralSolid:
+    """One whole octahedral draw, from a fixed seed."""
+
+    orbits = 3
+
+    def solid(self, fixed=np.empty((0, 3))):
+        rng = np.random.default_rng(1)
+        result = None
+        while result is None:
+            result = draw(self.orbits, fixed, OCTAHEDRAL, 0.0, rng)
+        (_, points, facets) = result
+        (vertices, faces) = facet_dual(points, facets)
+        return (points, facets, vertices, faces)
+
+    def test_facets_are_symmetric(self):
+        (points, facets, _, _) = self.solid()
+        assert symmetry_problems(points, facets, OCTAHEDRAL) == []
+
+    def test_a_square_on_each_four_fold_axis(self):
+        # The four images of a point about a 4-fold axis are coplanar.
+        (points, facets, _, _) = self.solid()
+        squares = [f for f in facets if len(f) == 4]
+        assert len(squares) == 6
+        centers = np.array([points[list(f)].mean(axis=0) for f in squares])
+        centers /= np.linalg.norm(centers, axis=1, keepdims=True)
+        assert all(index_of(c, EDGE_AXES) is not None for c in centers)
+        assert {len(f) for f in facets} == {3, 4}
+
+    def test_passes_the_shared_checks(self):
+        (_, _, vertices, faces) = self.solid()
+        assert (grid_checks.check_euler(vertices, faces)
+                + grid_checks.check_flat_faces(vertices, faces, 1e-9)
+                + grid_checks.check_closed_surface(faces)
+                + grid_checks.check_outward_winding(vertices, faces)) == []
+
+    def test_six_vertices_of_four_faces(self):
+        (_, _, _, faces) = self.solid()
+        degrees = list(vertex_degrees(faces).values())
+        assert degrees.count(4) == 6
+        assert set(degrees) == {3, 4}
+
+    def test_each_orbit_gives_24_congruent_faces(self):
+        (_, _, _, faces) = self.solid()
+        for n in range(self.orbits):
+            sizes = {len(face) for face in faces[24 * n:24 * (n + 1)]}
+            assert len(sizes) == 1, f'orbit {n} has faces of sizes {sizes}'
+
+    def test_euler_budget(self):
+        # Summing (6 - sides) gives 12, plus 2 for each vertex of degree 4.
+        (_, _, _, faces) = self.solid()
+        extra = sum(degree - 3 for degree in vertex_degrees(faces).values())
+        assert sum(6 - len(face) for face in faces) == 12 + 2 * extra
+
+    def test_points_on_the_four_fold_axes_leave_no_squares(self):
+        # The axis's own point is then the hull's corner there, so every facet
+        # is a triangle, and the point's face has a multiple of 4 sides.
+        fixed = GROUPS['octahedral']['axes']['vertex']
+        (_, facets, _, faces) = self.solid(fixed)
+        assert {len(f) for f in facets} == {3}
+        assert all(len(face) % 4 == 0 for face in faces[-len(fixed):])
+
+
+@functools.lru_cache(maxsize=None)
+def octahedral_moved():
+    """An octahedral draw before and after separation and a short
+    regularizing: (facets before, points after, facets after)."""
+    fixed = np.empty((0, 3))
+    rng = np.random.default_rng(1)
+    result = None
+    while result is None:
+        result = draw(3, fixed, OCTAHEDRAL, 0.25, rng)
+    (reps, _, facets) = result
+    (reps, _, _) = separate_short_edges(reps, fixed, OCTAHEDRAL, 0.4)
+    saved = genSymmetric.REGULARIZE_ROUNDS
+    genSymmetric.REGULARIZE_ROUNDS = 40
+    try:
+        (reps, _, _) = regularize(reps, fixed, OCTAHEDRAL, 0.4)
+    finally:
+        genSymmetric.REGULARIZE_ROUNDS = saved
+    points = all_points(reps, fixed, OCTAHEDRAL)
+    return (facets, points, usable_hull(points, OCTAHEDRAL))
+
+
+class TestMovingOctahedralPoints:
+    """Separation and regularizing keep the merged facets: the squares stay
+    squares, since the points move only in ways that keep the symmetry."""
+
+    def test_keeps_the_facets(self):
+        (facets_before, _, facets_after) = octahedral_moved()
+        assert facet_set(facets_after) == facet_set(facets_before)
+
+    def test_keeps_the_symmetry_and_flatness(self):
+        (_, points, facets) = octahedral_moved()
+        assert symmetry_problems(points, facets, OCTAHEDRAL) == []
+        (vertices, faces) = facet_dual(points, facets)
+        assert grid_checks.check_flat_faces(vertices, faces, 1e-9) == []
+
+    def test_keeps_the_held_limits(self):
+        (_, points, facets) = octahedral_moved()
+        (shortest, flattest) = held_limits(points, facets)
+        assert shortest >= 0.4 * 0.99
+        assert flattest >= MIN_FACE_ANGLE * 0.99
+
+
+OPTIONS = {'orbits': 6, 'group': 'tetrahedral', 'relax': 0.25, 'min_edge': 0.4,
+           'regularize': False, 'seed': 42, 'axes': [], 'id': None, 'name': None}
+
+
 def test_source_names_the_seed():
-    options = {'orbits': 6, 'relax': 0.25, 'min_edge': 0.4, 'regularize': False,
-               'seed': 42, 'axes': ['edge'], 'id': None, 'name': None}
+    options = dict(OPTIONS, axes=['edge'])
     assert source_arguments(options) == ['6', '--relax=0.25', '--min-edge=0.4',
                                          '--seed=42', '--edge-axes']
 
@@ -267,6 +459,12 @@ def test_source_names_the_seed():
 def test_source_names_regularizing_only_when_on():
     # Off must leave no trace: commands written before the option existed
     # have to go on making the same solid.
-    options = {'orbits': 6, 'relax': 0.25, 'min_edge': 0.4, 'regularize': True,
-               'seed': 42, 'axes': [], 'id': None, 'name': None}
+    options = dict(OPTIONS, regularize=True)
     assert source_arguments(options)[-1] == '--regularize'
+
+
+def test_source_names_the_group_only_when_not_tetrahedral():
+    # Likewise for the files written before --group existed.
+    assert not any(a.startswith('--group') for a in source_arguments(OPTIONS))
+    options = dict(OPTIONS, group='octahedral')
+    assert source_arguments(options)[:2] == ['6', '--group=octahedral']

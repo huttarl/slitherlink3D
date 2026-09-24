@@ -37,7 +37,7 @@ first six verify the result through grid_checks before writing it.
 - genZonish — a seed solid expanded by zones taken from its own symmetry, after
   Hart's zonish polyhedra.
 - genRandomPolyh — invented sphere-like solids, from repelled random points.
-- genSymmetric — invented solids with tetrahedral symmetry, from random point orbits.
+- genSymmetric — invented solids with tetrahedral or octahedral symmetry, from random point orbits.
 - obj2json — converts Wavefront OBJ format (such as from polyHedronisme) to our JSON format.
 
 ## Solver & puzzle generator

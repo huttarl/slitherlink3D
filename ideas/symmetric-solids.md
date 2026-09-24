@@ -7,8 +7,10 @@ is possible next, and the open questions. Written 2026-09-23.
 
 ## Where it stands
 
-- `util/genSymmetric.py` uses the **tetrahedral rotation group T only** (12
-  rotations). Random orbit representatives → hull → polar dual, with symmetric
+- `util/genSymmetric.py` uses the **tetrahedral rotation group T** (12
+  rotations) by default, and the octahedral group O with `--group=octahedral`
+  (see open question 1 for where that stands). Random orbit representatives →
+  hull → polar dual, with symmetric
   relaxation, short-edge separation (on by default, `--min-edge=0.4`) and
   `--regularize` (off by default, so older commands still reproduce). Every
   step keeps the symmetry exact, the faces exactly flat, and the triangulation
@@ -72,24 +74,25 @@ is possible next, and the open questions. Written 2026-09-23.
 
 ## Open questions and next steps
 
-1. **Vertices of degree > 3: an octahedral prototype.** The plan, from the
-   facts above:
-   - Add the octahedral rotation group O (the 24 signed permutation matrices
-     with determinant +1) behind a `--group=` option, defaulting to
-     tetrahedral so existing commands still reproduce byte for byte. Its axis
-     orbits: 6 points on the 4-fold axes, 8 on the 3-fold, 12 on the 2-fold.
-   - Treat **symmetry-forced coplanar facets** as facets to merge, instead of
-     rejecting every coplanar draw. One way to tell forced from accidental:
-     merge all coplanar facets, then require the merged structure to pass the
-     symmetry check.
-   - A polar dual over merged facets: one pole per facet (from any three of its
-     corners), each dual face ordered around its point. `genGoldberg.polar_dual`
-     can't do this, since it works from raw simplices. `face_cycles`,
-     `dual_edges_of` and `dual_edge_lengths` then need the merged facets too.
-   - The fixed-topology check compares merged facets rather than triangles.
-   - The angle-budget formula for a degree-d vertex:
-     360 − Σ over its d faces of (180 − 360/sides).
-   - The expected cost: the census in blocks of 24, only 2–4 free orbits.
+1. **Vertices of degree > 3: the octahedral prototype is built** (2026-09-23),
+   as `--group=octahedral`: merged facets, a polar dual over them, and the
+   facets held fixed. How it works, and a table of eighteen regularized
+   candidates, are in the genSymmetric section of `docs/generating-grids.md`.
+   Every octahedral solid has exactly six vertices of degree 4, except with
+   `--vertex-axes`, which leaves none. The tetrahedral cages still regenerate
+   byte for byte.
+   - **Not yet reviewed**: the candidates are in
+     `tmp/Octahedral Solid Candidates/solids/`, and nothing is in `data/`.
+   - **As expected, there's little room.** Most draws are one orbit of
+     pentagons among hexagons, which regularizes to near-regular and plain.
+     The varied draws regularize badly, and the relax-0 ones worst.
+   - Six degree-4 vertices out of 100–180 is a light seasoning. More would
+     need more forced coplanarity, and only the 4-fold axes force it: a facet
+     off every axis has no rotation holding its corners in one plane. So under
+     O, six is the most.
+   - Unused so far: the angle-budget formula for a degree-d vertex,
+     360 − Σ over its d faces of (180 − 360/sides), which a budget-aware seed
+     search (question 4) would need.
 2. **Icosahedral with forced pentagons** (degree-5 vertices): only one free
    orbit, but the degree-5 vertices might make it worthwhile anyway.
 3. **Full groups with reflections** (T_d, T_h, O_h): mirror-symmetric rather
