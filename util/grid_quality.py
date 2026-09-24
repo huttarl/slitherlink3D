@@ -3,10 +3,14 @@
 awkward to look at or to play on.
 
 Usage:
-    util/grid_quality.py [stem_or_path ...]
+    util/grid_quality.py [--table] [--sort=COLUMN] [stem_or_path ...]
 
-With no arguments, every data/*.json grid. Otherwise the ones named, by file stem
-(`randD`) or path (`data/randD.json`, or a file anywhere).
+With no grids named, every data/*.json grid. Otherwise the ones named, by file
+stem (`randD`) or path (`data/randD.json`, or a file anywhere).
+
+--table prints one line per grid instead, with the measures used to judge a
+candidate side by side (see TABLE_COLUMNS), and --sort orders the lines by one
+of those columns, smallest first. --sort implies --table.
 
 What it measures, and why each one matters:
 
@@ -17,6 +21,13 @@ What it measures, and why each one matters:
   sharpest    the sharpest corner angle of any face. A sliver face has almost no
               room for its clue digit, which clueRenderer sizes to the face's
               inscribed circle.
+  angles      the worst ratio of a face's largest corner to its smallest: 1 for
+              a regular polygon, whatever its size. Where the straightest corner
+              judges every face by one absolute angle, and so marks a regular
+              decagon (144 degrees) as badly as a triangle of 144, 18 and 18,
+              this measures how irregular the face is. The straightest corner is
+              still reported, since a corner near 180 hides a side however
+              regular the rest of the face is.
   inradius    smallest and largest face inscribed radius, which is directly the
               range of clue digit sizes.
   bow         how far a face's corners stray from flat, in units where the
@@ -116,6 +127,19 @@ AXIS_RATIO = 1.15
 # question at 1.6 to 2.1, so anything under a degree is in a class of its own.
 FLAT_EDGE_DEGREES = 1.0
 
+# The --table columns: name, heading, format. Each is the same measure as the
+# full report's line of the same name.
+TABLE_COLUMNS = [
+    ('faces', 'faces', '{:d}'),
+    ('shortest', 'short%', '{:.0f}'),
+    ('sharpest', 'sharp°', '{:.1f}'),
+    ('straightest', 'straight°', '{:.1f}'),
+    ('sides', 'sides×', '{:.1f}'),
+    ('angles', 'angles×', '{:.1f}'),
+    ('spread', 'spread×', '{:.1f}'),
+    ('flattest', 'flat°', '{:.1f}'),
+]
+
 
 def flattest_edge(vertices, faces):
     """The smallest angle between the outward normals of two faces sharing an edge.
@@ -214,6 +238,60 @@ def jacobi_axes(matrix, sweeps=12):
     return [[axes[row][col] for row in range(3)] for col in range(3)]
 
 
+def side_spread(faces):
+    """The worst ratio of a face's longest side to its shortest."""
+    return max(max(edge_lengths(f)) / min(edge_lengths(f)) for f in faces)
+
+
+def angle_spread(faces):
+    """The worst ratio of a face's largest corner to its smallest."""
+    return max(max(corner_angles(f)) / min(corner_angles(f)) for f in faces)
+
+
+def census_of(F):
+    sizes = {}
+    for face in F:
+        sizes[len(face)] = sizes.get(len(face), 0) + 1
+    return ', '.join(f'{c}x{s}' for (s, c) in sorted(sizes.items()))
+
+
+def measures(path):
+    """The TABLE_COLUMNS measures of one grid, plus its name and census."""
+    grid = json.loads(path.read_text())
+    V = grid['vertices']
+    F = grid['faces']
+    faces = [[V[i] for i in face] for face in F]
+    lengths = [distance(V[a], V[b]) for (a, b) in edges_of(F)]
+    inradii = [inscribed_radius(f) for f in faces]
+    return {
+        'grid': path.stem,
+        'faces': len(F),
+        'shortest': 100 * min(lengths) / statistics.median(lengths),
+        'sharpest': min(sharpest_corner(f) for f in faces),
+        'straightest': max(max(corner_angles(f)) for f in faces),
+        'sides': side_spread(faces),
+        'angles': angle_spread(faces),
+        'spread': max(inradii) / min(inradii),
+        'flattest': flattest_edge(V, F)[0],
+        'census': census_of(F),
+    }
+
+
+def print_table(paths, sort_by):
+    rows = [measures(path) for path in paths]
+    if sort_by:
+        rows.sort(key=lambda row: row[sort_by])
+    width = max([len('grid')] + [len(row['grid']) for row in rows])
+    print(f'{"grid":<{width}}  '
+          + '  '.join(f'{heading:>{len(heading)}}' for (_, heading, _) in TABLE_COLUMNS)
+          + '  census')
+    for row in rows:
+        print(f'{row["grid"]:<{width}}  '
+              + '  '.join(f'{form.format(row[name]):>{len(heading)}}'
+                          for (name, heading, form) in TABLE_COLUMNS)
+              + f'  {row["census"]}')
+
+
 def report(path):
     grid = json.loads(path.read_text())
     V = grid['vertices']
@@ -251,8 +329,10 @@ def report(path):
     # count: a corner near 180 degrees hides a side, so a heptagon reads as a
     # hexagon. A regular polygon's corners never pass 180 - 360/sides.
     print(f'  straightest {max(max(corner_angles(f)) for f in faces):.1f} degrees')
-    lopsided = max(max(edge_lengths(f)) / min(edge_lengths(f)) for f in faces)
-    print(f'  sides     up to x{lopsided:.1f} longest to shortest, within one face')
+    print(f'  sides     up to x{side_spread(faces):.1f} longest to shortest, '
+          'within one face')
+    print(f'  angles    up to x{angle_spread(faces):.1f} largest to smallest, '
+          'within one face')
     print(f'  inradius  {min(inradii):.3f} to {max(inradii):.3f}  '
           f'(x{max(inradii) / min(inradii):.1f})')
     print(f'  bow       {max(face_bow(f) for f in faces):.1e}')
@@ -309,9 +389,22 @@ def report(path):
 
 
 def main():
-    if len(sys.argv) > 1:
+    (table, sort_by, names) = (False, None, [])
+    for argument in sys.argv[1:]:
+        if argument == '--table':
+            table = True
+        elif argument.startswith('--sort='):
+            (table, sort_by) = (True, argument.split('=', 1)[1])
+            if sort_by not in [name for (name, _, _) in TABLE_COLUMNS]:
+                sys.exit(f'--sort must be one of: '
+                         + ', '.join(name for (name, _, _) in TABLE_COLUMNS))
+        elif argument.startswith('--'):
+            sys.exit(f'Unrecognized option {argument!r}.\n\n{__doc__}')
+        else:
+            names.append(argument)
+    if names:
         paths = []
-        for argument in sys.argv[1:]:
+        for argument in names:
             path = Path(argument)
             paths.append(path if path.suffix == '.json'
                          else DATA_DIR / f'{argument}.json')
@@ -321,6 +414,9 @@ def main():
     if missing:
         print(f'No such grid file: {", ".join(missing)}', file=sys.stderr)
         sys.exit(1)
+    if table:
+        print_table(paths, sort_by)
+        return
     for path in paths:
         report(path)
 

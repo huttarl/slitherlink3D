@@ -840,6 +840,26 @@
       "dual": "bD"
     },
     {
+      "file": "ocageA",
+      "gridId": "ocageA",
+      "gridName": "Octahedral cage A",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 72,
+      "edges": 204,
+      "vertices": 134,
+      "numPuzzles": 3
+    },
+    {
+      "file": "ocageB",
+      "gridId": "ocageB",
+      "gridName": "Octahedral cage B",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 72,
+      "edges": 204,
+      "vertices": 134,
+      "numPuzzles": 3
+    },
+    {
       "file": "gp12",
       "gridId": "gp12",
       "gridName": "Goldberg GP(1,2)",
@@ -872,6 +892,26 @@
       "numPuzzles": 3
     },
     {
+      "file": "ocageC",
+      "gridId": "ocageC",
+      "gridName": "Octahedral cage C",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 80,
+      "edges": 228,
+      "vertices": 150,
+      "numPuzzles": 3
+    },
+    {
+      "file": "ocageD",
+      "gridId": "ocageD",
+      "gridName": "Octahedral cage D",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 80,
+      "edges": 228,
+      "vertices": 150,
+      "numPuzzles": 3
+    },
+    {
       "file": "cageC",
       "gridId": "cageC",
       "gridName": "Tetrahedral cage C",
@@ -879,6 +919,16 @@
       "faces": 80,
       "edges": 234,
       "vertices": 156,
+      "numPuzzles": 3
+    },
+    {
+      "file": "ocageE",
+      "gridId": "ocageE",
+      "gridName": "Octahedral cage E",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 84,
+      "edges": 240,
+      "vertices": 158,
       "numPuzzles": 3
     },
     {
@@ -919,6 +969,16 @@
       "faces": 84,
       "edges": 246,
       "vertices": 164,
+      "numPuzzles": 3
+    },
+    {
+      "file": "ocageF",
+      "gridId": "ocageF",
+      "gridName": "Octahedral cage F",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 96,
+      "edges": 276,
+      "vertices": 182,
       "numPuzzles": 3
     },
     {

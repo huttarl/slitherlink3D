@@ -81,8 +81,13 @@ is possible next, and the open questions. Written 2026-09-23.
    Every octahedral solid has exactly six vertices of degree 4, except with
    `--vertex-axes`, which leaves none. The tetrahedral cages still regenerate
    byte for byte.
-   - **Not yet reviewed**: the candidates are in
-     `tmp/Octahedral Solid Candidates/solids/`, and nothing is in `data/`.
+   - **Six shipped** (2026-09-24), as `data/ocageA`–`ocageF` ("Octahedral
+     cage A"–"F"), lettered by face count: ocageA ← symO3_r25_reg_s1,
+     ocageB ← symO3_r25_reg_s9, ocageC ← symO3_f_r25_reg_s1,
+     ocageD ← symO3_f_r25_reg_s5, ocageE ← symO3_e_r25_reg_s7,
+     ocageF ← symO4_r25_reg_s7. They were chosen on a private review page,
+     https://claude.ai/artifact/BAxx8mPDPzVifta6v23JGx (local copy in
+     `tmp/Octahedral Solid Candidates/`).
    - **As expected, there's little room.** Most draws are one orbit of
      pentagons among hexagons, which regularizes to near-regular and plain.
      The varied draws regularize badly, and the relax-0 ones worst.
@@ -93,6 +98,16 @@ is possible next, and the open questions. Written 2026-09-23.
    - Unused so far: the angle-budget formula for a degree-d vertex,
      360 − Σ over its d faces of (180 − 360/sides), which a budget-aware seed
      search (question 4) would need.
+   - **Smaller solids** (under 60 faces) were scanned on 2026-09-24, but none
+     are shipped. Below about 24 faces every draw is combinatorially a solid
+     we have: one T orbit is a dodecahedron (a tetartoid), and one O orbit is
+     the pentagonal icositetrahedron. From about 30 faces, axis points make a
+     few orbits varied, and some regularize cleanly. At 34 faces, `2
+     --relax=0 --seed=4 --vertex-axes --edge-axes` gives 6×4, 12×5, 4×6,
+     12×7 with nothing flagged. So does `3 --relax=0 --seed=7 --edge-axes`,
+     at 42 faces (6×4, 12×5, 12×6, 12×7). Candidates are in
+     `tmp/Small Symmetric Candidates/solids/`. None of the ten shares a census
+     with any grid in `data/`, so none is a solid we already have.
 2. **Icosahedral with forced pentagons** (degree-5 vertices): only one free
    orbit, but the degree-5 vertices might make it worthwhile anyway.
 3. **Full groups with reflections** (T_d, T_h, O_h): mirror-symmetric rather

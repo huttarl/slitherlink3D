@@ -476,7 +476,8 @@ regularized candidates, all with six vertices of degree 4:
 | symO4_r0_reg_s10 | 24×3, 24×5, 24×6, 24×9 | 178° | ×13.7 | 36% | 1.3° |
 
 (Two more, symO3_r0_reg_s1 and symO3_r25_reg_s2, came out identical to
-symO3_r25_reg_s1 metric for metric: the combinatorics decide again.)
+symO3_r25_reg_s1 metric for metric: the combinatorics decide again.) Six of
+these ship as `ocageA`–`ocageF`; `ideas/symmetric-solids.md` says which.
 
 The most common census at relax 0.25, one orbit of pentagons among hexagons,
 regularizes almost perfectly and is correspondingly plain. The varied ones
@@ -490,8 +491,8 @@ its straightest corner at 178°.
 `util/grid_quality.py` reports the things that make a solid awkward to look at
 or play on: shortest/median/longest edge, the sharpest and the straightest
 corner of any face (a corner near 180° hides a side, making the face hard to
-count), the worst ratio of a face's longest side to its shortest, the
-range of face inscribed radii (which is the range of clue digit sizes), how far
+count), the worst ratio of a face's longest side to its shortest and of its
+largest corner to its smallest, the range of face inscribed radii (which is the range of clue digit sizes), how far
 faces stray from flat, the vertex degrees, and whether every face is wound
 outward.
 
@@ -503,6 +504,7 @@ read as one, spoils a board, while most of the rest merely looks less tidy.
 |---|---|
 | straightest corner | 150°, where a corner starts to hide a side |
 | sides within a face | ×3.0 |
+| angles within a face | ×3.0 |
 | flattest edge | 8°, where two neighboring faces start to read as one |
 | sharpest corner | below 55° |
 | clue-size spread | **×2.5** |
@@ -513,3 +515,13 @@ different sizes are fine on the board, and holding the spread tight works
 against regular faces: a regular octagon is simply bigger than a regular
 pentagon with the same edge, so any mixed census that is regularized widens it.
 It used to be judged at ×2.0, which demoted solids for no benefit to play.
+
+The two corner measures answer different questions. The angle ratio says how
+irregular a face is, whatever its size: a regular decagon scores ×1.0 with
+144° corners, while a triangle of 144°, 18° and 18° scores ×8, although the
+straightest corner is the same for both. The straightest corner says whether a
+side is hiding, which can happen in a face whose other corners are all alike,
+and which the ratio barely notices in a big face. The ratio's line is newer
+and less tested. The triakis Catalans (`dtT`, `dtC`, `dtD`) are past it, at ×3.4 to
+×3.9, and play well, since their isosceles triangles are all congruent and a
+triangle is never hard to count.

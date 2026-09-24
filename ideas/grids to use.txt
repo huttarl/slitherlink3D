@@ -24,6 +24,7 @@ All of these will be convex (unless otherwise noted).
     especially if we can see through the inside. We would have to make sure the opposite faces
     are visible from behind (less culling). And the puzzle generation code would have to make
     sure that no clues are placed on the removed faces.
+    Update: we have some unclosed faces now, like nanotubes and capsid.
 
 Specific shapes & categories:
 
@@ -45,10 +46,24 @@ Specific shapes & categories:
     I guess that's more just agentic than stigmergic. Maybe.
     (Maybe we could also have ants that travel from vertex to vertex, trying to improve their
     structure as well. Not sure what their criteria would be ...)
+    - Maybe not stigmergy as such, but could start building a spherical polyhedron starting from
+        several different points, each with a random style, then stitch the patches together
+        where they meet. E.g. one with goldberg-like mesh (hexagons), one with zonelike (quads),
+        one with geodesic (triangles).
 
-- Randomness with symmetry is working well, especially with regularization.
+- More surfaces with holes:
+    - macaroni: half-tori, which avoid the topological problems of tori, are fun to work on,
+        and can be mechanically different from tubes in that one side is curved differently
+        from the other
+    - spherical polyhedra with certain faces removed
+- Non-convex polyhedra: this could be a big source of new grids, such as stellated and compound
+    polyhedra. Maybe start with Escher's: https://www.georgehart.com/virtual-polyhedra/escher.html
+    and simple ones from https://www.georgehart.com/virtual-polyhedra/stellations-info.html
+
+- Randomness with (tetrahedral) symmetry is working well, especially with regularization.
   But we seem to have all vertices of degree 3.
   What about changing the vertex degree? Does that make it harder with the dual thing?
+  Update: now working on some with octahedral symmetry.
 
 - ooh, spirallohedra! see end of https://www.youtube.com/watch?v=zCr3mNUn-P0
     They're not convex, but I think we've found that that's ok.
