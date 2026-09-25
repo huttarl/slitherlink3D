@@ -15,22 +15,28 @@ is possible next, and the open questions. Written 2026-09-23.
   `--regularize` (off by default, so older commands still reproduce). Every
   step keeps the symmetry exact, the faces exactly flat, and the triangulation
   (hence the census) fixed.
-- **Seven solids shipped**: `data/cageA`–`cageG` ("Tetrahedral orbit solid A"–"G"),
-  60–96 faces, all regularized, each with 3 puzzles and a display puzzle. Their
-  `source` lines reproduce them. They carry the `random` category and file under
-  "Random solids" in the picker.
-- **Names and ids differ on purpose.** The solids were named "cage" until
-  2026-09-24, and were then renamed "orbit solid", since in graph theory a
-  cage is something else: the smallest regular graph of a given degree and
-  girth. The ids (`cageA`, `ocageA`, …) kept the old word, because URLs and
-  puzzle files use them.
-- Candidates were reviewed on a private page,
+- **Fifteen solids shipped**: `data/tetOrbitA`–`tetOrbitH` ("Tetrahedral
+  orbit solid A"–"H") and `data/octOrbitA`–`octOrbitG` ("Octahedral orbit
+  solid A"–"G"), 34–96 faces, all regularized, each with 3 puzzles and a
+  display puzzle. Their `source` lines reproduce them. They carry the `random`
+  category and file under "Random solids" in the picker.
+- **Lettered in catalogue order**, so that each series lists alphabetically:
+  by edge count, then face count, then id, which is how
+  `util/build_catalogue.py` sorts. A new solid that falls between two
+  existing ones means relettering the ones after it, ids included.
+- **Renamed on 2026-09-24.** They were first "Tetrahedral cage A" and so on,
+  with ids `cageA` and `ocageA`. But in graph theory a cage is something else
+  (the smallest regular graph of a given degree and girth), so they became
+  orbit solids, relettered into catalogue order at the same time. The review
+  pages linked below still use the generator ids (symT…, symO…), which the
+  mappings translate.
+- Tetrahedral candidates were reviewed on a private page,
   https://claude.ai/artifact/G3W5K5YVEKwSn5cdfjx2WV (exported locally to
-  `tmp/Tetrahedral Solid Candidates/`). It names them by their generator ids
-  (symT…), not by the letters. Mapping: cageA ← symT5_r25_reg_s1,
-  cageB ← symT6_v_r25_reg_s1, cageC ← symT6_vf_r25_reg_s2,
-  cageD ← symT7_r25_reg_s1, cageE ← symT7_r25_reg_s3, cageF ← symT7_r10_reg_s2,
-  cageG ← symT8_r25_reg_s1.
+  `tmp/Tetrahedral Solid Candidates/`). Mapping: tetOrbitB ← symT5_r25_reg_s1,
+  tetOrbitC ← symT6_v_r25_reg_s1, tetOrbitD ← symT6_vf_r25_reg_s2,
+  tetOrbitE ← symT7_r25_reg_s1, tetOrbitF ← symT7_r25_reg_s3,
+  tetOrbitG ← symT7_r10_reg_s2, tetOrbitH ← symT8_r25_reg_s1. (tetOrbitA is
+  a small solid; see open question 1.)
 - Dropped as too similar to the others, by choice: symT6_r25_reg_s3,
   symT5_vf_r50_reg_s8, symT6_e_r25_reg_s1.
 
@@ -86,11 +92,10 @@ is possible next, and the open questions. Written 2026-09-23.
    Every octahedral solid has exactly six vertices of degree 4, except with
    `--vertex-axes`, which leaves none. The tetrahedral orbit solids still regenerate
    byte for byte.
-   - **Six shipped** (2026-09-24), as `data/ocageA`–`ocageF` ("Octahedral
-     orbit solid A"–"F"), lettered by face count: ocageA ← symO3_r25_reg_s1,
-     ocageB ← symO3_r25_reg_s9, ocageC ← symO3_f_r25_reg_s1,
-     ocageD ← symO3_f_r25_reg_s5, ocageE ← symO3_e_r25_reg_s7,
-     ocageF ← symO4_r25_reg_s7. They were chosen on a private review page,
+   - **Six shipped** (2026-09-24): octOrbitB ← symO3_r25_reg_s1,
+     octOrbitC ← symO3_r25_reg_s9, octOrbitD ← symO3_f_r25_reg_s1,
+     octOrbitE ← symO3_f_r25_reg_s5, octOrbitF ← symO3_e_r25_reg_s7,
+     octOrbitG ← symO4_r25_reg_s7. They were chosen on a private review page,
      https://claude.ai/artifact/BAxx8mPDPzVifta6v23JGx (local copy in
      `tmp/Octahedral Solid Candidates/`).
    - **As expected, there's little room.** Most draws are one orbit of
@@ -114,13 +119,12 @@ is possible next, and the open questions. Written 2026-09-23.
      `tmp/Small Symmetric Candidates/solids/`. None of the ten shares a census
      with any grid in `data/`, so none is a solid we already have. Reviewed on
      https://claude.ai/artifact/W1zLocW6cArEEDqBdXW7J9. The first pick shipped
-     as `data/cageH` ("Tetrahedral orbit solid H", 34 faces; its letter follows G
-     rather than the face count, so that the older ids stay put).
+     as `data/tetOrbitA` (34 faces), from `symT2_ve_r0_reg_s4`.
    - The 44-face pick (`1 --group=octahedral --relax=0 --seed=7 --face-axes
      --edge-axes --regularize`) was tried with its nonagons moved inward
      (`--face-axes=D`), compared on
      https://claude.ai/artifact/DVrCvSWMNnziFjs2BMb2eB. It shipped at 0.94 as
-     `data/ocageG` ("Octahedral orbit solid G"): sides ×1.8 and clue spread ×2.2,
+     `data/octOrbitA`: sides ×1.8 and clue spread ×2.2,
      where 0.92 had the evenest sides (×1.5) but a spread right on the line.
 2. **Icosahedral with forced pentagons** (degree-5 vertices): only one free
    orbit, but the degree-5 vertices might make it worthwhile anyway.

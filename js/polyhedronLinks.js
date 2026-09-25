@@ -134,23 +134,23 @@ const SOLID_PAGE_EXCEPTIONS = {
     // The tetrahedral orbit solids (util/genSymmetric.py): random orbits under
     // the tetrahedral rotations, regularized. Ours alone, like the random
     // spheres, so there is no article anywhere; the 'chiral' category is the
-    // reading. Their ids say "cage", but keep them: URLs and puzzle files use them.
-    'cageA': null,
-    'cageB': null,
-    'cageC': null,
-    'cageD': null,
-    'cageE': null,
-    'cageF': null,
-    'cageG': null,
-    'cageH': null,
+    // reading.
+    'tetOrbitA': null,
+    'tetOrbitB': null,
+    'tetOrbitC': null,
+    'tetOrbitD': null,
+    'tetOrbitE': null,
+    'tetOrbitF': null,
+    'tetOrbitG': null,
+    'tetOrbitH': null,
     // The octahedral orbit solids: the same, under the octahedral rotations.
-    'ocageA': null,
-    'ocageB': null,
-    'ocageC': null,
-    'ocageD': null,
-    'ocageE': null,
-    'ocageF': null,
-    'ocageG': null,
+    'octOrbitA': null,
+    'octOrbitB': null,
+    'octOrbitC': null,
+    'octOrbitD': null,
+    'octOrbitE': null,
+    'octOrbitF': null,
+    'octOrbitG': null,
 };
 
 /**

@@ -447,8 +447,9 @@ share without being changed by it:
 
 With nothing to merge, `facet_dual` gives exactly what `polar_dual` does, and
 the octahedral rotations begin with the tetrahedral ones in their own order.
-So every tetrahedral command still makes the same file: `cageA`–`cageG` were
-regenerated from their source lines and compared byte for byte.
+So every tetrahedral command still makes the same file: the tetrahedral solids
+then in `data/` were regenerated from their source lines and compared byte for
+byte.
 
 **What it gives.** A census scan of 40 seeds per setting (2–4 orbits, each axis
 option, relax 0 and 0.25) found plenty of variety: triangles through decagons,
@@ -477,7 +478,7 @@ regularized candidates, all with six vertices of degree 4:
 
 (Two more, symO3_r0_reg_s1 and symO3_r25_reg_s2, came out identical to
 symO3_r25_reg_s1 metric for metric: the combinatorics decide again.) Six of
-these ship as `ocageA`–`ocageF`; `ideas/symmetric-solids.md` says which.
+these ship as `octOrbitB`–`octOrbitG`; `ideas/symmetric-solids.md` says which.
 
 The most common census at relax 0.25, one orbit of pentagons among hexagons,
 regularizes almost perfectly and is correspondingly plain. The varied ones

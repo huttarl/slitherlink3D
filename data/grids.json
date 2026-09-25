@@ -582,9 +582,9 @@
       "dual": "tI"
     },
     {
-      "file": "cageH",
-      "gridId": "cageH",
-      "gridName": "Tetrahedral orbit solid H",
+      "file": "tetOrbitA",
+      "gridId": "tetOrbitA",
+      "gridName": "Tetrahedral orbit solid A",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 34,
       "edges": 96,
@@ -663,9 +663,9 @@
       "dual": "gd20"
     },
     {
-      "file": "ocageG",
-      "gridId": "ocageG",
-      "gridName": "Octahedral orbit solid G",
+      "file": "octOrbitA",
+      "gridId": "octOrbitA",
+      "gridName": "Octahedral orbit solid A",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 44,
       "edges": 120,
@@ -808,9 +808,9 @@
       "numPuzzles": 3
     },
     {
-      "file": "cageA",
-      "gridId": "cageA",
-      "gridName": "Tetrahedral orbit solid A",
+      "file": "tetOrbitB",
+      "gridId": "tetOrbitB",
+      "gridName": "Tetrahedral orbit solid B",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 60,
       "edges": 174,
@@ -860,9 +860,9 @@
       "dual": "bD"
     },
     {
-      "file": "ocageA",
-      "gridId": "ocageA",
-      "gridName": "Octahedral orbit solid A",
+      "file": "octOrbitB",
+      "gridId": "octOrbitB",
+      "gridName": "Octahedral orbit solid B",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 72,
       "edges": 204,
@@ -870,9 +870,9 @@
       "numPuzzles": 3
     },
     {
-      "file": "ocageB",
-      "gridId": "ocageB",
-      "gridName": "Octahedral orbit solid B",
+      "file": "octOrbitC",
+      "gridId": "octOrbitC",
+      "gridName": "Octahedral orbit solid C",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 72,
       "edges": 204,
@@ -902,9 +902,9 @@
       "dual": "gp12"
     },
     {
-      "file": "cageB",
-      "gridId": "cageB",
-      "gridName": "Tetrahedral orbit solid B",
+      "file": "tetOrbitC",
+      "gridId": "tetOrbitC",
+      "gridName": "Tetrahedral orbit solid C",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 76,
       "edges": 222,
@@ -912,18 +912,8 @@
       "numPuzzles": 3
     },
     {
-      "file": "ocageC",
-      "gridId": "ocageC",
-      "gridName": "Octahedral orbit solid C",
-      "categories": ["Miscellaneous", "random", "chiral"],
-      "faces": 80,
-      "edges": 228,
-      "vertices": 150,
-      "numPuzzles": 3
-    },
-    {
-      "file": "ocageD",
-      "gridId": "ocageD",
+      "file": "octOrbitD",
+      "gridId": "octOrbitD",
       "gridName": "Octahedral orbit solid D",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 80,
@@ -932,9 +922,19 @@
       "numPuzzles": 3
     },
     {
-      "file": "cageC",
-      "gridId": "cageC",
-      "gridName": "Tetrahedral orbit solid C",
+      "file": "octOrbitE",
+      "gridId": "octOrbitE",
+      "gridName": "Octahedral orbit solid E",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 80,
+      "edges": 228,
+      "vertices": 150,
+      "numPuzzles": 3
+    },
+    {
+      "file": "tetOrbitD",
+      "gridId": "tetOrbitD",
+      "gridName": "Tetrahedral orbit solid D",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 80,
       "edges": 234,
@@ -942,9 +942,9 @@
       "numPuzzles": 3
     },
     {
-      "file": "ocageE",
-      "gridId": "ocageE",
-      "gridName": "Octahedral orbit solid E",
+      "file": "octOrbitF",
+      "gridId": "octOrbitF",
+      "gridName": "Octahedral orbit solid F",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 84,
       "edges": 240,
@@ -962,18 +962,8 @@
       "numPuzzles": 3
     },
     {
-      "file": "cageD",
-      "gridId": "cageD",
-      "gridName": "Tetrahedral orbit solid D",
-      "categories": ["Miscellaneous", "random", "chiral"],
-      "faces": 84,
-      "edges": 246,
-      "vertices": 164,
-      "numPuzzles": 3
-    },
-    {
-      "file": "cageE",
-      "gridId": "cageE",
+      "file": "tetOrbitE",
+      "gridId": "tetOrbitE",
       "gridName": "Tetrahedral orbit solid E",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 84,
@@ -982,8 +972,8 @@
       "numPuzzles": 3
     },
     {
-      "file": "cageF",
-      "gridId": "cageF",
+      "file": "tetOrbitF",
+      "gridId": "tetOrbitF",
       "gridName": "Tetrahedral orbit solid F",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 84,
@@ -992,9 +982,19 @@
       "numPuzzles": 3
     },
     {
-      "file": "ocageF",
-      "gridId": "ocageF",
-      "gridName": "Octahedral orbit solid F",
+      "file": "tetOrbitG",
+      "gridId": "tetOrbitG",
+      "gridName": "Tetrahedral orbit solid G",
+      "categories": ["Miscellaneous", "random", "chiral"],
+      "faces": 84,
+      "edges": 246,
+      "vertices": 164,
+      "numPuzzles": 3
+    },
+    {
+      "file": "octOrbitG",
+      "gridId": "octOrbitG",
+      "gridName": "Octahedral orbit solid G",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 96,
       "edges": 276,
@@ -1002,9 +1002,9 @@
       "numPuzzles": 3
     },
     {
-      "file": "cageG",
-      "gridId": "cageG",
-      "gridName": "Tetrahedral orbit solid G",
+      "file": "tetOrbitH",
+      "gridId": "tetOrbitH",
+      "gridName": "Tetrahedral orbit solid H",
       "categories": ["Miscellaneous", "random", "chiral"],
       "faces": 96,
       "edges": 282,
