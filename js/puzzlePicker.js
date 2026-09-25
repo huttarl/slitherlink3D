@@ -1,9 +1,10 @@
 /**
  * Choosing what to play: the polyhedron and puzzle pickers, the "Next puzzle"
- * buttons, and the "are you sure?" that guards leaving a part-worked board.
+ * and "Random" buttons, and the "are you sure?" that guards leaving a
+ * part-worked board.
  */
 import {groupGridsByFamily, loadCatalogue, nextPuzzleLocation,
-        playableGrids} from "./catalogue.js";
+        playableGrids, randomPuzzleLocation} from "./catalogue.js";
 import {confirmDialog} from "./confirmDialog.js";
 import {setWhereAmI} from "./panelLayout.js";
 import {gridIdFromUrl} from "./titleScreen.js";
@@ -66,6 +67,19 @@ export async function setupSelectors(puzzleGrid) {
             goToPuzzle(chosen, null);
         }
     });
+
+    // "Random": a random puzzle on another polyhedron. Wired before the early
+    // returns below, since it works from any grid, even the catalogue's last.
+    const randomButton = document.getElementById('randomPuzzle');
+    if (randomPuzzleLocation(catalogue, currentGrid) !== null) {
+        randomButton.disabled = false;
+        randomButton.addEventListener('click', async () => {
+            if (await confirmLeavingPuzzle(puzzleGrid)) {
+                const target = randomPuzzleLocation(catalogue, currentGrid);
+                goToPuzzle(target.file, target.puzzle);
+            }
+        });
+    }
 
     // Puzzle picker: one entry per puzzle of the current grid.
     const puzzleSelect = document.getElementById('puzzleSelect');

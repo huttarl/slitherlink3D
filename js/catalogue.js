@@ -192,6 +192,28 @@ export function nextPuzzleLocation(catalogue, currentFile, currentPuzzleNumber) 
     return null; // End of the catalogue.
 }
 
+/**
+ * Picks a puzzle to jump to at random: a grid chosen evenly from those with
+ * puzzles, other than the current one (so the jump always goes somewhere),
+ * then one of its puzzles, again evenly.
+ *
+ * Evenly by grid rather than by puzzle, so that every polyhedron is as likely
+ * as any other, whatever its puzzle count.
+ *
+ * @param {Object} catalogue - the parsed data/grids.json
+ * @param {string} currentFile - the current grid's file stem
+ * @param {function(): number} random - returns a number in [0, 1), as
+ *     Math.random does; a parameter so that tests can fix it
+ * @returns {{file: string, puzzle: number}|null} where to go (puzzle is
+ *     1-based), or null if no other grid has puzzles
+ */
+export function randomPuzzleLocation(catalogue, currentFile, random = Math.random) {
+    const candidates = playableGrids(catalogue).filter(grid => grid.file !== currentFile);
+    if (candidates.length === 0) return null;
+    const grid = candidates[Math.floor(random() * candidates.length)];
+    return { file: grid.file, puzzle: 1 + Math.floor(random() * grid.numPuzzles) };
+}
+
 /** The in-flight or completed fetch, so the catalogue is loaded once. */
 let cataloguePromise = null;
 

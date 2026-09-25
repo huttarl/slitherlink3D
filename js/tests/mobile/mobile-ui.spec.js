@@ -396,7 +396,7 @@ test.describe('the collapsed panel', () => {
         await page.locator('#aboutSolidToggle').click();
 
         for (const selector of ['#info', '#gridSelect', '#aboutSolidToggle',
-                                '#aboutSolid', '#nextPuzzle']) {
+                                '#aboutSolid', '#nextPuzzle', '#randomPuzzle']) {
             const box = await visibleWithinViewport(page, selector);
             expect(box.rendered, `${selector} is not shown`).toBe(true);
             expect(box.insideViewport,

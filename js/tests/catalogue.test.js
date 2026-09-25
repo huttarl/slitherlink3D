@@ -9,7 +9,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { groupGridsByFamily, nextPuzzleLocation, playableGrids } from '../catalogue.js';
+import { groupGridsByFamily, nextPuzzleLocation, playableGrids,
+         randomPuzzleLocation } from '../catalogue.js';
 
 /** A stand-in catalogue: only the fields nextPuzzleLocation reads. */
 const CATALOGUE = {
@@ -102,6 +103,48 @@ describe('nextPuzzleLocation', () => {
         const trailing = { grids: [{ file: 'a', numPuzzles: 1 },
                                    { file: 'b', numPuzzles: 0 }] };
         assert.strictEqual(nextPuzzleLocation(trailing, 'a', 1), null);
+    });
+});
+
+/** A "random" source that returns the given values in turn. */
+function fixedRandom(...values) {
+    let i = 0;
+    return () => values[i++];
+}
+
+describe('randomPuzzleLocation', () => {
+    test('never picks the current grid, nor one without puzzles', () => {
+        // From cube, the candidates are T and D; 'empty' has no puzzles.
+        for (const r of [0, 0.25, 0.5, 0.75, 0.999]) {
+            const target = randomPuzzleLocation(CATALOGUE, 'cube', fixedRandom(r, 0));
+            assert.ok(['T', 'D'].includes(target.file), `picked ${target.file}`);
+        }
+    });
+
+    test('reaches every other playable grid', () => {
+        // Evenly by grid: the first draw splits [0, 1) between T and D.
+        assert.strictEqual(randomPuzzleLocation(CATALOGUE, 'cube', fixedRandom(0.1, 0)).file, 'T');
+        assert.strictEqual(randomPuzzleLocation(CATALOGUE, 'cube', fixedRandom(0.9, 0)).file, 'D');
+    });
+
+    test('picks a puzzle in range, 1-based, reaching the first and the last', () => {
+        // From T, the candidates are cube (3 puzzles) and D (2).
+        assert.deepStrictEqual(randomPuzzleLocation(CATALOGUE, 'T', fixedRandom(0, 0)),
+            { file: 'cube', puzzle: 1 });
+        assert.deepStrictEqual(randomPuzzleLocation(CATALOGUE, 'T', fixedRandom(0, 0.999)),
+            { file: 'cube', puzzle: 3 });
+    });
+
+    test('works from a grid that is not in the catalogue', () => {
+        // Every playable grid is then a candidate.
+        assert.strictEqual(
+            randomPuzzleLocation(CATALOGUE, 'nonesuch', fixedRandom(0, 0)).file, 'T');
+    });
+
+    test('returns null when no other grid has puzzles', () => {
+        const lonely = { grids: [{ file: 'a', numPuzzles: 2 },
+                                 { file: 'b', numPuzzles: 0 }] };
+        assert.strictEqual(randomPuzzleLocation(lonely, 'a', fixedRandom(0, 0)), null);
     });
 });
 
